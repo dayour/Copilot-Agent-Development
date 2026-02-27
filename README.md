@@ -5,8 +5,8 @@ Copilot Agent Development Resources
 
 | Folder | Description |
 |--------|-------------|
-| [coffee-shop/](./coffee-shop/) | Coffee shop business resources |
+| [coffee/](./coffee/) | Coffee business resources |
 | [insurance/](./insurance/) | Insurance industry resources |
 | [clothing/](./clothing/) | Clothing retail resources |
 | [transportation/](./transportation/) | Transportation industry resources |
-| [it-supplier/](./it-supplier/) | IT supplier resources |
+| [tech/](./tech/) | Tech industry resources |
