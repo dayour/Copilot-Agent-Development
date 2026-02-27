@@ -1,0 +1,122 @@
+# Copilot Studio Agent Template — Virtual Coach (Coffee)
+# Import this file as a starting point. Customise trigger phrases,
+# messages, and knowledge sources to match your coffee business.
+
+agent:
+  name: Virtual Coach
+  description: >
+    An always-available virtual coach for coffee shop employees.
+    Helps with onboarding, recipes, HR queries, shift handover, and performance tips.
+  language: en-US
+  fallback_message: >
+    I'm sorry, I didn't quite understand that. Would you like me to connect you
+    with your manager or find something in our knowledge base?
+
+topics:
+
+  - name: Greeting
+    trigger_phrases:
+      - Hello
+      - Hi
+      - Hey
+      - Good morning
+      - Good afternoon
+    messages:
+      - text: >
+          Hi there! 👋 I'm your Virtual Coach. I can help you with drink recipes,
+          store policies, shift handovers, and more. What do you need today?
+    quick_replies:
+      - Drink recipes
+      - HR & policies
+      - Shift handover
+      - Performance tips
+
+  - name: Drink Recipes
+    trigger_phrases:
+      - How do I make a {drink}?
+      - Recipe for {drink}
+      - What goes in a {drink}?
+      - Preparation steps for {drink}
+    entities:
+      - name: drink
+        type: string
+        prompt: Which drink would you like the recipe for?
+    actions:
+      - type: knowledge_search
+        query: "recipe {drink}"
+        source: coffee-knowledge-base
+    fallback_message: >
+      I couldn't find a recipe for that drink. Please check the training manual
+      or ask your manager.
+
+  - name: HR and Policy
+    trigger_phrases:
+      - What is the leave policy?
+      - How do I request time off?
+      - What is the dress code?
+      - Can I swap my shift?
+      - What are my breaks?
+    actions:
+      - type: knowledge_search
+        query: "{user_input}"
+        source: hr-policy-library
+    fallback_message: >
+      I couldn't find a specific policy on that. Please speak with your manager
+      or contact HR directly.
+
+  - name: Shift Handover
+    trigger_phrases:
+      - Start shift handover
+      - Handover checklist
+      - End of shift
+      - Begin handover
+    messages:
+      - text: "Let's complete your shift handover. I'll walk you through the checklist."
+    adaptive_card:
+      title: Shift Handover Checklist
+      fields:
+        - id: cash_balanced
+          label: Cash drawer balanced?
+          type: boolean
+        - id: stock_checked
+          label: Stock levels checked and noted?
+          type: boolean
+        - id: equipment_cleaned
+          label: Equipment cleaned?
+          type: boolean
+        - id: issues
+          label: Any issues to report?
+          type: text
+          multiline: true
+        - id: incoming_colleague
+          label: Handing over to (name)?
+          type: text
+    submit_action:
+      type: send_email
+      to: "{store_manager_email}"
+      subject: "Shift Handover — {employee_name} — {date}"
+
+  - name: Performance Tips
+    trigger_phrases:
+      - Give me a tip
+      - How can I improve?
+      - Performance advice
+      - Coaching tip
+    messages:
+      - text: >
+          Here's today's coaching tip: Focus on greeting every customer by name
+          when you can — it creates a memorable experience and builds loyalty! ☕
+
+  - name: Escalation
+    trigger_phrases:
+      - I need to speak to a manager
+      - Connect me to someone
+      - Human help
+    messages:
+      - text: >
+          Of course! I'll notify your manager now. While you wait, is there
+          anything else I can help with?
+    actions:
+      - type: send_teams_notification
+        channel: "{manager_teams_channel_id}"
+        message: "Employee {employee_name} has requested manager assistance."

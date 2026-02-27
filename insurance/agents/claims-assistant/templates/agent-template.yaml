@@ -1,0 +1,142 @@
+# Copilot Studio Agent Template — Claims Assistant (Insurance)
+# Import this file as a starting point. Customise trigger phrases,
+# API endpoints, and knowledge sources to match your insurance products.
+
+agent:
+  name: Claims Assistant
+  description: >
+    A conversational agent that guides customers and claims handlers
+    through the insurance claims lifecycle — from first notice of loss
+    to escalation and status tracking.
+  language: en-US
+  fallback_message: >
+    I'm sorry, I didn't quite understand that. Would you like me to connect
+    you with a claims handler?
+
+topics:
+
+  - name: Greeting
+    trigger_phrases:
+      - Hello
+      - Hi
+      - I need to make a claim
+      - I had an accident
+      - I want to report an incident
+    messages:
+      - text: >
+          Hello! I'm your Claims Assistant. I can help you report a new claim,
+          check the status of an existing claim, or answer questions about your
+          cover. What would you like to do?
+    quick_replies:
+      - Report a new claim
+      - Check claim status
+      - Coverage questions
+      - Submit documents
+
+  - name: First Notice of Loss (FNOL)
+    trigger_phrases:
+      - Report a new claim
+      - I want to report an incident
+      - Log a claim
+    adaptive_card:
+      title: "New Claim — Incident Details"
+      fields:
+        - id: policy_number
+          label: Policy number
+          type: text
+          required: true
+        - id: incident_type
+          label: Type of incident
+          type: choice
+          options:
+            - Motor accident
+            - Property damage
+            - Personal injury
+            - Theft
+            - Other
+          required: true
+        - id: incident_date
+          label: Date of incident
+          type: date
+          required: true
+        - id: incident_description
+          label: Description of what happened
+          type: text
+          multiline: true
+          required: true
+        - id: location
+          label: Location of incident
+          type: text
+    submit_action:
+      type: power_automate_flow
+      flow_name: CreateClaimRecord
+      output_message: >
+        Thank you. Your claim reference is {claim_reference}. A claims handler
+        will be in touch within 2 business days.
+
+  - name: Coverage Questions
+    trigger_phrases:
+      - What does my policy cover?
+      - Am I covered for {incident_type}?
+      - What is my excess?
+      - What is not covered?
+    entities:
+      - name: incident_type
+        type: string
+        prompt: What type of incident are you asking about?
+    actions:
+      - type: knowledge_search
+        query: "coverage {incident_type} policy terms"
+        source: policy-wording-library
+    fallback_message: >
+      I couldn't find specific coverage details for that. Please contact your
+      broker or call our customer service line.
+
+  - name: Claim Status
+    trigger_phrases:
+      - What is the status of my claim?
+      - Check my claim
+      - Where is my claim up to?
+    entities:
+      - name: claim_reference
+        type: string
+        prompt: Please provide your claim reference number.
+    actions:
+      - type: power_automate_flow
+        flow_name: GetClaimStatus
+        input:
+          claim_reference: "{claim_reference}"
+        output_message: >
+          Claim {claim_reference}: Status is **{claim_status}**.
+          Last updated: {last_updated}.
+
+  - name: Document Submission
+    trigger_phrases:
+      - I need to submit documents
+      - Upload evidence
+      - Send photos
+      - Attach documents
+    messages:
+      - text: >
+          Please upload the relevant documents below. Accepted formats:
+          PDF, JPG, PNG (max 10 MB each).
+    actions:
+      - type: file_upload
+        allowed_types: [pdf, jpg, png]
+        max_size_mb: 10
+        upload_flow: UploadClaimDocument
+
+  - name: Escalation
+    trigger_phrases:
+      - I want to speak to a claims handler
+      - Connect me to a human
+      - This is urgent
+    messages:
+      - text: >
+          I'll connect you to a claims handler now. Your reference number is
+          {claim_reference}. Average wait time is {estimated_wait}.
+    actions:
+      - type: handoff_to_agent
+        context:
+          claim_reference: "{claim_reference}"
+          conversation_summary: "{conversation_summary}"

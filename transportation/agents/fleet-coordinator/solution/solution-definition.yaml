@@ -1,0 +1,132 @@
+# Copilot Studio Solution Definition — Fleet Coordinator (Transportation)
+# This file defines the exportable solution components for the Fleet Coordinator agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: TransportationFleetCoordinator
+  display_name: "Transportation — Fleet Coordinator"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Showcase solution for the Fleet Coordinator agent in the Transportation vertical.
+    Includes the agent definition, topics, knowledge source bindings,
+    environment variable declarations, and Power Automate flow references.
+
+environment_variables:
+  - name: FleetManagementApiUrl
+    display_name: Fleet Management API URL
+    type: string
+    description: REST base URL for the fleet management system.
+    default_value: ""
+
+  - name: FleetManagementApiKey
+    display_name: Fleet Management API Key
+    type: secret
+    description: API key or OAuth2 client credentials for the fleet management system.
+    default_value: ""
+
+  - name: MappingApiKey
+    display_name: Mapping API Key
+    type: secret
+    description: API key for the routing and mapping provider.
+    default_value: ""
+
+  - name: MaintenanceTeamEmail
+    display_name: Maintenance Team Email
+    type: string
+    description: Email address for maintenance alert notifications.
+    default_value: ""
+
+  - name: ComplianceDocumentLibraryUrl
+    display_name: Compliance Document Library SharePoint URL
+    type: string
+    description: SharePoint document library containing compliance and safety documentation.
+    default_value: ""
+
+components:
+  agents:
+    - name: FleetCoordinator
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: compliance-document-library
+          type: sharepoint
+          url: "${ComplianceDocumentLibraryUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  dataverse_tables:
+    - name: IncidentReports
+      display_name: Incident Reports
+      description: Stores vehicle incident reports captured by the agent.
+      columns:
+        - name: incident_id
+          type: autonumber
+          primary: true
+        - name: vehicle_id
+          type: string
+          required: true
+        - name: incident_type
+          type: choice
+          options: [Collision, Breakdown, Near miss, Theft/vandalism, Other]
+          required: true
+        - name: incident_date_time
+          type: datetime
+          required: true
+        - name: location
+          type: string
+          required: true
+        - name: description
+          type: multiline_text
+          required: true
+        - name: injuries_reported
+          type: boolean
+        - name: reported_by
+          type: string
+        - name: created_at
+          type: datetime
+          auto_set: true
+
+  power_automate_flows:
+    - name: GetVehicleAvailability
+      description: Queries the fleet management system for vehicle availability on a given date.
+      trigger: copilot_studio_topic_action
+      connector: http
+
+    - name: LogMaintenanceAlert
+      description: Logs a vehicle fault in the fleet management system and emails the maintenance team.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: http
+
+    - name: GetComplianceStatus
+      description: Retrieves MOT, insurance, and inspection dates for a vehicle.
+      trigger: copilot_studio_topic_action
+      connector: http
+
+    - name: CreateIncidentReport
+      description: Creates an incident report record in Dataverse and notifies the fleet manager.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: dataverse
+
+    - name: GetRouteGuidance
+      description: Calls the mapping API to return route summary and ETA between two locations.
+      trigger: copilot_studio_topic_action
+      connector: http
+
+connections:
+  - connector: http
+    display_name: HTTP (Fleet Management API + Mapping API)
+  - connector: dataverse
+    display_name: Microsoft Dataverse
+  - connector: office365_outlook
+    display_name: Office 365 Outlook
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+  - type: custom_website
+    enabled: true
+    embed_type: iframe

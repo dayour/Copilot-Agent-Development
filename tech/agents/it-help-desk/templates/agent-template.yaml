@@ -1,0 +1,164 @@
+# Copilot Studio Agent Template — IT Help Desk (Tech)
+# Import this file as a starting point. Customise trigger phrases,
+# ITSM flow names, and knowledge sources to match your IT environment.
+
+agent:
+  name: IT Help Desk
+  description: >
+    A first-line IT support agent for employees. Handles password resets,
+    software troubleshooting, hardware requests, and ITSM ticket creation.
+  language: en-US
+  fallback_message: >
+    I'm sorry, I didn't quite understand that. Would you like me to raise an
+    IT support ticket or connect you to the help desk team?
+
+topics:
+
+  - name: Greeting
+    trigger_phrases:
+      - Hello
+      - Hi
+      - I need IT help
+      - IT support
+    messages:
+      - text: >
+          Hi! 💻 I'm your IT Help Desk assistant. I can help with account issues,
+          software, hardware, and more. What do you need?
+    quick_replies:
+      - Reset my password
+      - Software issue
+      - Hardware request
+      - Raise a ticket
+      - Search knowledge base
+
+  - name: Password Reset
+    trigger_phrases:
+      - Reset my password
+      - I can't log in
+      - Forgot password
+      - Locked out of my account
+    messages:
+      - text: >
+          I can help with that. Please confirm your employee ID so I can
+          verify your identity before initiating the reset.
+    entities:
+      - name: employee_id
+        type: string
+        prompt: What is your employee ID?
+    actions:
+      - type: power_automate_flow
+        flow_name: InitiatePasswordReset
+        input:
+          employee_id: "{employee_id}"
+        output_message: >
+          A password reset link has been sent to your registered email address.
+          Please check your inbox and follow the instructions.
+
+  - name: Software Support
+    trigger_phrases:
+      - I have a problem with {software}
+      - {software} is not working
+      - How do I install {software}?
+      - {software} error
+    entities:
+      - name: software
+        type: string
+        prompt: Which software are you having trouble with?
+    actions:
+      - type: knowledge_search
+        query: "{software} troubleshooting installation"
+        source: it-knowledge-base
+    fallback_message: >
+      I couldn't find a solution in the knowledge base. Let me raise a ticket
+      for the IT team to investigate.
+
+  - name: Hardware Request
+    trigger_phrases:
+      - I need a new laptop
+      - Request hardware
+      - My keyboard is broken
+      - I need a monitor
+    adaptive_card:
+      title: Hardware Request
+      fields:
+        - id: request_type
+          label: Request type
+          type: choice
+          options:
+            - New device
+            - Replacement
+            - Peripheral (keyboard, mouse, monitor, etc.)
+            - Other
+          required: true
+        - id: item_description
+          label: Item description
+          type: text
+          required: true
+        - id: justification
+          label: Business justification
+          type: text
+          multiline: true
+          required: true
+        - id: required_by
+          label: Required by date
+          type: date
+    submit_action:
+      type: power_automate_flow
+      flow_name: CreateHardwareRequestTicket
+      output_message: >
+        Your hardware request has been submitted. Ticket reference: {ticket_id}.
+        Your manager will receive an approval request shortly.
+
+  - name: Raise a Ticket
+    trigger_phrases:
+      - Raise a ticket
+      - Log an incident
+      - Create a support ticket
+      - Something is broken
+    adaptive_card:
+      title: IT Support Ticket
+      fields:
+        - id: category
+          label: Category
+          type: choice
+          options:
+            - Account & Access
+            - Software
+            - Hardware
+            - Network
+            - Other
+          required: true
+        - id: priority
+          label: Priority
+          type: choice
+          options:
+            - Low
+            - Medium
+            - High
+            - Critical
+          required: true
+        - id: description
+          label: Description of the issue
+          type: text
+          multiline: true
+          required: true
+    submit_action:
+      type: power_automate_flow
+      flow_name: CreateItsmTicket
+      output_message: >
+        Ticket created successfully. Reference: {ticket_id}. The IT team
+        will respond based on the priority you selected.
+
+  - name: Knowledge Base Search
+    trigger_phrases:
+      - Search for {query}
+      - How do I {query}?
+      - What is {query}?
+    entities:
+      - name: query
+        type: string
+        prompt: What would you like to search for?
+    actions:
+      - type: knowledge_search
+        query: "{query}"
+        source: it-knowledge-base

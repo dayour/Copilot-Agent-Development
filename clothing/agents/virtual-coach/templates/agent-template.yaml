@@ -1,0 +1,124 @@
+# Copilot Studio Agent Template — Virtual Coach (Clothing)
+# Import this file as a starting point. Customise trigger phrases,
+# messages, and knowledge sources to match your clothing retail business.
+
+agent:
+  name: Virtual Coach
+  description: >
+    A virtual coach for clothing retail employees.
+    Helps with product knowledge, styling tips, store policies,
+    visual merchandising, and daily shift briefings.
+  language: en-US
+  fallback_message: >
+    I'm sorry, I didn't quite understand that. Would you like me to search our
+    knowledge base or connect you with your store manager?
+
+topics:
+
+  - name: Greeting
+    trigger_phrases:
+      - Hello
+      - Hi
+      - Hey
+      - Good morning
+      - Good afternoon
+    messages:
+      - text: >
+          Hi! 👗 I'm your Virtual Coach. I can help with product knowledge,
+          styling tips, store policies, and shift briefings. What do you need?
+    quick_replies:
+      - Product knowledge
+      - Styling tips
+      - Store policies
+      - Today's briefing
+
+  - name: Product Knowledge
+    trigger_phrases:
+      - Tell me about {product}
+      - What fabric is {product}?
+      - How do I care for {product}?
+      - What sizes does {product} come in?
+    entities:
+      - name: product
+        type: string
+        prompt: Which product would you like to know about?
+    actions:
+      - type: knowledge_search
+        query: "{product} product details"
+        source: product-catalogue-library
+    fallback_message: >
+      I couldn't find details for that product. Please check the product
+      catalogue or ask your merchandising team.
+
+  - name: Styling Tips
+    trigger_phrases:
+      - What goes with {item}?
+      - How do I style {item}?
+      - Outfit ideas with {item}
+      - Suggest an outfit
+    entities:
+      - name: item
+        type: string
+        prompt: Which item would you like styling suggestions for?
+    actions:
+      - type: knowledge_search
+        query: "styling {item} outfit pairing"
+        source: styling-guide-library
+    fallback_message: >
+      I don't have specific styling notes for that item. Check the current
+      season's lookbook in the team SharePoint.
+
+  - name: Store Policies
+    trigger_phrases:
+      - What is the returns policy?
+      - How do I process an exchange?
+      - What does the loyalty programme offer?
+      - Can a customer return without a receipt?
+    actions:
+      - type: knowledge_search
+        query: "{user_input}"
+        source: store-policy-library
+    fallback_message: >
+      I couldn't find a specific policy for that. Please check with your
+      store manager or the HR policy portal.
+
+  - name: Visual Merchandising
+    trigger_phrases:
+      - How should the window display look?
+      - Planogram for {section}
+      - Display standards for {section}
+    entities:
+      - name: section
+        type: string
+        prompt: Which section of the store are you asking about?
+    actions:
+      - type: knowledge_search
+        query: "planogram {section} display"
+        source: visual-merchandising-library
+
+  - name: Shift Briefing
+    trigger_phrases:
+      - What's on today?
+      - Today's briefing
+      - Daily targets
+      - What promotions are running?
+    actions:
+      - type: knowledge_search
+        query: "today shift briefing targets promotions"
+        source: daily-briefing-library
+    messages:
+      - text: "Here's your shift briefing for today:"
+
+  - name: Escalation
+    trigger_phrases:
+      - I need to speak to my manager
+      - Connect me to someone
+      - Human help
+    messages:
+      - text: >
+          Of course! I'll notify your manager now. Is there anything else I
+          can help with while you wait?
+    actions:
+      - type: send_teams_notification
+        channel: "{manager_teams_channel_id}"
+        message: "Employee {employee_name} has requested manager assistance."
