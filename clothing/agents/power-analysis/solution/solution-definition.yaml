@@ -1,0 +1,90 @@
+# Copilot Studio Solution Definition — Power Analysis (Clothing)
+# This file defines the exportable solution components for the Power Analysis agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: ClothingPowerAnalysis
+  display_name: "Clothing — Power Analysis"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Showcase solution for the Power Analysis business intelligence agent in the
+    Clothing vertical. Provides conversational access to Power BI retail data,
+    including sales performance, inventory analytics, trend insights,
+    customer metrics, and operational KPIs.
+
+environment_variables:
+  - name: PowerBiWorkspaceId
+    display_name: Power BI Workspace ID
+    type: string
+    description: GUID of the Power BI workspace containing the retail semantic model.
+    default_value: ""
+
+  - name: PowerBiDatasetId
+    display_name: Power BI Dataset ID
+    type: string
+    description: GUID of the primary retail semantic model (dataset) in Power BI.
+    default_value: ""
+
+  - name: SalesDashboardReportId
+    display_name: Sales Dashboard Report ID
+    type: string
+    description: GUID of the sales performance Power BI report.
+    default_value: ""
+
+  - name: InventoryReportId
+    display_name: Inventory Report ID
+    type: string
+    description: GUID of the inventory analysis Power BI report.
+    default_value: ""
+
+  - name: AnalyticsTeamsChannelId
+    display_name: Analytics Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for automated KPI alert notifications.
+    default_value: ""
+
+  - name: BiGlossaryLibraryUrl
+    display_name: BI Glossary SharePoint URL
+    type: string
+    description: SharePoint document library URL containing KPI definitions and BI glossary.
+    default_value: ""
+
+components:
+  agents:
+    - name: PowerAnalysis
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: bi-glossary-library
+          type: sharepoint
+          url: "${BiGlossaryLibraryUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: QueryPowerBiMeasure
+      description: >
+        Executes a DAX query against the Power BI semantic model and returns
+        measure values for the requested filters (period, store, category).
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+
+    - name: SendKpiAlertNotification
+      description: >
+        Fires when a store misses its daily sales target; posts an alert
+        to the analytics Teams channel with store name and shortfall amount.
+      trigger: scheduled_recurrence
+      schedule: daily_at_close_of_business
+      connector: microsoft_teams
+
+connections:
+  - connector: power_bi
+    display_name: Power BI
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false

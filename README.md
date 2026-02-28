@@ -8,7 +8,7 @@ A showcase library of complete **Copilot Studio agents** for multiple industry v
 | Folder | Vertical | Showcase Agents |
 |--------|----------|-----------------|
 | [coffee/](./coffee/) | Coffee | [Virtual Coach](./coffee/agents/virtual-coach/) |
-| [clothing/](./clothing/) | Clothing | [Virtual Coach](./clothing/agents/virtual-coach/) |
+| [clothing/](./clothing/) | Clothing | [Power Analysis](./clothing/agents/power-analysis/) |
 | [insurance/](./insurance/) | Insurance | [Claims Assistant](./insurance/agents/claims-assistant/) |
 | [tech/](./tech/) | Tech | [IT Help Desk](./tech/agents/it-help-desk/) |
 | [transportation/](./transportation/) | Transportation | [Fleet Coordinator](./transportation/agents/fleet-coordinator/) |

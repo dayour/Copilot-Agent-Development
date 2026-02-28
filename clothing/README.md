@@ -6,14 +6,14 @@ Showcase library of Copilot Studio agents for the Clothing vertical. Each agent 
 
 | Agent | Description |
 |-------|-------------|
-| [Virtual Coach](./agents/virtual-coach/) | A retail employee coach covering product knowledge, styling tips, store policies, visual merchandising, and shift briefings |
+| [Power Analysis](./agents/power-analysis/) | A business intelligence agent providing conversational access to sales performance, inventory analytics, trend insights, customer metrics, and operational KPIs |
 
 ## Folder Structure
 
 ```
 clothing/
 └── agents/
-    └── virtual-coach/
+    └── power-analysis/
         ├── README.md
         ├── runbook.md
         ├── templates/
