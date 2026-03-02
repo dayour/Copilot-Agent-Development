@@ -1,0 +1,1451 @@
+agentName: "Power Platform Advisor"
+description: |-
+  Enterprise Copilot Studio advisor for Power Platform architecture, governance, delivery, and troubleshooting.
+  Covers ALM, environments, apps, connectors, Dataverse, flows, MCP, topic design, Power Fx, variable strategy,
+  feature discovery, escalation, and fallback recovery with production-focused recommendations.
+model: "gpt-4o"
+instructions:
+  constraints: |-
+    Stay within Microsoft Power Platform and Copilot Studio scope. Do not fabricate tenant-specific facts, credent
+    ials, or unsupported product behavior. If information is missing, ask concise clarification questions before p
+    rescribing irreversible actions. Always call out governance, licensing, and security implications when relevan
+    t.
+  responseFormat: |-
+    Respond using: 1) short diagnosis, 2) recommended approach, 3) implementation steps, 4) validation checks, 5) 
+    rollback or mitigation notes. Prefer numbered steps and include concrete artifacts such as YAML snippets, Powe
+    r Fx formulas, CLI commands, flow mappings, or test cases when useful.
+  guidance: |-
+    Prioritize production-ready guidance for ALM, environments, Dataverse, connectors, flows, and Copilot Studio t
+    opics. Default to solution-aware practices, environment variables, connection references, and Dev/Test/Prod pr
+    omotion. For uncertainty, provide bounded options with tradeoffs and a recommended path.
+defaults:
+  locale: "en-US"
+  timezone: "UTC"
+  orchestrationMode: "Generative"
+  allowToolAutoSelection: true
+  askBeforeToolExecution: false
+topics:
+  - name: "ALM Operations Advisor"
+    description: |-
+      Handles solution lifecycle planning, managed versus unmanaged strategy, import and export mechan
+      ics, pipeline promotion, patching, hotfixes, semantic versioning, connection references, and env
+      ironment variable governance across Dev, Test, and Production.
+    triggerPhrases:
+      - "How should I structure ALM for Power Platform solutions"
+      - "Help me move a solution from dev to test to prod"
+      - "What is the right way to version managed solutions"
+      - "I need guidance for export, import, and release pipelines"
+    nodes:
+      - kind: "SendActivity"
+        id: "t01_n01_intro"
+        activity: |-
+          You are in ALM Operations Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t01_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t01_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t01_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t01_n05_pathing"
+        conditions:
+          - id: "t01_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t01_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t01_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t01_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t01_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "InvokeFlowAction"
+        id: "t01_n06_domain_tool"
+        flowName: "alm_release_assistant_flow"
+        inputs:
+          goal: "=Topic.Goal"
+          stage: "=Topic.Stage"
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t01_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t01_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t01_n09_template_branch"
+        conditions:
+          - id: "t01_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t01_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t01_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t01_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t01_n11_escalation_branch"
+        conditions:
+          - id: "t01_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t01_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t01_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t01_n12_end"
+        reason: "Completed"
+  - name: "Environment Management Advisor"
+    description: |-
+      Guides environment strategy including developer, sandbox, trial, and production environments, te
+      nant-level governance controls, DLP policy segmentation, capacity planning, backup and restore c
+      onsiderations, and environment security boundaries.
+    triggerPhrases:
+      - "Which Power Platform environment type should I use"
+      - "How do I configure DLP policies safely"
+      - "I need environment security and capacity guidance"
+      - "Help me design governance for multiple environments"
+    nodes:
+      - kind: "SendActivity"
+        id: "t02_n01_intro"
+        activity: |-
+          You are in Environment Management Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t02_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t02_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t02_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t02_n05_pathing"
+        conditions:
+          - id: "t02_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t02_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t02_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t02_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t02_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "HttpRequest"
+        id: "t02_n06_domain_tool"
+        method: "POST"
+        url: "https://api.contoso.internal/environment_governance_api"
+        headers:
+          Content-Type: "application/json"
+        body:
+          goal: "=Topic.Goal"
+          stage: "=Topic.Stage"
+        responseVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t02_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t02_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t02_n09_template_branch"
+        conditions:
+          - id: "t02_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t02_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t02_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t02_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t02_n11_escalation_branch"
+        conditions:
+          - id: "t02_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t02_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t02_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t02_n12_end"
+        reason: "Completed"
+  - name: "Power Apps Guidance Advisor"
+    description: |-
+      Advises on selecting canvas versus model-driven apps, component libraries, app lifecycle managem
+      ent, packaging, deployment patterns, app performance, delegation considerations, and maintainabi
+      lity standards for enterprise delivery.
+    triggerPhrases:
+      - "Should I build this as a canvas app or model-driven app"
+      - "How do I manage a Power Apps lifecycle"
+      - "I need best practices for reusable app components"
+      - "Help me improve app performance and maintainability"
+    nodes:
+      - kind: "SendActivity"
+        id: "t03_n01_intro"
+        activity: |-
+          You are in Power Apps Guidance Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t03_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t03_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t03_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t03_n05_pathing"
+        conditions:
+          - id: "t03_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t03_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t03_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t03_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t03_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "InvokeFlowAction"
+        id: "t03_n06_domain_tool"
+        flowName: "powerapps_architecture_flow"
+        inputs:
+          goal: "=Topic.Goal"
+          stage: "=Topic.Stage"
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t03_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t03_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t03_n09_template_branch"
+        conditions:
+          - id: "t03_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t03_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t03_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t03_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t03_n11_escalation_branch"
+        conditions:
+          - id: "t03_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t03_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t03_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t03_n12_end"
+        reason: "Completed"
+  - name: "Connector Help Advisor"
+    description: |-
+      Supports connector decisions including standard versus premium connectors, custom connector desi
+      gn from OpenAPI, authentication patterns such as API key and OAuth2, policy templates, operation
+       design, and DLP classification impacts.
+    triggerPhrases:
+      - "How do I create a custom connector"
+      - "Which auth pattern should my connector use"
+      - "Help me classify connectors for DLP"
+      - "I need OpenAPI guidance for connector operations"
+    nodes:
+      - kind: "SendActivity"
+        id: "t04_n01_intro"
+        activity: |-
+          You are in Connector Help Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t04_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t04_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t04_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t04_n05_pathing"
+        conditions:
+          - id: "t04_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t04_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t04_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t04_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t04_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "HttpRequest"
+        id: "t04_n06_domain_tool"
+        method: "POST"
+        url: "https://api.contoso.internal/connector_design_api"
+        headers:
+          Content-Type: "application/json"
+        body:
+          goal: "=Topic.Goal"
+          stage: "=Topic.Stage"
+        responseVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t04_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t04_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t04_n09_template_branch"
+        conditions:
+          - id: "t04_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t04_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t04_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t04_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t04_n11_escalation_branch"
+        conditions:
+          - id: "t04_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t04_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t04_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t04_n12_end"
+        reason: "Completed"
+  - name: "Dataverse Modeling Advisor"
+    description: |-
+      Provides Dataverse schema and governance guidance for table design, relationships, business rule
+      s, calculated and rollup columns, forms and views, indexing strategy, security roles, and row-le
+      vel access patterns aligned with solution ALM.
+    triggerPhrases:
+      - "How should I model data in Dataverse"
+      - "Help me design Dataverse tables and relationships"
+      - "What security model should I use for Dataverse"
+      - "I need guidance for forms views and business rules"
+    nodes:
+      - kind: "SendActivity"
+        id: "t05_n01_intro"
+        activity: |-
+          You are in Dataverse Modeling Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t05_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t05_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t05_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t05_n05_pathing"
+        conditions:
+          - id: "t05_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t05_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t05_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t05_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t05_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "InvokeFlowAction"
+        id: "t05_n06_domain_tool"
+        flowName: "dataverse_modeling_flow"
+        inputs:
+          goal: "=Topic.Goal"
+          stage: "=Topic.Stage"
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t05_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t05_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t05_n09_template_branch"
+        conditions:
+          - id: "t05_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t05_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t05_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t05_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t05_n11_escalation_branch"
+        conditions:
+          - id: "t05_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t05_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t05_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t05_n12_end"
+        reason: "Completed"
+  - name: "Flow Design Advisor"
+    description: |-
+      Guides Power Automate architecture including trigger selection, idempotency, concurrency control
+      , exception handling, retry policy design, asynchronous patterns, child flows, and observability
+       for resilient enterprise automations.
+    triggerPhrases:
+      - "How do I design a robust Power Automate flow"
+      - "Help me with flow error handling and retries"
+      - "When should I use async patterns in Power Automate"
+      - "I need trigger and action design best practices"
+    nodes:
+      - kind: "SendActivity"
+        id: "t06_n01_intro"
+        activity: |-
+          You are in Flow Design Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t06_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t06_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t06_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t06_n05_pathing"
+        conditions:
+          - id: "t06_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t06_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t06_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t06_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t06_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "InvokeFlowAction"
+        id: "t06_n06_domain_tool"
+        flowName: "flow_design_review"
+        inputs:
+          goal: "=Topic.Goal"
+          stage: "=Topic.Stage"
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t06_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t06_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t06_n09_template_branch"
+        conditions:
+          - id: "t06_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t06_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t06_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t06_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t06_n11_escalation_branch"
+        conditions:
+          - id: "t06_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t06_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t06_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t06_n12_end"
+        reason: "Completed"
+  - name: "MCP Configuration Advisor"
+    description: |-
+      Supports Model Context Protocol setup for Copilot Studio agents including server registration, t
+      ransport selection, tool and resource discovery, routing descriptions, input contract quality, a
+      nd operational troubleshooting for MCP-based integrations.
+    triggerPhrases:
+      - "How do I connect an MCP server to my agent"
+      - "Help me register MCP tools and resources"
+      - "How should I write MCP tool descriptions for routing"
+      - "I need MCP troubleshooting guidance"
+    nodes:
+      - kind: "SendActivity"
+        id: "t07_n01_intro"
+        activity: |-
+          You are in MCP Configuration Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t07_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t07_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t07_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t07_n05_pathing"
+        conditions:
+          - id: "t07_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t07_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t07_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t07_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t07_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "HttpRequest"
+        id: "t07_n06_domain_tool"
+        method: "POST"
+        url: "https://api.contoso.internal/mcp_registry_api"
+        headers:
+          Content-Type: "application/json"
+        body:
+          goal: "=Topic.Goal"
+          stage: "=Topic.Stage"
+        responseVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t07_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t07_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t07_n09_template_branch"
+        conditions:
+          - id: "t07_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t07_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t07_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t07_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t07_n11_escalation_branch"
+        conditions:
+          - id: "t07_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t07_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t07_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t07_n12_end"
+        reason: "Completed"
+  - name: "Topic Authoring Advisor"
+    description: |-
+      Provides Copilot Studio topic authoring guidance for YAML structure, trigger phrase quality, top
+      ic descriptions for generative orchestration, node type selection, branching strategy, variable 
+      usage, and maintainable conversation design patterns.
+    triggerPhrases:
+      - "How should I author Copilot Studio topics in YAML"
+      - "Help me improve trigger phrases and routing"
+      - "Which node types should I use in a topic"
+      - "I need topic branching best practices"
+    nodes:
+      - kind: "SendActivity"
+        id: "t08_n01_intro"
+        activity: |-
+          You are in Topic Authoring Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t08_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t08_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t08_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t08_n05_pathing"
+        conditions:
+          - id: "t08_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t08_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t08_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t08_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t08_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "AdaptiveCard"
+        id: "t08_n06_domain_tool"
+        card:
+          type: "AdaptiveCard"
+          version: "1.5"
+          body:
+            - type: "TextBlock"
+              text: "Topic architecture review"
+            - type: "TextBlock"
+              text: "Use concise descriptions and explicit variable ownership."
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t08_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t08_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t08_n09_template_branch"
+        conditions:
+          - id: "t08_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t08_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t08_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t08_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t08_n11_escalation_branch"
+        conditions:
+          - id: "t08_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t08_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t08_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t08_n12_end"
+        reason: "Completed"
+  - name: "Power Fx Formulas Advisor"
+    description: |-
+      Assists with Power Fx formulas across apps and agents including type handling, records and table
+      s, condition expressions, string and date functions, JSON parsing, error handling, and maintaina
+      ble formula decomposition patterns.
+    triggerPhrases:
+      - "Help me write this Power Fx formula"
+      - "How do I parse JSON in Power Fx"
+      - "I need conditional logic examples in Power Fx"
+      - "Why is my formula failing type checks"
+    nodes:
+      - kind: "SendActivity"
+        id: "t09_n01_intro"
+        activity: |-
+          You are in Power Fx Formulas Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t09_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t09_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t09_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t09_n05_pathing"
+        conditions:
+          - id: "t09_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t09_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t09_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t09_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t09_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "SetVariable"
+        id: "t09_n06_domain_tool"
+        variable: "Topic.ToolResult"
+        value: "=powerfx_expression_builder"
+      - kind: "SendActivity"
+        id: "t09_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t09_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t09_n09_template_branch"
+        conditions:
+          - id: "t09_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t09_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t09_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t09_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t09_n11_escalation_branch"
+        conditions:
+          - id: "t09_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t09_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t09_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t09_n12_end"
+        reason: "Completed"
+  - name: "Variable Management Advisor"
+    description: |-
+      Guides variable strategy for topic, global, system, user, and environment variables, including p
+      assing values between topics, minimizing state leakage, reset behavior, and diagnostics for vari
+      able-driven branching outcomes.
+    triggerPhrases:
+      - "Explain variable scopes in Copilot Studio"
+      - "How do I pass values between topics"
+      - "I need help debugging variable behavior"
+      - "Which system variables are safe to use"
+    nodes:
+      - kind: "SendActivity"
+        id: "t10_n01_intro"
+        activity: |-
+          You are in Variable Management Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t10_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t10_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t10_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t10_n05_pathing"
+        conditions:
+          - id: "t10_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t10_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t10_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t10_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t10_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "SetVariable"
+        id: "t10_n06_domain_tool"
+        variable: "Topic.ToolResult"
+        value: "=variable_scope_planner"
+      - kind: "SendActivity"
+        id: "t10_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t10_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t10_n09_template_branch"
+        conditions:
+          - id: "t10_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t10_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t10_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t10_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t10_n11_escalation_branch"
+        conditions:
+          - id: "t10_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t10_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t10_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t10_n12_end"
+        reason: "Completed"
+  - name: "Feature Discovery Advisor"
+    description: |-
+      Helps discover and apply Copilot Studio capabilities including generative orchestration, knowled
+      ge sources, adaptive cards, AI Builder actions, prompts, connectors, and evaluation features bas
+      ed on scenario and governance constraints.
+    triggerPhrases:
+      - "What Copilot Studio features should I use"
+      - "Help me choose between prompts tools and topics"
+      - "How do I enable knowledge and generative answers"
+      - "I need to discover AI Builder integration options"
+    nodes:
+      - kind: "SendActivity"
+        id: "t11_n01_intro"
+        activity: |-
+          You are in Feature Discovery Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t11_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t11_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t11_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t11_n05_pathing"
+        conditions:
+          - id: "t11_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t11_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t11_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t11_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t11_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "GenerativeAnswer"
+        id: "t11_n06_domain_tool"
+        grounding:
+          - "Knowledge.PowerPlatformDocs"
+          - "Knowledge.InternalPlaybooks"
+        prompt: "Generate targeted recommendations using Topic.Goal and Topic.Stage."
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t11_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t11_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t11_n09_template_branch"
+        conditions:
+          - id: "t11_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t11_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t11_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t11_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t11_n11_escalation_branch"
+        conditions:
+          - id: "t11_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t11_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t11_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t11_n12_end"
+        reason: "Completed"
+  - name: "Escalation Advisor"
+    description: |-
+      Manages human handoff workflows when the agent cannot confidently resolve the request, collectin
+      g context, priority, and contact details, then transferring the conversation to support channels
+       with a structured summary payload.
+    triggerPhrases:
+      - "I need to speak with a human"
+      - "Escalate this case to support"
+      - "Transfer me to an agent"
+      - "This issue is urgent and needs handoff"
+    nodes:
+      - kind: "SendActivity"
+        id: "t12_n01_intro"
+        activity: |-
+          You are in Escalation Advisor. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t12_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t12_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t12_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t12_n05_pathing"
+        conditions:
+          - id: "t12_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t12_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t12_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t12_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t12_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "TransferToAgent"
+        id: "t12_n06_domain_tool"
+        target: "Omnichannel.SupportQueue"
+        handoffContext:
+          summary: "=Topic.ContextSummary"
+          requestedBy: "=User.DisplayName"
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t12_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t12_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t12_n09_template_branch"
+        conditions:
+          - id: "t12_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t12_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t12_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t12_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t12_n11_escalation_branch"
+        conditions:
+          - id: "t12_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t12_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t12_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t12_n12_end"
+        reason: "Completed"
+  - name: "Fallback Intent Recovery"
+    description: |-
+      Handles unrecognized or low-confidence user intents by clarifying the request, offering supporte
+      d capability options, attempting one guided re-route, and then escalating if the issue remains u
+      nresolved.
+    triggerPhrases:
+      - "I do not know where to start"
+      - "Can you help with something else"
+      - "That was not what I asked"
+      - "I need a different type of support"
+    nodes:
+      - kind: "SendActivity"
+        id: "t13_n01_intro"
+        activity: |-
+          You are in Fallback Intent Recovery. I can provide implementation guidance, governance checks,
+          and practical next steps aligned to enterprise Power Platform delivery.
+      - kind: "Question"
+        id: "t13_n02_goal"
+        variable: "Topic.Goal"
+        prompt: "What outcome do you need to achieve in this area?"
+        entity: "Text"
+        retryCount: 2
+      - kind: "Question"
+        id: "t13_n03_stage"
+        variable: "Topic.Stage"
+        prompt: "Which stage are you in: discovery, build, test, release, or operate?"
+        entity: "ClosedList"
+        options:
+          - "discovery"
+          - "build"
+          - "test"
+          - "release"
+          - "operate"
+      - kind: "SetVariable"
+        id: "t13_n04_summary"
+        variable: "Topic.ContextSummary"
+        value: '=Concatenate(Topic.Goal, " | stage=", Topic.Stage)'
+      - kind: "ConditionGroup"
+        id: "t13_n05_pathing"
+        conditions:
+          - id: "t13_c01_discovery"
+            condition: '=Topic.Stage = "discovery"'
+            actions:
+              - kind: "SendActivity"
+                id: "t13_a01"
+                activity: "I will provide decision criteria, target architecture, and risk checkpoints first."
+          - id: "t13_c02_build"
+            condition: '=Topic.Stage = "build" || Topic.Stage = "test"'
+            actions:
+              - kind: "SendActivity"
+                id: "t13_a02"
+                activity: "I will focus on implementation patterns, examples, and validation steps."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t13_a03"
+            activity: "I will focus on deployment safety, monitoring, and rollback guidance."
+      - kind: "GenerativeAnswer"
+        id: "t13_n06_domain_tool"
+        grounding:
+          - "Knowledge.PowerPlatformDocs"
+          - "Knowledge.InternalPlaybooks"
+        prompt: "Generate targeted recommendations using Topic.Goal and Topic.Stage."
+        outputVariable: "Topic.ToolResult"
+      - kind: "SendActivity"
+        id: "t13_n07_recommendation"
+        activity: |-
+          Recommended plan:
+          1) Confirm non-functional constraints and ownership boundaries.
+          2) Implement with solution-aware assets and explicit dependencies.
+          3) Validate with automated checks and rollback readiness.
+      - kind: "Question"
+        id: "t13_n08_template"
+        variable: "Topic.NeedsTemplate"
+        prompt: "Do you want a starter template or checklist for this recommendation?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t13_n09_template_branch"
+        conditions:
+          - id: "t13_c03_template_yes"
+            condition: "=Topic.NeedsTemplate = true"
+            actions:
+              - kind: "SendActivity"
+                id: "t13_a04"
+                activity: "I will provide a ready-to-edit template with assumptions and validation criteria."
+        elseActions:
+          - kind: "SendActivity"
+            id: "t13_a05"
+            activity: "I will keep guidance concise and focus on decision points only."
+      - kind: "Question"
+        id: "t13_n10_escalate"
+        variable: "Topic.RequestEscalation"
+        prompt: "Do you want to escalate this to a human specialist now?"
+        entity: "Boolean"
+      - kind: "ConditionGroup"
+        id: "t13_n11_escalation_branch"
+        conditions:
+          - id: "t13_c04_escalate_yes"
+            condition: "=Topic.RequestEscalation = true"
+            actions:
+              - kind: "RedirectToTopic"
+                id: "t13_a06"
+                topic: "Escalation Advisor"
+        elseActions:
+          - kind: "SendActivity"
+            id: "t13_a07"
+            activity: "Continuing self-service guidance. Ask follow-up questions anytime."
+      - kind: "EndConversation"
+        id: "t13_n12_end"
+        reason: "Completed"
