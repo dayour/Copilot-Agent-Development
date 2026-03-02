@@ -1,0 +1,14 @@
+# Name: Search Dynamics 365 knowledge article flow
+kind: TaskDialog
+outputs:
+  - propertyName: jsonresult
+
+  - propertyName: textresult
+
+  - propertyName: articlecount
+
+action:
+  kind: InvokeFlowTaskAction
+  flowId: 87023c69-962c-ec11-b6e6-000d3a574957
+
+outputMode: All
