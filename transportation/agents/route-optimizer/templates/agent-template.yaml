@@ -1,0 +1,266 @@
+agent:
+  name: Route Optimization Scheduler
+  vertical: Transportation
+  version: 1.0.0
+  orchestration_mode: generative
+  channels:
+    - teams
+    - mobile_web_chat
+  primary_users:
+    - fleet_manager
+    - dispatcher
+    - driver
+  global_variables:
+    - name: Global.UserRole
+      type: string
+    - name: Global.DefaultFleet
+      type: string
+    - name: Global.RerouteDelayThresholdMinutes
+      type: number
+      default: 30
+
+topics:
+  - name: Greeting
+    description: Greets users and adapts opening guidance for fleet managers, dispatchers, and drivers.
+    trigger:
+      mode: generative
+      trigger_phrases:
+        - hi
+        - hello
+        - start route optimizer
+        - open route scheduler
+        - help with routes
+    nodes:
+      - type: set_variable
+        id: detectRole
+        variable: Global.UserRole
+        value: =Coalesce(User.Role, "driver")
+      - type: condition
+        id: roleRoute
+        branches:
+          - condition: =Global.UserRole = "fleet_manager"
+            actions:
+              - type: message
+                text: "Welcome. I can optimize multi-stop routes, check driver availability, and monitor on-time performance."
+          - condition: =Global.UserRole = "dispatcher"
+            actions:
+              - type: message
+                text: "Welcome. I can sequence your stops, assign drivers, and alert you to traffic delays in real time."
+          - condition: =Global.UserRole = "driver"
+            actions:
+              - type: message
+                text: "Welcome. I can show your route, current ETA, and notify dispatch if you need a re-route."
+        else_actions:
+          - type: message
+            text: "Welcome to Route Optimization Scheduler. Tell me what routing question you want to solve."
+      - type: message
+        text: "Try: 'Optimize my stops for today', 'ETA for route R-1042', or 'Re-route truck T-501 around I-40'."
+
+  - name: Route Optimization
+    description: Accepts a list of stops with time windows and returns an optimized visit sequence that minimizes total travel time.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - optimize my stops
+        - best stop sequence for today
+        - plan my route
+        - optimize route for driver
+        - sequence stops for delivery
+    inputs:
+      - name: route_id
+        type: string
+        required: false
+      - name: stops
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askRouteId
+        prompt: "What route ID or list of stops should I optimize?"
+        variable: Topic.route_id
+        entity: Text
+      - type: tool
+        id: optimizeRoute
+        tool_name: OptimizeRoute
+        input_mapping:
+          routeId: =Topic.route_id
+          stops: =Topic.stops
+      - type: message
+        text: |-
+          Optimized route for {Topic.route_id}:
+          - Stop sequence: {Topic.OptimizedSequence}
+          - Estimated total travel time: {Topic.TotalTravelTime}
+          - Time windows respected: {Topic.TimeWindowsRespected}
+          - Optimization savings vs original: {Topic.TimeSavingsMinutes} minutes
+      - type: adaptive_card
+        title: Route Optimization Result
+        body:
+          - text: "Stop-by-stop breakdown: {Topic.StopBreakdownTable}"
+          - text: "All time windows satisfied: {Topic.TimeWindowsRespected}"
+
+  - name: ETA Calculation
+    description: Returns a real-time estimated time of arrival for a vehicle based on current GPS position and live traffic data.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - what is the eta for truck
+        - when will driver arrive
+        - real-time eta for route
+        - estimated arrival for vehicle
+        - current eta for delivery
+    inputs:
+      - name: vehicle_id
+        type: string
+        required: true
+      - name: destination_stop_id
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askVehicleId
+        prompt: "Which vehicle ID should I calculate the ETA for?"
+        variable: Topic.vehicle_id
+        entity: Text
+      - type: tool
+        id: getEta
+        tool_name: CalculateRealTimeEta
+        input_mapping:
+          vehicleId: =Topic.vehicle_id
+          destinationStopId: =Topic.destination_stop_id
+      - type: message
+        text: |-
+          ETA for vehicle {Topic.vehicle_id}:
+          - Current position: {Topic.CurrentPosition}
+          - Destination: {Topic.DestinationName}
+          - Estimated arrival: {Topic.EtaTimestamp}
+          - Distance remaining: {Topic.DistanceRemainingMiles} miles
+          - Traffic conditions: {Topic.TrafficConditionSummary}
+
+  - name: Rerouting Alert
+    description: Evaluates current traffic against the active route and triggers a re-routing notification if the projected delay exceeds the configured threshold.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - check for traffic delays
+        - reroute truck around traffic
+        - is there a delay on the route
+        - traffic alert for route
+        - re-route driver
+    inputs:
+      - name: vehicle_id
+        type: string
+        required: true
+      - name: route_id
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askVehicleIdReroute
+        prompt: "Which vehicle ID should I check for rerouting?"
+        variable: Topic.vehicle_id
+        entity: Text
+      - type: tool
+        id: checkReroute
+        tool_name: EvaluateReroutingNeed
+        input_mapping:
+          vehicleId: =Topic.vehicle_id
+          routeId: =Topic.route_id
+          thresholdMinutes: =Global.RerouteDelayThresholdMinutes
+      - type: condition
+        id: rerouteDecision
+        branches:
+          - condition: =Topic.DelayMinutes >= Global.RerouteDelayThresholdMinutes
+            actions:
+              - type: tool
+                id: sendRerouteAlert
+                tool_name: SendReroutingNotification
+                input_mapping:
+                  vehicleId: =Topic.vehicle_id
+                  routeId: =Topic.route_id
+                  delayMinutes: =Topic.DelayMinutes
+                  alternativeRoute: =Topic.AlternativeRouteSummary
+              - type: message
+                text: "⚠️ Re-routing alert sent for vehicle {Topic.vehicle_id}. Delay: {Topic.DelayMinutes} minutes. Alternative route: {Topic.AlternativeRouteSummary}."
+        else_actions:
+          - type: message
+            text: "No re-routing required. Current delay for vehicle {Topic.vehicle_id} is {Topic.DelayMinutes} minutes, within the {Global.RerouteDelayThresholdMinutes}-minute threshold."
+
+  - name: HOS Compliance Check
+    description: Validates a driver's Hours of Service remaining before assigning an additional route, blocking assignment if the limit would be exceeded.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - check hours of service for driver
+        - can driver take another route
+        - hos check for driver
+        - is driver available for route
+        - hours remaining for driver
+    inputs:
+      - name: driver_id
+        type: string
+        required: true
+      - name: estimated_route_hours
+        type: number
+        required: false
+    nodes:
+      - type: question
+        id: askDriverId
+        prompt: "Which driver ID should I check for HOS compliance?"
+        variable: Topic.driver_id
+        entity: Text
+      - type: tool
+        id: checkHos
+        tool_name: CheckDriverHosCompliance
+        input_mapping:
+          driverId: =Topic.driver_id
+          estimatedRouteHours: =Topic.estimated_route_hours
+      - type: condition
+        id: hosDecision
+        branches:
+          - condition: =Topic.HosCompliant = true
+            actions:
+              - type: message
+                text: "✅ Driver {Topic.driver_id} is within HOS limits. Hours remaining: {Topic.HoursRemaining}. Route can be assigned."
+        else_actions:
+          - type: message
+            text: "🚫 Driver {Topic.driver_id} cannot be assigned. Remaining HOS: {Topic.HoursRemaining} hours. Route requires {Topic.estimated_route_hours} hours. Assignment blocked to prevent regulatory violation."
+
+  - name: Driver Assignment
+    description: Assigns an available, qualified driver to a route, validating HOS availability and required certifications such as hazmat.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - assign driver to route
+        - find a driver for route
+        - who can take route
+        - assign hazmat route
+        - driver assignment for route
+    inputs:
+      - name: route_id
+        type: string
+        required: true
+      - name: required_certification
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askRouteIdAssign
+        prompt: "Which route ID needs a driver assignment?"
+        variable: Topic.route_id
+        entity: Text
+      - type: tool
+        id: findDriver
+        tool_name: AssignDriverToRoute
+        input_mapping:
+          routeId: =Topic.route_id
+          requiredCertification: =Topic.required_certification
+      - type: condition
+        id: assignmentResult
+        branches:
+          - condition: =Topic.AssignmentSuccess = true
+            actions:
+              - type: message
+                text: "✅ Driver {Topic.AssignedDriverId} assigned to route {Topic.route_id}. Certifications verified: {Topic.CertificationsVerified}. Estimated departure: {Topic.EstimatedDeparture}."
+        else_actions:
+          - type: message
+            text: "⚠️ No eligible driver found for route {Topic.route_id}. Reason: {Topic.AssignmentBlockedReason}. Please review driver availability and certification records."

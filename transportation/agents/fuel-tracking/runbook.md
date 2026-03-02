@@ -113,24 +113,24 @@ Knowledge source recommendation:
 
 ### Functional Tests
 
-- Fuel Summary returns weekly spend with fleet/region/vehicle breakdown
-- Vehicle Fuel Profile returns MPG, fill frequency, cost-per-mile, trend
-- Driver Efficiency returns ranked drivers with normalization context
-- Transaction Lookup returns correct filtered transactions
-- Fuel Price Finder returns route-aware recommendations
-- Fuel Card Management requires confirmation and role authorization
+- [ ] Fuel summary topic returns aggregated spend — correct totals from Dataverse FuelTransactions, matching manual calculation
+- [ ] Vehicle fuel profile shows MPG and trend — accurate MPG, trend data consistent with transaction history
+- [ ] Fuel price query returns current prices — external API returns valid, current prices for specified corridor
+- [ ] Fuel card suspension flow executes — card status changes to suspended in fuel card provider system
+- [ ] Driver Efficiency returns ranked drivers with normalization context
+- [ ] Transaction Lookup returns correct filtered transactions
 
 ### Anomaly Rule Tests
 
 Validate each anomaly type with positive and negative test data:
 
-- Tank capacity overfill
-- Multiple fills in short interval
-- Off-route fueling (distance threshold)
-- After-hours fueling
-- Price above market threshold
-- Split transactions at same merchant window
-- Potential phantom fill using telematics mismatch signals
+- [ ] Anomaly detection flags test transaction exceeding tank capacity — volume anomaly alert generated with correct evidence
+- [ ] Multiple fills in short interval
+- [ ] Off-route fueling (distance threshold)
+- [ ] After-hours fueling
+- [ ] Price above market threshold
+- [ ] Split transactions at same merchant window
+- [ ] Potential phantom fill using telematics mismatch signals
 
 ## 9. Monitoring Cadence
 
