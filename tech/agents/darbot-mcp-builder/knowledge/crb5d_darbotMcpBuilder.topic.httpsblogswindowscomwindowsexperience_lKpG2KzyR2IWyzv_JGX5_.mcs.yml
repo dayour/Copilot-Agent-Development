@@ -1,0 +1,6 @@
+# Name: https://blogs.windows.com/windowsexperience
+# This knowledge source searches information on the web found in https://blogs.windows.com/windowsexperience website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://blogs.windows.com/windowsexperience
