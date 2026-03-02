@@ -1,0 +1,6 @@
+# Name: https://learn.microsoft.com/en-us/connectors
+# This knowledge source searches information on the web found in https://learn.microsoft.com/en-us/connectors website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://learn.microsoft.com/en-us/connectors
