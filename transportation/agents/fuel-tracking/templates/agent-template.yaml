@@ -1,0 +1,359 @@
+agent:
+  name: Fuel Tracking
+  vertical: Transportation
+  version: 1.0.0
+  orchestration_mode: generative
+  channels:
+    - teams
+    - mobile_web_chat
+  primary_users:
+    - fleet_manager
+    - driver
+    - finance_analyst
+  global_variables:
+    - name: Global.UserRole
+      type: string
+    - name: Global.DefaultFleet
+      type: string
+    - name: Global.DefaultRegion
+      type: string
+    - name: Global.BudgetPeriod
+      type: string
+      default: weekly
+
+topics:
+  - name: Greeting
+    description: Greets users and adapts opening guidance for fleet managers, drivers, and finance analysts.
+    trigger:
+      mode: generative
+      trigger_phrases:
+        - hi
+        - hello
+        - start fuel tracking
+        - open fuel assistant
+    nodes:
+      - type: set_variable
+        id: detectRole
+        variable: Global.UserRole
+        value: =If(User.IsLoggedIn, Coalesce(User.Role, "driver"), "driver")
+      - type: condition
+        id: roleRoute
+        branches:
+          - condition: =Global.UserRole = "fleet_manager"
+            actions:
+              - type: message
+                text: "Welcome. I can summarize fleet fuel spend, surface anomalies, and rank driver efficiency."
+          - condition: =Global.UserRole = "finance_analyst"
+            actions:
+              - type: message
+                text: "Welcome. I can provide spend variance, anomaly evidence, and card transaction controls."
+          - condition: =Global.UserRole = "driver"
+            actions:
+              - type: message
+                text: "Welcome. I can help you find the best fueling stop and review your fuel efficiency profile."
+        else_actions:
+          - type: message
+            text: "Welcome to Fuel Tracking. Tell me what fuel question you want to solve."
+      - type: message
+        text: "Try: 'Fuel spend this week', 'Show anomalies this week', or 'Where should I fuel up near Nashville?'"
+
+  - name: Fuel Summary
+    description: Returns weekly fuel spend by fleet, region, and vehicle segment with budget variance.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - what was our fuel spend this week
+        - fuel summary this week
+        - show weekly fuel cost
+        - fuel spend by region
+        - budget variance for fuel
+    inputs:
+      - name: period
+        type: string
+        required: false
+        default: weekly
+      - name: fleet
+        type: string
+        required: false
+    nodes:
+      - type: tool
+        id: getFuelSummary
+        tool_name: GetFuelSummary
+        input_mapping:
+          period: =Coalesce(Topic.period, Global.BudgetPeriod)
+          fleet: =Coalesce(Topic.fleet, Global.DefaultFleet)
+      - type: message
+        text: |-
+          Fuel summary for {Topic.period}:
+          - Total spend: {Topic.TotalSpend}
+          - Budget: {Topic.Budget}
+          - Variance: {Topic.BudgetVariance}
+          - Top region by spend: {Topic.TopRegion}
+          - Highest cost segment: {Topic.TopVehicleSegment}
+      - type: adaptive_card
+        title: Fuel Spend Breakdown
+        body:
+          - text: "By Fleet: {Topic.ByFleetTable}"
+          - text: "By Region: {Topic.ByRegionTable}"
+          - text: "By Vehicle Class: {Topic.ByVehicleClassTable}"
+
+  - name: Vehicle Fuel Profile
+    description: Provides fuel performance profile for a specific vehicle including MPG, fill frequency, cost per mile, and trend vs fleet average.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - fuel stats for truck
+        - show vehicle fuel profile
+        - mpg for vehicle
+        - fuel efficiency for truck
+        - cost per mile for vehicle
+    inputs:
+      - name: vehicle_id
+        type: string
+        required: true
+    nodes:
+      - type: question
+        id: askVehicleId
+        prompt: "Which vehicle ID should I analyze?"
+        variable: Topic.vehicle_id
+        entity: Text
+      - type: tool
+        id: getVehicleFuelProfile
+        tool_name: GetVehicleFuelProfile
+        input_mapping:
+          vehicleId: =Topic.vehicle_id
+      - type: message
+        text: |-
+          Vehicle {Topic.vehicle_id} profile:
+          - MPG: {Topic.VehicleMpg}
+          - Fill frequency: {Topic.FillFrequency}
+          - Cost per mile: {Topic.CostPerMile}
+          - Trend vs fleet average: {Topic.TrendVsFleetAvg}
+          - Estimated monthly spend: {Topic.EstimatedMonthlySpend}
+
+  - name: Driver Efficiency
+    description: Ranks drivers by normalized MPG adjusted for load, route type, and seasonal factors.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - who are my most efficient drivers
+        - rank driver fuel efficiency
+        - show top mpg drivers
+        - driver efficiency ranking
+        - normalized mpg ranking
+    inputs:
+      - name: scope
+        type: string
+        required: false
+        default: current_month
+    nodes:
+      - type: tool
+        id: rankDrivers
+        tool_name: GetDriverEfficiencyRanking
+        input_mapping:
+          period: =Topic.scope
+      - type: message
+        text: "Here are the most efficient drivers for {Topic.scope}, ranked by normalized MPG."
+      - type: adaptive_card
+        title: Driver Efficiency Ranking
+        body:
+          - text: "{Topic.DriverRankingTable}"
+          - text: "Normalization factors: load weight, route type, seasonal coefficient."
+
+  - name: Transaction Lookup
+    description: Retrieves transaction history by card, vehicle, driver, or date range with merchant and location details.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - show me transactions for card
+        - fuel transactions for card ending
+        - lookup fuel transaction
+        - recent fuel purchases
+        - transaction details by vehicle
+    inputs:
+      - name: card_last4
+        type: string
+        required: false
+      - name: vehicle_id
+        type: string
+        required: false
+      - name: date_from
+        type: date
+        required: false
+      - name: date_to
+        type: date
+        required: false
+    nodes:
+      - type: tool
+        id: getTransactions
+        tool_name: GetFuelTransactions
+        input_mapping:
+          cardLast4: =Topic.card_last4
+          vehicleId: =Topic.vehicle_id
+          dateFrom: =Topic.date_from
+          dateTo: =Topic.date_to
+      - type: message
+        text: "I found {Topic.TransactionCount} matching fuel transactions."
+      - type: adaptive_card
+        title: Transaction Results
+        body:
+          - text: "{Topic.TransactionResultTable}"
+
+  - name: Anomaly Alert
+    description: Lists weekly fuel anomalies with rule type, confidence, and evidence.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - show anomalies this week
+        - fuel fraud alerts
+        - suspicious fuel transactions
+        - anomaly report
+        - weekly anomaly summary
+    inputs:
+      - name: period
+        type: string
+        required: false
+        default: weekly
+    nodes:
+      - type: tool
+        id: getAnomalies
+        tool_name: GetFuelAnomalies
+        input_mapping:
+          period: =Topic.period
+      - type: message
+        text: "Detected {Topic.AnomalyCount} anomalies for {Topic.period}."
+      - type: adaptive_card
+        title: Anomaly Summary
+        body:
+          - text: "Rule distribution: {Topic.RuleTypeSummary}"
+          - text: "Flagged transactions: {Topic.AnomalyTable}"
+
+  - name: Anomaly Investigation
+    description: Investigates one suspicious transaction by correlating fuel transaction data with telematics and route context.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - investigate transaction
+        - investigate anomaly
+        - review suspicious transaction
+        - anomaly details for transaction
+        - analyze fuel event
+    inputs:
+      - name: transaction_id
+        type: string
+        required: true
+    nodes:
+      - type: question
+        id: askTransactionId
+        prompt: "What transaction ID should I investigate?"
+        variable: Topic.transaction_id
+        entity: Text
+      - type: tool
+        id: investigate
+        tool_name: InvestigateFuelTransaction
+        input_mapping:
+          transactionId: =Topic.transaction_id
+      - type: message
+        text: |-
+          Investigation result for transaction {Topic.transaction_id}:
+          - Rule triggered: {Topic.RuleType}
+          - Confidence: {Topic.ConfidenceScore}
+          - Evidence: {Topic.EvidenceSummary}
+          - GPS-route deviation: {Topic.RouteDeviationMiles} miles
+          - Telematics alignment: {Topic.TelematicsConsistency}
+      - type: condition
+        id: escalationGate
+        branches:
+          - condition: =Topic.ConfidenceScore >= 0.85
+            actions:
+              - type: message
+                text: "Recommended action: escalate to finance fraud queue and temporarily restrict card usage."
+        else_actions:
+          - type: message
+            text: "Recommended action: monitor and collect additional transaction context."
+
+  - name: Fuel Price Finder
+    description: Recommends optimal fueling stops near a location using fuel price API and route proximity scoring.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - where should i fuel up near
+        - cheapest diesel near me
+        - best fuel stop near nashville
+        - find fuel prices on route
+        - recommended fueling stop
+    inputs:
+      - name: location
+        type: string
+        required: true
+      - name: route_id
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askLocation
+        prompt: "What city or corridor should I search near?"
+        variable: Topic.location
+        entity: Text
+      - type: tool
+        id: getFuelPrices
+        tool_name: GetFuelPrices
+        input_mapping:
+          location: =Topic.location
+          routeId: =Topic.route_id
+      - type: message
+        text: "Top fueling recommendations near {Topic.location}, ranked by price and route proximity:"
+      - type: adaptive_card
+        title: Fuel Price Recommendations
+        body:
+          - text: "{Topic.RecommendationTable}"
+
+  - name: Fuel Card Management
+    description: Executes card management operations such as suspend card with explicit confirmation and role validation.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - suspend card ending
+        - suspend fuel card
+        - lock fuel card
+        - disable card for driver
+        - reactivate fuel card
+    inputs:
+      - name: card_last4
+        type: string
+        required: true
+      - name: action
+        type: string
+        required: true
+        default: suspend
+    nodes:
+      - type: condition
+        id: authzCheck
+        branches:
+          - condition: =Or(Global.UserRole = "fleet_manager", Global.UserRole = "finance_analyst")
+            actions:
+              - type: question
+                id: confirmAction
+                prompt: "Confirm {Topic.action} for card ending {Topic.card_last4}. Type YES to proceed."
+                variable: Topic.confirmation
+                entity: Text
+              - type: condition
+                id: confirmGate
+                branches:
+                  - condition: =Upper(Topic.confirmation) = "YES"
+                    actions:
+                      - type: tool
+                        id: updateCardState
+                        tool_name: SuspendFuelCard
+                        input_mapping:
+                          cardLast4: =Topic.card_last4
+                          action: =Topic.action
+                      - type: message
+                        text: "Card ending {Topic.card_last4} has been set to {Topic.action}."
+                else_actions:
+                  - type: message
+                    text: "Card operation canceled."
+        else_actions:
+          - type: message
+            text: "You are not authorized to perform card management actions."
+

@@ -1,122 +1,208 @@
-# Copilot Studio Agent Template — Virtual Coach (Coffee)
-# Import this file as a starting point. Customise trigger phrases,
-# messages, and knowledge sources to match your coffee business.
+# Copilot Studio Agent Template - Virtual Coach (Coffee)
 
 agent:
   name: Virtual Coach
   description: >
-    An always-available virtual coach for coffee shop employees.
-    Helps with onboarding, recipes, HR queries, shift handover, and performance tips.
+    A SharePoint-native virtual coach for coffee store teams.
+    Supports recipes, policies, training, operations, store lookup, and shift handover.
   language: en-US
   fallback_message: >
-    I'm sorry, I didn't quite understand that. Would you like me to connect you
-    with your manager or find something in our knowledge base?
+    I could not match that request yet. I can search recipes, policies, training guides,
+    operations procedures, store details, or help with shift handover.
 
 topics:
-
   - name: Greeting
     trigger_phrases:
-      - Hello
-      - Hi
-      - Hey
-      - Good morning
-      - Good afternoon
+      - hi
+      - hello coach
+      - can you help me
+      - quick question
+      - i need help on shift
     messages:
       - text: >
-          Hi there! 👋 I'm your Virtual Coach. I can help you with drink recipes,
-          store policies, shift handovers, and more. What do you need today?
+          Hi. I am your Virtual Coach. I can help with recipes, HR policy, training steps,
+          store operations, menu updates, and shift handover.
     quick_replies:
       - Drink recipes
-      - HR & policies
+      - HR and policy
+      - Training help
+      - Store operations
       - Shift handover
-      - Performance tips
+      - Store lookup
+      - Menu updates
 
   - name: Drink Recipes
     trigger_phrases:
-      - How do I make a {drink}?
-      - Recipe for {drink}
-      - What goes in a {drink}?
-      - Preparation steps for {drink}
+      - how do i make a {drink}
+      - recipe for {drink}
+      - what are the steps for {drink}
+      - what goes in {drink}
+      - how many shots in a {drink}
     entities:
       - name: drink
         type: string
-        prompt: Which drink would you like the recipe for?
+        prompt: Which drink do you need?
     actions:
       - type: knowledge_search
-        query: "recipe {drink}"
-        source: coffee-knowledge-base
+        query: "recipe preparation steps ingredients {drink}"
+        source: recipes-library
     fallback_message: >
-      I couldn't find a recipe for that drink. Please check the training manual
-      or ask your manager.
+      I could not find that recipe in the approved recipe library. Check spelling or ask your shift lead.
 
   - name: HR and Policy
     trigger_phrases:
-      - What is the leave policy?
-      - How do I request time off?
-      - What is the dress code?
-      - Can I swap my shift?
-      - What are my breaks?
+      - what is the break policy
+      - how do i request time off
+      - what is the dress code
+      - can i swap shifts
+      - where is the attendance policy
     actions:
       - type: knowledge_search
         query: "{user_input}"
         source: hr-policy-library
     fallback_message: >
-      I couldn't find a specific policy on that. Please speak with your manager
-      or contact HR directly.
+      I could not find that policy in the HR library. I can connect you to your manager if needed.
+
+  - name: Onboarding and Training
+    trigger_phrases:
+      - i am new where do i start
+      - show me training for espresso station
+      - onboarding checklist
+      - training for opening shift
+      - how do i complete my training
+    actions:
+      - type: knowledge_search
+        query: "{user_input}"
+        source: training-library
+    fallback_message: >
+      I could not find a matching training guide. Try a specific station or task name.
+
+  - name: Store Operations
+    trigger_phrases:
+      - opening checklist
+      - closing checklist
+      - what is the cleaning procedure
+      - what do i do for equipment issue
+      - standard operating procedure for rush hour
+    actions:
+      - type: knowledge_search
+        query: "{user_input}"
+        source: operations-library
+    fallback_message: >
+      I could not find that operations procedure in the current operations library.
+
+  - name: Menu Update
+    trigger_phrases:
+      - what is new on the menu
+      - seasonal drinks this week
+      - what drinks are discontinued
+      - latest menu change
+      - promo drink instructions
+    actions:
+      - type: knowledge_search
+        query: "{user_input}"
+        source: seasonal-menu-library
+    fallback_message: >
+      I could not find a current menu update. Please check with regional operations.
+
+  - name: Store Lookup
+    trigger_phrases:
+      - who is the manager for store {store_number}
+      - store {store_number} phone number
+      - what region is store {store_number}
+      - give me details for store {store_number}
+      - lookup store {store_number}
+    entities:
+      - name: store_number
+        type: string
+        prompt: What is the store number?
+    actions:
+      - type: sharepoint_list_query
+        list: store-directory-list
+        filter: "StoreNumber eq '{store_number}'"
+        select:
+          - StoreNumber
+          - StoreName
+          - Region
+          - ManagerName
+          - ManagerEmail
+          - StorePhone
+    messages:
+      - text: >
+          I found the store details in the directory list. Let me know if you want contact or region details only.
 
   - name: Shift Handover
     trigger_phrases:
-      - Start shift handover
-      - Handover checklist
-      - End of shift
-      - Begin handover
+      - start handover
+      - end of shift handover
+      - handover checklist
+      - log shift notes
+      - submit handover
     messages:
-      - text: "Let's complete your shift handover. I'll walk you through the checklist."
+      - text: >
+          Let us complete your shift handover. Fill out the checklist and I will save it to the store handover list.
     adaptive_card:
       title: Shift Handover Checklist
       fields:
+        - id: store_number
+          label: Store number
+          type: text
+        - id: shift_date
+          label: Shift date
+          type: date
         - id: cash_balanced
-          label: Cash drawer balanced?
+          label: Cash drawer balanced
           type: boolean
         - id: stock_checked
-          label: Stock levels checked and noted?
+          label: Stock checked and updated
           type: boolean
         - id: equipment_cleaned
-          label: Equipment cleaned?
+          label: Equipment cleaned and ready
           type: boolean
         - id: issues
-          label: Any issues to report?
+          label: Issues to hand over
           type: text
           multiline: true
         - id: incoming_colleague
-          label: Handing over to (name)?
+          label: Handing over to
           type: text
     submit_action:
-      type: send_email
-      to: "{store_manager_email}"
-      subject: "Shift Handover — {employee_name} — {date}"
+      type: sharepoint_list_create_item
+      list: shift-handover-list
+      fields:
+        StoreNumber: "{store_number}"
+        ShiftDate: "{shift_date}"
+        CashBalanced: "{cash_balanced}"
+        StockChecked: "{stock_checked}"
+        EquipmentCleaned: "{equipment_cleaned}"
+        Issues: "{issues}"
+        IncomingColleague: "{incoming_colleague}"
+        SubmittedBy: "{employee_name}"
+    completion_message: >
+      Your handover has been saved to SharePoint and is available for the next shift lead.
 
   - name: Performance Tips
     trigger_phrases:
-      - Give me a tip
-      - How can I improve?
-      - Performance advice
-      - Coaching tip
+      - give me a coaching tip
+      - how can i improve today
+      - customer service advice
+      - speed of service tip
+      - quality tip for baristas
     messages:
       - text: >
-          Here's today's coaching tip: Focus on greeting every customer by name
-          when you can — it creates a memorable experience and builds loyalty! ☕
+          Coaching tip: during peak periods, repeat the order back clearly before payment and group drinks by queue sequence to reduce remakes.
 
   - name: Escalation
     trigger_phrases:
-      - I need to speak to a manager
-      - Connect me to someone
-      - Human help
+      - i need a manager
+      - connect me to support
+      - i need human help
+      - escalate this issue
+      - talk to operations lead
     messages:
       - text: >
-          Of course! I'll notify your manager now. While you wait, is there
-          anything else I can help with?
+          Understood. I will notify the manager channel now. Share any urgent details so I can include them.
     actions:
       - type: send_teams_notification
         channel: "{manager_teams_channel_id}"
-        message: "Employee {employee_name} has requested manager assistance."
+        message: "Employee {employee_name} requested assistance."

@@ -1,96 +1,114 @@
-# Runbook — Virtual Coach (Coffee)
+# Runbook - Virtual Coach (Coffee)
 
 ## Overview
 
-This runbook covers the end-to-end deployment, configuration, and ongoing operations of the Virtual Coach agent for the Coffee vertical.
-
----
+This runbook defines deployment and operations for the Virtual Coach Copilot Studio agent using SharePoint Online as the primary enterprise content system.
 
 ## Prerequisites
 
+### Platform Prerequisites
+
 | Requirement | Details |
 |-------------|---------|
-| Microsoft 365 licence | Teams + Power Platform included |
-| Copilot Studio licence | Per-tenant or per-user |
-| Power Automate | For any back-end data connectors |
-| Azure AD | For authentication and user lookup |
-| Dataverse environment | To store conversation logs and knowledge |
+| Microsoft 365 licensing | Teams, SharePoint Online, and Power Platform entitlements |
+| Copilot Studio licensing | Capacity aligned to expected store volume |
+| Power Automate | Required for list writeback, notifications, and approvals |
+| Dataverse environment | Solution-aware deployment and ALM |
+| Entra ID | Authentication and role-based access |
 
----
+### SharePoint Prerequisites
+
+| Requirement | Details |
+|-------------|---------|
+| Hub architecture | Corporate Root Hub, Regional Hubs, and Store Sites provisioned |
+| Managed metadata term sets | DrinkCategory, PolicyType, StoreRegion, JobRole |
+| Content types | Recipe, HrPolicy, TrainingGuide, OperationsGuide, SeasonalMenuItem, ShiftHandoverRecord |
+| Libraries and lists | `recipes-library`, `hr-policy-library`, `training-library`, `operations-library`, `seasonal-menu-library`, `shift-handover-list`, `store-directory-list` |
+| Search readiness | Crawled properties mapped to managed properties for metadata fields used in knowledge retrieval |
+| Governance controls | Versioning, content approval, and mandatory metadata enforced |
 
 ## Deployment Steps
 
 ### 1. Provision Copilot Studio Environment
-1. Navigate to [https://copilotstudio.microsoft.com](https://copilotstudio.microsoft.com).
+1. Go to https://copilotstudio.microsoft.com.
 2. Select or create the target Dataverse environment.
-3. Confirm the environment region matches your data residency requirements.
+3. Confirm region and data residency settings.
 
-### 2. Import the Solution
-1. Go to **Solutions** → **Import solution**.
-2. Upload `solution/solution-definition.yaml`.
-3. Map any environment variables (e.g., SharePoint site URL for knowledge base).
-4. Complete the import and verify all components show **Healthy**.
+### 2. Provision SharePoint Information Architecture
+1. Create or validate the Corporate Root Hub.
+2. Create Regional Hub sites and associate Store Sites to the correct regional hub.
+3. Create required document libraries and lists on the appropriate hub or associated sites.
+4. Apply content types and required managed metadata columns.
+5. Enable major versioning and content approval for recipe, policy, and training libraries.
 
-### 3. Configure Knowledge Sources
-1. Open the imported agent in Copilot Studio.
-2. Navigate to **Knowledge** → **Add knowledge source**.
-3. Add the SharePoint site or document library containing coffee preparation guides and HR policies.
-4. Run a manual sync and verify topic suggestions appear.
+### 3. Configure Search Schema for Knowledge Ingestion
+1. In SharePoint admin center, verify crawl status for all target libraries.
+2. Map crawled properties to managed properties for:
+   - Drink category
+   - Policy type
+   - Region
+   - Role
+3. Mark managed properties as searchable and queryable where needed.
+4. Reindex updated libraries after schema changes.
 
-### 4. Customise Topics
-1. Review each topic in `templates/agent-template.yaml`.
-2. Update trigger phrases to match your shop's terminology.
-3. Replace placeholder menu items with your actual drink names and recipes.
+### 4. Import the Copilot Studio Solution
+1. Open **Solutions** and select **Import solution**.
+2. Import `solution/solution-definition.yaml`.
+3. Populate environment variables for all SharePoint URLs and list endpoints.
+4. Confirm all agent components and flows import without errors.
 
-### 5. Configure Authentication
-1. In **Settings** → **Security** → **Authentication**, select **Authenticate with Microsoft**.
-2. Restrict access to your Azure AD tenant.
+### 5. Configure Knowledge Sources
+1. Open the Virtual Coach agent.
+2. Under **Knowledge**, confirm each source points to the correct SharePoint library URL.
+3. Run initial sync.
+4. Validate retrieval quality with recipe, policy, training, operations, and seasonal menu prompts.
 
-### 6. Publish to Microsoft Teams
-1. Navigate to **Channels** → **Microsoft Teams**.
-2. Click **Turn on Teams**.
-3. Submit for admin approval if required by your tenant policy.
-4. Test the agent by messaging it directly in Teams.
+### 6. Configure Power Automate Flows (SharePoint-Specific)
+1. Bind SharePoint connections for all imported flows.
+2. Validate flow triggers and actions:
+   - SharePoint list create/update for shift handover records.
+   - SharePoint list read for store lookup.
+   - SharePoint file approval notifications for recipe/policy content updates.
+3. Confirm least-privilege access for service accounts.
 
----
+### 7. Configure Authentication and Channels
+1. Set authentication to Entra ID in Copilot Studio.
+2. Publish to Microsoft Teams for desk-based staff.
+3. Publish to custom website/mobile web chat for floor baristas.
+4. Validate role-trimmed responses based on SharePoint permissions.
+
+## Power Automate Flow Reference
+
+| Flow Name | Trigger | SharePoint Connector Usage |
+|-----------|---------|----------------------------|
+| SaveShiftHandoverToSharePoint | Copilot Studio topic action | Create item in `shift-handover-list` |
+| QueryStoreDirectory | Copilot Studio topic action | Get items from `store-directory-list` |
+| NotifyContentApprovalPending | SharePoint file created or modified | Post approval notification to Teams/Email when status is Pending |
 
 ## Post-Deployment Validation
 
-- [ ] Agent responds to "Hello" with the welcome message
-- [ ] Drink recipe topic returns correct preparation steps
-- [ ] HR policy topic returns policy summaries from the knowledge source
-- [ ] Handover checklist topic generates a structured list
-- [ ] Unrecognised inputs trigger the escalation / fallback topic
-- [ ] Authentication correctly restricts access to tenant employees
+- [ ] Recipes return current approved versions from `recipes-library`.
+- [ ] HR and policy responses ground only in approved `hr-policy-library` content.
+- [ ] Training and operations topics retrieve role-relevant pages and documents.
+- [ ] Store lookup returns correct region, manager, and contact details from `store-directory-list`.
+- [ ] Shift handover submissions create records in `shift-handover-list`.
+- [ ] Menu update requests resolve from `seasonal-menu-library`.
+- [ ] Teams and mobile web channels both return consistent grounded answers.
 
----
-
-## Monitoring & Operations
+## Monitoring and Operations
 
 | Task | Frequency | Owner |
 |------|-----------|-------|
-| Review conversation analytics | Weekly | Operations Manager |
-| Update drink recipes | On menu change | Training Lead |
-| Retrain/refresh knowledge sources | Monthly | IT Admin |
-| Review unrecognised inputs report | Bi-weekly | Copilot Studio Admin |
-| Licence & usage review | Quarterly | IT Admin |
-
----
-
-## Escalation Matrix
-
-| Issue | First Contact | Escalation |
-|-------|--------------|------------|
-| Agent not responding | IT Admin | Microsoft Support |
-| Incorrect recipe information | Training Lead | Content Owner |
-| Authentication failure | IT Admin | Azure AD Admin |
-| Data residency concern | IT Admin | Compliance Officer |
-
----
+| Review unresolved queries and gaps | Weekly | Copilot Studio Admin |
+| Validate metadata completeness in libraries | Weekly | SharePoint Content Owner |
+| Review content approvals and stale drafts | Daily | Operations Governance Lead |
+| Re-sync knowledge sources after major updates | As needed | Platform Admin |
+| Audit list writeback success rates | Weekly | Power Platform Admin |
 
 ## Rollback Procedure
 
-1. In Copilot Studio, navigate to **Solutions** and unpublish the agent.
-2. Restore the previous solution version from source control.
-3. Re-import and re-publish the previous version.
-4. Notify affected users via the team channel.
+1. Unpublish the current agent version.
+2. Restore the previous solution package from source control.
+3. Re-import and republish.
+4. Rebind SharePoint connections if required.
+5. Notify regional operations and store managers.

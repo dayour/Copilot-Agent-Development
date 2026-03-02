@@ -1,82 +1,208 @@
-# Copilot Studio Solution Definition — Claims Assistant (Insurance)
-# This file defines the exportable solution components for the Claims Assistant agent.
-# Import this into your Copilot Studio / Power Platform environment.
+# Copilot Studio Solution Definition — Claims Assistant (Enterprise P&C)
 
 solution:
   name: InsuranceClaimsAssistant
-  display_name: "Insurance — Claims Assistant"
-  version: "1.0.0"
+  display_name: "Insurance - Claims Assistant Enterprise"
+  version: "2.0.0"
   publisher: Copilot Agent Development
   description: >
-    Showcase solution for the Claims Assistant agent in the Insurance vertical.
-    Includes the agent definition, topics, knowledge source bindings,
-    environment variable declarations, and Power Automate flow references.
+    Enterprise multi-line P&C claims assistant solution with FNOL intake,
+    state compliance management, fraud signal collection, SLA monitoring,
+    CAT event operations, and dual channel deployment.
 
 environment_variables:
-  - name: PolicyManagementApiUrl
-    display_name: Policy Management API URL
+  - name: ClaimsManagementApiBaseUrl
+    display_name: Claims Management API Base URL
     type: string
-    description: REST base URL for the policy management system (claims status lookup).
+    description: Guidewire ClaimCenter or Duck Creek API base URL.
     default_value: ""
 
-  - name: ClaimsEscalationEmail
-    display_name: Claims Escalation Email
+  - name: ClaimsManagementApiClientId
+    display_name: Claims Management API Client ID
     type: string
-    description: Distribution list email for complex case escalations.
+    description: OAuth client ID for claims management API.
     default_value: ""
 
-  - name: PolicyWordingLibraryUrl
-    display_name: Policy Wording SharePoint URL
-    type: string
-    description: SharePoint document library URL containing policy wordings and FAQ documents.
+  - name: ClaimsManagementApiClientSecret
+    display_name: Claims Management API Client Secret
+    type: secret
+    description: OAuth client secret for claims management API.
     default_value: ""
 
-  - name: DocumentStorageLibraryUrl
-    display_name: Document Storage SharePoint URL
+  - name: DocumentStorageBaseUrl
+    display_name: Document Storage Base URL
     type: string
-    description: SharePoint document library URL for storing uploaded claim evidence.
+    description: Base URL for enterprise claim document storage.
     default_value: ""
+
+  - name: PaymentGatewayApiBaseUrl
+    display_name: Payment Gateway API Base URL
+    type: string
+    description: API endpoint for claim payment status retrieval.
+    default_value: ""
+
+  - name: HandlerEscalationQueueEmail
+    display_name: Handler Escalation Queue Email
+    type: string
+    description: Email distribution for urgent and human-required claim escalations.
+    default_value: ""
+
+  - name: StateComplianceDefaultTimezone
+    display_name: State Compliance Default Timezone
+    type: string
+    description: Default timezone for SLA deadline calculation.
+    default_value: "America/Chicago"
 
 components:
+  dataverse_tables:
+    - name: ClaimRecords
+      display_name: Claim Records
+      description: Master claim intake and lifecycle record.
+      columns:
+        - ClaimReference
+        - PolicyNumber
+        - StateCode
+        - LineOfBusiness
+        - IncidentDateTime
+        - ClaimStatus
+        - PaymentStatus
+        - AssignedAdjusterId
+        - CatEventFlag
+        - CreatedOn
+
+    - name: FraudSignals
+      display_name: Fraud Signals
+      description: Intake fraud indicators and composite fraud score.
+      columns:
+        - ClaimReference
+        - ReportDelayDays
+        - DescriptionDamageMismatch
+        - PriorClaimFrequency
+        - GeographicAnomalyScore
+        - FraudScore
+        - RiskTier
+        - CreatedOn
+
+    - name: StateComplianceRules
+      display_name: State Compliance Rules
+      description: State and line specific regulatory timelines and disclosures.
+      columns:
+        - StateCode
+        - LineOfBusiness
+        - AcknowledgementDueDays
+        - PaymentDueDaysFromProof
+        - RequiredFraudDisclosureText
+        - EscalationThresholdHours
+        - EffectiveDate
+
+    - name: SlaTracking
+      display_name: SLA Tracking
+      description: Claim-level SLA monitoring and breach indicators.
+      columns:
+        - ClaimReference
+        - AcknowledgementDueDateTime
+        - PaymentDueDateTime
+        - SlaStatus
+        - LastEvaluatedOn
+        - BreachReason
+
+    - name: AdjusterCapacity
+      display_name: Adjuster Capacity
+      description: Adjuster assignment capacity and queue balancing metadata.
+      columns:
+        - AdjusterId
+        - StateCode
+        - LineOfBusiness
+        - MaxOpenClaims
+        - CurrentOpenClaims
+        - AvailabilityStatus
+
+  ai_builder:
+    - name: ClaimDocumentOCR
+      display_name: Claim Document OCR
+      description: AI Builder OCR model for police reports and repair estimates.
+      model_type: document_processing
+      use_cases:
+        - police_report_extraction
+        - repair_estimate_extraction
+
   agents:
     - name: ClaimsAssistant
       template_file: ../templates/agent-template.yaml
       knowledge_sources:
-        - id: policy-wording-library
+        - id: policy-knowledge
           type: sharepoint
-          url: "${PolicyWordingLibraryUrl}"
+          url: "${DocumentStorageBaseUrl}"
       authentication:
-        type: azure_ad_b2c
-        allow_unauthenticated: false
+        modes:
+          - type: azure_ad_b2c
+            audience: external_policyholders
+            allow_unauthenticated: false
+          - type: azure_ad
+            audience: internal_claims_handlers
+            allow_unauthenticated: false
 
   power_automate_flows:
     - name: CreateClaimRecord
-      description: Creates a new claim record in the policy management system from FNOL data.
-      trigger: copilot_studio_adaptive_card_submit
-      connector: http
-
-    - name: GetClaimStatus
-      description: Retrieves the current status of a claim from the policy management system.
+      description: Creates claim records and receives generated claim number.
       trigger: copilot_studio_topic_action
       connector: http
+      dependencies:
+        - ClaimRecords
+        - ClaimsManagementApiBaseUrl
 
-    - name: UploadClaimDocument
-      description: Saves an uploaded document to the claims document storage library.
-      trigger: copilot_studio_file_upload
-      connector: sharepoint
+    - name: GetClaimStatus
+      description: Retrieves claim, adjuster, and payment status details.
+      trigger: copilot_studio_topic_action
+      connector: http
+      dependencies:
+        - ClaimRecords
+        - PaymentGatewayApiBaseUrl
+
+    - name: CalculateFraudScore
+      description: Computes intake fraud signals and risk score.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - FraudSignals
+
+    - name: CheckSlaCompliance
+      description: Calculates SLA due windows and breach risk by state.
+      trigger: scheduled
+      connector: dataverse
+      schedule: "*/15 * * * *"
+      dependencies:
+        - SlaTracking
+        - StateComplianceRules
+
+    - name: ActivateCatMode
+      description: Activates catastrophe routing and expedited intake mode.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - StateComplianceRules
+        - AdjusterCapacity
 
 connections:
   - connector: http
-    display_name: HTTP (Policy Management API)
+    display_name: HTTP (Claims and Payment APIs)
+  - connector: dataverse
+    display_name: Microsoft Dataverse
   - connector: sharepoint
-    display_name: SharePoint
+    display_name: SharePoint Document Storage
+  - connector: ai_builder
+    display_name: AI Builder OCR
   - connector: office365_outlook
     display_name: Office 365 Outlook
 
 channels:
-  - type: microsoft_teams
-    enabled: true
-    require_admin_approval: false
   - type: custom_website
     enabled: true
-    embed_type: iframe
+    display_name: Policyholder Web Portal
+    authentication: azure_ad_b2c
+    embed_type: webchat
+  - type: microsoft_teams
+    enabled: true
+    display_name: Claims Handler Teams Channel
+    authentication: azure_ad
+    require_admin_approval: true

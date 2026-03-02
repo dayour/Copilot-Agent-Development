@@ -8,10 +8,10 @@ solution:
   version: "1.0.0"
   publisher: Copilot Agent Development
   description: >
-    Showcase solution for the Power Analysis business intelligence agent in the
-    Clothing vertical. Provides conversational access to Power BI retail data,
-    including sales performance, inventory analytics, trend insights,
-    customer metrics, and operational KPIs.
+    Deep reasoning analytics solution for the Power Analysis agent in the
+    Clothing vertical. Provides decomposition analysis, trend detection,
+    anomaly identification, what-if simulation, and recommendation generation
+    backed by Dataverse and Power BI semantic models.
 
 environment_variables:
   - name: PowerBiWorkspaceId
@@ -38,6 +38,24 @@ environment_variables:
     description: GUID of the inventory analysis Power BI report.
     default_value: ""
 
+  - name: PosApiBaseUrl
+    display_name: POS API Base URL
+    type: string
+    description: Base URL for POS transaction synchronization endpoint.
+    default_value: ""
+
+  - name: ErpApiBaseUrl
+    display_name: ERP API Base URL
+    type: string
+    description: Base URL for ERP product and inventory cost synchronization endpoint.
+    default_value: ""
+
+  - name: AllocationApiBaseUrl
+    display_name: Allocation API Base URL
+    type: string
+    description: Base URL for inventory snapshot and allocation updates.
+    default_value: ""
+
   - name: AnalyticsTeamsChannelId
     display_name: Analytics Teams Channel ID
     type: string
@@ -51,6 +69,124 @@ environment_variables:
     default_value: ""
 
 components:
+  dataverse_tables:
+    - name: SalesTransactions
+      display_name: Sales Transactions
+      description: Transaction-level sales facts ingested from POS.
+      primary_key: SalesTransactionId
+      columns:
+        - name: SalesTransactionId
+          type: string
+        - name: TransactionDate
+          type: datetime
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: Channel
+          type: string
+        - name: UnitsSold
+          type: decimal
+        - name: NetSalesAmount
+          type: currency
+        - name: GrossMarginAmount
+          type: currency
+
+    - name: ProductCatalog
+      display_name: Product Catalog
+      description: Product and assortment dimensions from ERP.
+      primary_key: ProductId
+      columns:
+        - name: ProductId
+          type: string
+        - name: SKU
+          type: string
+        - name: Brand
+          type: string
+        - name: Category
+          type: string
+        - name: SubCategory
+          type: string
+        - name: Season
+          type: string
+        - name: LifecycleStatus
+          type: string
+        - name: StandardCost
+          type: currency
+
+    - name: StoreMaster
+      display_name: Store Master
+      description: Store hierarchy and segmentation data.
+      primary_key: StoreId
+      columns:
+        - name: StoreId
+          type: string
+        - name: StoreName
+          type: string
+        - name: Region
+          type: string
+        - name: Country
+          type: string
+        - name: Format
+          type: string
+        - name: Cluster
+          type: string
+        - name: OpeningDate
+          type: date
+
+    - name: InventorySnapshots
+      display_name: Inventory Snapshots
+      description: Daily and intraday inventory positions from allocation systems.
+      primary_key: SnapshotId
+      columns:
+        - name: SnapshotId
+          type: string
+        - name: SnapshotDate
+          type: datetime
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: UnitsOnHand
+          type: decimal
+        - name: UnitsReceived
+          type: decimal
+        - name: InventoryCost
+          type: currency
+        - name: AvgWeeklySales
+          type: decimal
+        - name: WeeksCover
+          type: calculated
+          formula: "UnitsOnHand / AvgWeeklySales"
+        - name: ReorderPoint
+          type: decimal
+
+  relationships:
+    - from_table: SalesTransactions
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: SalesTransactions
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: InventorySnapshots
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: InventorySnapshots
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+
   agents:
     - name: PowerAnalysis
       template_file: ../templates/agent-template.yaml
@@ -63,26 +199,101 @@ components:
         tenant_restriction: true
 
   power_automate_flows:
-    - name: QueryPowerBiMeasure
+    - name: MultiMeasureQuery
       description: >
-        Executes a DAX query against the Power BI semantic model and returns
-        measure values for the requested filters (period, store, category).
+        Executes parameterized DAX queries against the semantic model and returns
+        KPI outputs across store, category, brand, and channel dimensions.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      query_patterns:
+        - SalesPerformance
+        - RCASalesDiagnostics
+        - RCAInventoryDiagnostics
+        - RCAStaffingExternal
+        - InventoryIntelligence
+
+    - name: TrendAnalysis
+      description: >
+        Performs period-over-period trend calculations and driver decomposition.
       trigger: copilot_studio_topic_action
       connector: power_bi
 
-    - name: SendKpiAlertNotification
+    - name: AnomalyDetection
       description: >
-        Fires when a store misses its daily sales target; posts an alert
-        to the analytics Teams channel with store name and shortfall amount.
+        Detects KPI deviations using baseline and z-score logic for proactive monitoring.
       trigger: scheduled_recurrence
-      schedule: daily_at_close_of_business
+      schedule: hourly
+      connector: power_bi
+
+    - name: WhatIfScenario
+      description: >
+        Applies scenario parameters to project KPI impacts for planning decisions.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+
+    - name: SendAnomalyAlertNotification
+      description: >
+        Sends anomaly summaries and impacted KPI details to analytics stakeholders in Teams.
+      trigger: flow_called_from_anomaly_detection
       connector: microsoft_teams
+
+    - name: PosDataSync
+      description: >
+        Ingests POS sales transactions into Dataverse SalesTransactions using upsert logic.
+      trigger: scheduled_recurrence
+      schedule: every_15_minutes
+      connector: custom_pos_connector
+
+    - name: ErpDataSync
+      description: >
+        Ingests ERP product and cost updates into ProductCatalog and related analytical fields.
+      trigger: scheduled_recurrence
+      schedule: hourly
+      connector: custom_erp_connector
+
+    - name: InventorySnapshotSync
+      description: >
+        Ingests allocation and inventory snapshots into Dataverse InventorySnapshots.
+      trigger: scheduled_recurrence
+      schedule: daily_and_intraday
+      connector: custom_allocation_connector
 
 connections:
   - connector: power_bi
     display_name: Power BI
   - connector: microsoft_teams
     display_name: Microsoft Teams
+  - connector: custom_pos_connector
+    display_name: POS Connector
+  - connector: custom_erp_connector
+    display_name: ERP Connector
+  - connector: custom_allocation_connector
+    display_name: Allocation Connector
+
+custom_connectors:
+  - name: PosConnector
+    source: openapi
+    base_url: "${PosApiBaseUrl}"
+    auth: oauth2
+  - name: ErpConnector
+    source: openapi
+    base_url: "${ErpApiBaseUrl}"
+    auth: oauth2
+  - name: AllocationConnector
+    source: openapi
+    base_url: "${AllocationApiBaseUrl}"
+    auth: oauth2
+
+data_platform_extensions:
+  synapse_link:
+    enabled: true
+    tables:
+      - SalesTransactions
+      - InventorySnapshots
+      - ProductCatalog
+      - StoreMaster
+    purpose: Historical and high-volume analytical workloads
+    export_mode: incremental
 
 channels:
   - type: microsoft_teams
