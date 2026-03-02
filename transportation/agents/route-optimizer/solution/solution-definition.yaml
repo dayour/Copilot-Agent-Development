@@ -6,6 +6,15 @@ solution:
   managed: true
 
 environment_variables:
+  - schema_name: OrderManagementApiUrl
+    display_name: Order Management API URL
+    type: string
+    required: true
+    default_value: https://api.ordermgmt.contoso.com/v1
+  - schema_name: OrderManagementApiKey
+    display_name: Order Management API Key
+    type: secret
+    required: true
   - schema_name: MappingApiUrl
     display_name: Mapping API URL
     type: string
@@ -258,7 +267,300 @@ dataverse:
           type: datetime
           behavior: user_local
 
+    - logical_name: crd_driverhoursofservice
+      display_name: DriverHoursOfService
+      description: DOT-regulated driving limits per driver, including maximum drive time and required break intervals.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: HOS Rule Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: true
+          max_length: 50
+        - name: crd_max_drive_hours_daily
+          display_name: max_drive_hours_daily
+          type: decimal
+          precision: 4
+          scale: 1
+          required: true
+          description: Maximum consecutive driving hours per day per DOT regulations (e.g., 11).
+        - name: crd_max_on_duty_hours_daily
+          display_name: max_on_duty_hours_daily
+          type: decimal
+          precision: 4
+          scale: 1
+          required: true
+          description: Maximum on-duty hours per day per DOT regulations (e.g., 14).
+        - name: crd_max_drive_hours_weekly
+          display_name: max_drive_hours_weekly
+          type: decimal
+          precision: 5
+          scale: 1
+          required: true
+          description: Maximum drive hours in a 7-day rolling window per DOT regulations (e.g., 60 or 70).
+        - name: crd_required_break_minutes
+          display_name: required_break_minutes
+          type: whole_number
+          required: true
+          description: Mandatory break duration in minutes after max continuous drive time (e.g., 30).
+        - name: crd_break_trigger_hours
+          display_name: break_trigger_hours
+          type: decimal
+          precision: 4
+          scale: 1
+          required: true
+          description: Continuous drive hours that trigger a mandatory break (e.g., 8).
+        - name: crd_hours_driven_today
+          display_name: hours_driven_today
+          type: decimal
+          precision: 5
+          scale: 2
+          required: true
+        - name: crd_hours_driven_this_week
+          display_name: hours_driven_this_week
+          type: decimal
+          precision: 6
+          scale: 2
+          required: true
+        - name: crd_last_rest_end
+          display_name: last_rest_end
+          type: datetime
+          behavior: user_local
+          description: Timestamp when the driver's most recent rest period ended.
+        - name: crd_last_updated
+          display_name: last_updated
+          type: datetime
+          behavior: user_local
+        - name: crd_is_active
+          display_name: is_active
+          type: boolean
+          required: true
+          default_value: true
+          description: When false, this HOS record is inactive and excluded from schedule building and conflict detection queries.
+      indexes:
+        - name: idx_driverhos_driver
+          columns:
+            - crd_driver_id
+
+    - logical_name: crd_vehiclecapacity
+      display_name: VehicleCapacity
+      description: Physical capacity limits per vehicle covering weight, volume, and pallet positions.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Vehicle Capacity Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          required: true
+          max_length: 50
+          is_alternate_key: true
+        - name: crd_max_weight_lbs
+          display_name: max_weight_lbs
+          type: decimal
+          precision: 10
+          scale: 2
+          required: true
+          description: Maximum payload weight in pounds.
+        - name: crd_max_volume_cuft
+          display_name: max_volume_cuft
+          type: decimal
+          precision: 10
+          scale: 2
+          required: true
+          description: Maximum cargo volume in cubic feet.
+        - name: crd_max_pallet_positions
+          display_name: max_pallet_positions
+          type: whole_number
+          required: true
+          description: Maximum number of standard pallet positions.
+        - name: crd_current_weight_lbs
+          display_name: current_weight_lbs
+          type: decimal
+          precision: 10
+          scale: 2
+          required: false
+          description: Current loaded weight in pounds.
+        - name: crd_current_volume_cuft
+          display_name: current_volume_cuft
+          type: decimal
+          precision: 10
+          scale: 2
+          required: false
+          description: Current loaded volume in cubic feet.
+        - name: crd_current_pallet_positions
+          display_name: current_pallet_positions
+          type: whole_number
+          required: false
+          description: Current number of occupied pallet positions.
+        - name: crd_vehicle_type
+          display_name: vehicle_type
+          type: choice
+          options:
+            - dry_van
+            - refrigerated
+            - flatbed
+            - tanker
+            - hazmat_certified
+        - name: crd_last_updated
+          display_name: last_updated
+          type: datetime
+          behavior: user_local
+      indexes:
+        - name: idx_vehiclecapacity_vehicle
+          columns:
+            - crd_vehicle_id
+
+    - logical_name: crd_deliverywindows
+      display_name: DeliveryWindows
+      description: Customer-specific delivery time window constraints applied per stop or location.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Delivery Window Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_window_id
+          display_name: window_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_customer_id
+          display_name: customer_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_location_id
+          display_name: location_id
+          type: text
+          required: true
+          max_length: 100
+          description: Stop or delivery location identifier.
+        - name: crd_window_open
+          display_name: window_open
+          type: datetime
+          behavior: user_local
+          required: true
+          description: Earliest acceptable delivery time.
+        - name: crd_window_close
+          display_name: window_close
+          type: datetime
+          behavior: user_local
+          required: true
+          description: Latest acceptable delivery time.
+        - name: crd_window_type
+          display_name: window_type
+          type: choice
+          options:
+            - hard
+            - soft
+          description: Hard windows result in a penalty or refusal if missed; soft windows are preferred but not enforced.
+        - name: crd_penalty_minutes
+          display_name: penalty_minutes
+          type: whole_number
+          description: Penalty in equivalent minutes applied to soft-window violations during optimization scoring.
+        - name: crd_day_of_week_mask
+          display_name: day_of_week_mask
+          type: whole_number
+          description: Bitmask for applicable days (Sunday=1, Monday=2, Tuesday=4, Wednesday=8, Thursday=16, Friday=32, Saturday=64).
+        - name: crd_is_active
+          display_name: is_active
+          type: boolean
+          default_value: true
+      indexes:
+        - name: idx_deliverywindows_customer_location
+          columns:
+            - crd_customer_id
+            - crd_location_id
+
+    - logical_name: crd_specialrequirements
+      display_name: SpecialRequirements
+      description: Route-level special handling requirements such as hazmat certification, liftgate, and temperature control.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Requirement Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_requirement_id
+          display_name: requirement_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: false
+          max_length: 100
+          description: Route this requirement applies to, if route-specific.
+        - name: crd_stop_id
+          display_name: stop_id
+          type: text
+          required: false
+          max_length: 100
+          description: Stop this requirement applies to, if stop-specific.
+        - name: crd_requirement_type
+          display_name: requirement_type
+          type: choice
+          required: true
+          options:
+            - hazmat_certification
+            - liftgate
+            - temperature_control
+            - oversized_load
+            - tanker_endorsement
+            - team_driver
+            - other
+        - name: crd_requirement_detail
+          display_name: requirement_detail
+          type: text
+          max_length: 500
+          description: Free-text detail for the requirement, such as hazmat class or temperature range.
+        - name: crd_is_mandatory
+          display_name: is_mandatory
+          type: boolean
+          required: true
+          default_value: true
+          description: When true, the route cannot be assigned to a driver or vehicle that does not satisfy this requirement.
+        - name: crd_driver_certification_required
+          display_name: driver_certification_required
+          type: text
+          max_length: 200
+          description: The exact certification code or name the driver must hold (e.g., hazmat, tanker).
+        - name: crd_vehicle_feature_required
+          display_name: vehicle_feature_required
+          type: text
+          max_length: 200
+          description: The vehicle feature required (e.g., liftgate, refrigeration unit).
+      indexes:
+        - name: idx_specialreqs_route
+          columns:
+            - crd_route_id
+        - name: idx_specialreqs_stop
+          columns:
+            - crd_stop_id
+
 connectors:
+  - name: OrderManagementApiHttp
+    type: http
+    description: HTTP connector for pulling pending orders from the order management system.
+    configuration:
+      base_url_env_var: OrderManagementApiUrl
+      authentication: api_key
+      api_key_env_var: OrderManagementApiKey
+      api_key_header: x-api-key
   - name: MappingApiHttp
     type: http
     description: HTTP connector for route optimization and real-time traffic data.
@@ -414,6 +716,123 @@ flows:
       - action: create_row
         connector: Dataverse
         table: DriverAssignments
+      - action: respond_to_agent
+
+  - name: BuildSchedule
+    trigger: instant_from_agent
+    description: Pulls pending orders from the order management system, checks driver availability and remaining HOS hours, matches vehicle capacity to order requirements, and returns a proposed schedule as structured JSON for adaptive card rendering.
+    inputs:
+      - targetDate
+    outputs:
+      - proposedScheduleJson
+      - unscheduledOrderCount
+      - conflictCount
+      - conflictSummary
+    steps:
+      - action: http_get
+        connector: OrderManagementApiHttp
+        path: /orders/pending
+        description: Retrieve pending orders for the target date.
+      - action: list_rows
+        connector: Dataverse
+        table: DriverHoursOfService
+        filter: crd_is_active eq true
+        description: Load all active driver HOS records to check availability.
+      - action: list_rows
+        connector: Dataverse
+        table: VehicleCapacity
+        description: Load vehicle capacity records for matching against order weight, volume, and pallet requirements.
+      - action: list_rows
+        connector: Dataverse
+        table: DeliveryWindows
+        filter: crd_is_active eq true
+        description: Load active delivery windows for time-window constraint enforcement.
+      - action: list_rows
+        connector: Dataverse
+        table: SpecialRequirements
+        description: Load route and stop special requirements for driver certification and vehicle feature matching.
+      - action: run_constraint_solver
+        description: Apply constraint solver -- match orders to drivers and vehicles respecting HOS limits, vehicle capacity, time windows, and special requirements. Returns proposed assignments and any detected conflicts.
+      - action: respond_to_agent
+
+  - name: DetectSchedulingConflicts
+    trigger: instant_from_agent
+    description: Evaluates a proposed or existing schedule and returns a list of conflicts grouped by type -- HOS exceeded, vehicle overloaded, overlapping time windows, or missing certifications -- with suggested resolutions for each.
+    inputs:
+      - scheduleJson
+    outputs:
+      - conflictsJson
+      - conflictCount
+      - resolutionSuggestionsJson
+    steps:
+      - action: parse_json
+        input: scheduleJson
+        description: Parse the proposed schedule payload.
+      - action: list_rows
+        connector: Dataverse
+        table: DriverHoursOfService
+        description: Load current HOS records for all drivers in the proposed schedule.
+      - action: list_rows
+        connector: Dataverse
+        table: VehicleCapacity
+        description: Load vehicle capacity records for all vehicles in the proposed schedule.
+      - action: list_rows
+        connector: Dataverse
+        table: DeliveryWindows
+        description: Load delivery windows for all stops in the proposed schedule.
+      - action: list_rows
+        connector: Dataverse
+        table: SpecialRequirements
+        description: Load special requirements for all routes and stops in the proposed schedule.
+      - action: evaluate_hos_conflicts
+        description: Flag any driver whose total hours in the proposed schedule exceeds daily or weekly DOT limits.
+      - action: evaluate_capacity_conflicts
+        description: Flag any vehicle assignment where total order weight, volume, or pallet count exceeds vehicle limits.
+      - action: evaluate_time_window_conflicts
+        description: Flag any stops where the proposed arrival time falls outside the customer delivery window.
+      - action: evaluate_certification_conflicts
+        description: Flag any driver-route pairing where the route has a mandatory certification the driver does not hold.
+      - action: generate_resolution_suggestions
+        description: For each conflict, generate a ranked list of resolution options (e.g., swap driver, split load, adjust departure time).
+      - action: respond_to_agent
+
+  - name: TrackDriverHos
+    trigger: instant_from_agent
+    description: Queries telematics and the DriverHoursOfService table for a specific driver and returns remaining drive time, on-duty time, required rest periods, and proximity-to-limit alerts.
+    inputs:
+      - driverId
+    outputs:
+      - remainingDriveHoursToday
+      - remainingOnDutyHoursToday
+      - remainingDriveHoursWeekly
+      - nextRequiredBreakMinutes
+      - hoursUntilBreakRequired
+      - approachingDailyLimit
+      - approachingWeeklyLimit
+      - alertMessage
+    steps:
+      - action: http_get
+        connector: HosApiHttp
+        path: /drivers/hos
+        description: Retrieve latest HOS data from the external HOS system for the specified driver.
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /drivers/duty-status
+        description: Retrieve current on-duty status and continuous drive start time from telematics.
+      - action: list_rows
+        connector: Dataverse
+        table: DriverHoursOfService
+        filter: crd_driver_id eq driverId
+        description: Load the driver's DOT regulatory limits and cached HOS record.
+      - action: compute_remaining_hos
+        description: Calculate remaining drive time and on-duty time against daily and weekly limits; determine when next mandatory break is required.
+      - action: upsert_dataverse
+        connector: Dataverse
+        table: DriverHoursOfService
+        key: crd_driver_id
+        description: Refresh the cached HOS record in Dataverse with the latest computed values.
+      - action: evaluate_hos_alerts
+        description: Set approaching-limit flags when remaining daily drive time is below 2 hours or remaining weekly drive time is below 4 hours.
       - action: respond_to_agent
 
 channels:

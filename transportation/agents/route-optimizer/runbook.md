@@ -45,6 +45,8 @@ This runbook defines deployment, validation, monitoring, and rollback for the Ro
 
 | Variable Name | Description | Example |
 |---|---|---|
+| OrderManagementApiUrl | Order management system REST base URL | `https://api.ordermgmt.contoso.com/v1` |
+| OrderManagementApiKey | Order management API key or token reference | `kv://ordermgmt/api-key` |
 | MappingApiUrl | Mapping and routing API base URL | `https://atlas.microsoft.com/route` |
 | MappingApiKey | Mapping API key or token reference | `kv://mapping/api-key` |
 | TrafficApiUrl | Real-time traffic data API base URL | `https://atlas.microsoft.com/traffic` |
@@ -60,27 +62,40 @@ This runbook defines deployment, validation, monitoring, and rollback for the Ro
 
 Provision and validate the following tables before enabling production traffic:
 
+**Core tables:**
 - `Routes`
 - `RouteStops`
 - `DriverAssignments`
 - `HosRecords`
 
+**Constraint engine tables:**
+- `DriverHoursOfService`
+- `VehicleCapacity`
+- `DeliveryWindows`
+- `SpecialRequirements`
+
 ### Validation Steps
 
-1. Confirm tables are present in solution.
+1. Confirm all tables are present in solution.
 2. Confirm primary keys and required columns exist.
 3. Validate data types for coordinates, timestamps, and duration fields.
 4. Validate indexes for high-read queries (`route_id`, `driver_id`, `planned_departure`).
 5. Seed test routes with multiple stops and confirm optimization flow executes correctly.
+6. Seed `DriverHoursOfService` with at least two drivers -- one near the daily limit and one with ample hours remaining -- and confirm the Schedule Builder correctly excludes the near-limit driver from over-hours assignments.
+7. Seed `VehicleCapacity` with at least two vehicles -- one at capacity and one with available space -- and confirm the Schedule Builder correctly excludes the at-capacity vehicle from overloaded assignments.
+8. Seed `DeliveryWindows` with at least one hard window and one soft window and confirm the Conflict Detection flow returns the correct conflict type for each.
+9. Seed `SpecialRequirements` with a hazmat requirement on a test route and confirm Driver Assignment blocks non-certified drivers.
 
 ## 5. Knowledge Source Configuration
 
 Configure knowledge sources in Copilot Studio:
 
 - Fleet dispatch standard operating procedures
-- Driver Hours of Service regulations and policy
+- Driver Hours of Service regulations and policy (DOT 49 CFR Part 395)
 - Hazardous materials (hazmat) transport compliance guidelines
 - Route planning and load assignment policies
+- Vehicle capacity and load limit standards
+- Delivery window service level agreements per customer
 
 Knowledge source recommendation:
 
@@ -120,6 +135,15 @@ Knowledge source recommendation:
 - [ ] Re-routing triggers on traffic delay — proactive notification sent when delay exceeds threshold (e.g., 30 min)
 - [ ] Constraint engine prevents over-hours scheduling — driver exceeding HOS limits is not assigned additional routes
 - [ ] Driver assignment respects certifications — hazmat route only assignable to hazmat-certified drivers
+- [ ] Schedule Builder pulls pending orders and returns a conflict-free proposed schedule when no constraints are violated
+- [ ] Schedule Builder flags unscheduled orders when no eligible driver or vehicle is available
+- [ ] Conflict Detection returns a HOS conflict when a driver's assigned hours exceed the daily DOT limit
+- [ ] Conflict Detection returns a capacity conflict when total order weight exceeds vehicle maximum payload
+- [ ] Conflict Detection returns a time window conflict when a stop arrival falls outside the customer delivery window
+- [ ] Conflict Detection returns a certification conflict when a driver without hazmat certification is assigned to a hazmat route
+- [ ] Conflict Detection provides at least one resolution suggestion per conflict
+- [ ] HOS Tracking returns correct remaining drive time, on-duty time, and next break requirement for a specified driver
+- [ ] HOS Tracking triggers an approaching-limit alert when remaining daily drive time is below 2 hours
 
 ### Integration Tests
 
@@ -128,6 +152,9 @@ Knowledge source recommendation:
 - [ ] Re-routing alert flow fires within configured threshold and posts to dispatch channel
 - [ ] HOS compliance check flow reads from HOS system and blocks assignment when limit is reached
 - [ ] Driver assignment flow filters certification attribute and excludes non-certified drivers from hazmat routes
+- [ ] Schedule Builder flow calls order management API for pending orders and applies all constraint engine tables
+- [ ] Conflict Detection flow reads DriverHoursOfService, VehicleCapacity, DeliveryWindows, and SpecialRequirements tables and returns typed conflict records
+- [ ] HOS Tracking flow reads HOS API and telematics duty-status endpoint and upserts the DriverHoursOfService table
 
 ## 9. Monitoring Cadence
 
@@ -136,18 +163,23 @@ Knowledge source recommendation:
 - Route optimization flow health (run success rate, API failures, latency)
 - Re-routing alert volume and threshold trigger frequency
 - HOS constraint violations flagged
+- Schedule Builder conflict count per day (target: zero unresolved conflicts before dispatch)
+- Conflict Detection flow run success rate
 
 ### Weekly
 
 - On-time delivery rate vs pre-agent baseline
 - Driver assignment efficiency (unassigned routes, reassignments)
 - Re-routing accuracy review (were re-routed ETAs better than original?)
+- HOS Tracking alert frequency per driver (identify drivers consistently approaching limits)
+- VehicleCapacity utilization report (average load factor across fleet)
 
 ### Monthly
 
 - Threshold tuning review (re-route delay threshold, HOS margin settings)
 - Connector and API quota and performance review
 - Policy documentation freshness review
+- Constraint engine table data quality audit (stale DeliveryWindows, outdated SpecialRequirements)
 
 ## 10. Escalation Matrix
 

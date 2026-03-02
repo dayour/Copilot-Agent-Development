@@ -18,6 +18,15 @@ agent:
     - name: Global.RerouteDelayThresholdMinutes
       type: number
       default: 30
+    - name: Global.HosDailyLimitHours
+      type: number
+      default: 11
+    - name: Global.HosWeeklyLimitHours
+      type: number
+      default: 60
+    - name: Global.HosApproachingAlertThresholdHours
+      type: number
+      default: 2
 
 topics:
   - name: Greeting
@@ -226,7 +235,7 @@ topics:
             text: "🚫 Driver {Topic.driver_id} cannot be assigned. Remaining HOS: {Topic.HoursRemaining} hours. Route requires {Topic.estimated_route_hours} hours. Assignment blocked to prevent regulatory violation."
 
   - name: Driver Assignment
-    description: Assigns an available, qualified driver to a route, validating HOS availability and required certifications such as hazmat.
+    description: Assigns an available, qualified driver to a specific route by checking HOS availability and required certifications such as hazmat, liftgate, or tanker endorsement.
     trigger:
       mode: classic
       trigger_phrases:
@@ -245,22 +254,194 @@ topics:
     nodes:
       - type: question
         id: askRouteIdAssign
-        prompt: "Which route ID needs a driver assignment?"
+        prompt: "Which route ID needs a driver assignment? (Example: R-2025-0301)"
         variable: Topic.route_id
         entity: Text
+      - type: tool
+        id: loadRouteRequirements
+        tool_name: GetRouteSpecialRequirements
+        input_mapping:
+          routeId: =Topic.route_id
       - type: tool
         id: findDriver
         tool_name: AssignDriverToRoute
         input_mapping:
           routeId: =Topic.route_id
-          requiredCertification: =Topic.required_certification
+          requiredCertification: =Coalesce(Topic.required_certification, Topic.RouteRequiredCertification)
       - type: condition
         id: assignmentResult
         branches:
           - condition: =Topic.AssignmentSuccess = true
             actions:
               - type: message
-                text: "✅ Driver {Topic.AssignedDriverId} assigned to route {Topic.route_id}. Certifications verified: {Topic.CertificationsVerified}. Estimated departure: {Topic.EstimatedDeparture}."
+                text: "Driver {Topic.AssignedDriverId} assigned to route {Topic.route_id}. Certifications verified: {Topic.CertificationsVerified}. HOS hours remaining at assignment: {Topic.HosHoursRemainingAtAssign}. Estimated departure: {Topic.EstimatedDeparture}."
+              - type: tool
+                id: updateDriverSchedule
+                tool_name: UpdateDriverScheduleRecord
+                input_mapping:
+                  driverId: =Topic.AssignedDriverId
+                  routeId: =Topic.route_id
+                  estimatedDeparture: =Topic.EstimatedDeparture
         else_actions:
           - type: message
-            text: "⚠️ No eligible driver found for route {Topic.route_id}. Reason: {Topic.AssignmentBlockedReason}. Please review driver availability and certification records."
+            text: "No eligible driver found for route {Topic.route_id}. Reason: {Topic.AssignmentBlockedReason}. Please review driver availability and certification records."
+
+  - name: Schedule Builder
+    description: Builds a proposed delivery schedule for a target date by pulling pending orders, checking driver availability and HOS hours, matching vehicle capacity to order requirements, and presenting the result as an adaptive card with conflict highlights.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - schedule deliveries for tomorrow
+        - build tomorrow's schedule
+        - create delivery schedule for
+        - plan deliveries for
+        - generate schedule for tomorrow
+    inputs:
+      - name: target_date
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askTargetDate
+        prompt: "Which date should I build the schedule for? (Say 'tomorrow' or enter a date like 2025-03-02)"
+        variable: Topic.target_date
+        entity: Date
+        skip_if_set: true
+      - type: tool
+        id: buildSchedule
+        tool_name: BuildSchedule
+        input_mapping:
+          targetDate: =Topic.target_date
+      - type: condition
+        id: conflictCheck
+        branches:
+          - condition: =Topic.conflictCount > 0
+            actions:
+              - type: message
+                text: "Proposed schedule for {Topic.target_date} is ready with {Topic.conflictCount} conflict(s) that need attention."
+              - type: adaptive_card
+                title: Proposed Delivery Schedule
+                body:
+                  - text: "Date: {Topic.target_date}"
+                  - text: "Total routes: {Topic.TotalRoutes}"
+                  - text: "Drivers assigned: {Topic.DriversAssigned}"
+                  - text: "Unscheduled orders: {Topic.unscheduledOrderCount}"
+                  - text: "Conflicts detected: {Topic.conflictCount}"
+                  - text: "Conflicts: {Topic.conflictSummary}"
+                  - text: "Proposed schedule: {Topic.proposedScheduleJson}"
+        else_actions:
+          - type: message
+            text: "Proposed schedule for {Topic.target_date} is ready. All orders scheduled with no conflicts."
+          - type: adaptive_card
+            title: Proposed Delivery Schedule
+            body:
+              - text: "Date: {Topic.target_date}"
+              - text: "Total routes: {Topic.TotalRoutes}"
+              - text: "Drivers assigned: {Topic.DriversAssigned}"
+              - text: "Unscheduled orders: {Topic.unscheduledOrderCount}"
+              - text: "Proposed schedule: {Topic.proposedScheduleJson}"
+
+  - name: Conflict Detection
+    description: Evaluates a proposed or existing schedule for scheduling conflicts including driver hours exceeded, vehicle overloaded by weight or volume, overlapping delivery time windows, and missing driver certifications. Returns each conflict with suggested resolutions.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - check schedule for conflicts
+        - are there any scheduling conflicts
+        - validate the schedule
+        - detect conflicts in the schedule
+        - review driver and vehicle conflicts
+    inputs:
+      - name: schedule_json
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askSchedule
+        prompt: "Should I check today's proposed schedule or a specific schedule? Say 'today' or paste a schedule JSON."
+        variable: Topic.schedule_json
+        entity: Text
+        skip_if_set: true
+      - type: tool
+        id: detectConflicts
+        tool_name: DetectSchedulingConflicts
+        input_mapping:
+          scheduleJson: =Topic.schedule_json
+      - type: condition
+        id: conflictsFound
+        branches:
+          - condition: =Topic.conflictCount > 0
+            actions:
+              - type: message
+                text: "{Topic.conflictCount} conflict(s) found in the schedule."
+              - type: adaptive_card
+                title: Schedule Conflict Report
+                body:
+                  - text: "Total conflicts: {Topic.conflictCount}"
+                  - text: "Conflicts by type:"
+                  - text: "{Topic.conflictsJson}"
+                  - text: "Suggested resolutions:"
+                  - text: "{Topic.resolutionSuggestionsJson}"
+        else_actions:
+          - type: message
+            text: "No conflicts detected. The schedule is valid across all HOS, capacity, time window, and certification constraints."
+
+  - name: HOS Tracking
+    description: Returns a driver's current Hours of Service status including remaining drive time, on-duty time, required rest periods, and limit-approaching alerts for fleet managers and dispatchers.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - how many hours does driver have left
+        - hos status for driver
+        - remaining drive time for driver
+        - check driver hours this week
+        - how many hours left for driver jones
+    inputs:
+      - name: driver_id
+        type: string
+        required: false
+      - name: driver_name
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askDriverIdOrName
+        prompt: "Which driver should I check HOS status for? Provide the driver ID (e.g., D-1042) or name (e.g., Jones)."
+        variable: Topic.driver_id
+        entity: Text
+        skip_if_set: true
+      - type: tool
+        id: resolveDriver
+        tool_name: ResolveDriverByNameOrId
+        input_mapping:
+          driverIdOrName: =Coalesce(Topic.driver_id, Topic.driver_name)
+      - type: tool
+        id: trackHos
+        tool_name: TrackDriverHos
+        input_mapping:
+          driverId: =Topic.ResolvedDriverId
+      - type: condition
+        id: hosAlertCheck
+        branches:
+          - condition: =Topic.approachingDailyLimit = true OR Topic.approachingWeeklyLimit = true
+            actions:
+              - type: message
+                text: "HOS Alert for driver {Topic.ResolvedDriverId}: {Topic.alertMessage}"
+              - type: adaptive_card
+                title: Driver HOS Status
+                body:
+                  - text: "Driver: {Topic.ResolvedDriverId}"
+                  - text: "Remaining drive time today: {Topic.remainingDriveHoursToday} hours"
+                  - text: "Remaining on-duty time today: {Topic.remainingOnDutyHoursToday} hours"
+                  - text: "Remaining drive time this week: {Topic.remainingDriveHoursWeekly} hours"
+                  - text: "Next required break: {Topic.nextRequiredBreakMinutes} minutes after {Topic.hoursUntilBreakRequired} more hours of driving"
+                  - text: "Alert: {Topic.alertMessage}"
+        else_actions:
+          - type: adaptive_card
+            title: Driver HOS Status
+            body:
+              - text: "Driver: {Topic.ResolvedDriverId}"
+              - text: "Remaining drive time today: {Topic.remainingDriveHoursToday} hours"
+              - text: "Remaining on-duty time today: {Topic.remainingOnDutyHoursToday} hours"
+              - text: "Remaining drive time this week: {Topic.remainingDriveHoursWeekly} hours"
+              - text: "Next required break: {Topic.nextRequiredBreakMinutes} minutes after {Topic.hoursUntilBreakRequired} more hours of driving"
