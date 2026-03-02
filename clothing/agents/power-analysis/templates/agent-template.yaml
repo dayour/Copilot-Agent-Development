@@ -375,3 +375,67 @@ topics:
             text: >
               No statistically significant anomalies were detected for {period}
               at threshold {zscore_threshold}.
+
+  - name: Pipeline Health Check
+    description: >
+      Reports on the health of all data sync pipelines. Queries the PipelineHealth
+      table to surface the status of recent POS, ERP, Allocation, and KPI cache
+      refresh runs. Answers questions such as "Are all data feeds healthy?" and
+      "Which pipelines failed recently?"
+    trigger_phrases:
+      - are all data feeds healthy
+      - pipeline health status
+      - which pipelines failed
+      - data sync status
+      - check data feed health
+      - show pipeline errors
+    entities:
+      - name: pipeline_name
+        type: choice
+        options: [all, PosDataSync, ErpDataSync, AllocationDataSync, KpiCacheRefresh]
+        default: all
+        prompt: Which pipeline would you like to check? Select All for a full summary.
+      - name: lookback_hours
+        type: number
+        default: 24
+        prompt: How many hours back should the health check cover?
+    actions:
+      - type: dataverse_query
+        table: PipelineHealth
+        filter: >
+          RunStartTimestamp ge @{subtractFromTime(utcNow(), int(variables('lookback_hours')), 'Hour')}
+          and (pipeline_name eq 'all' or PipelineName eq '{pipeline_name}')
+        order_by: RunStartTimestamp desc
+        select:
+          - PipelineName
+          - RunStatus
+          - RunStartTimestamp
+          - RunEndTimestamp
+          - RecordsProcessed
+          - RecordsFailed
+          - ErrorCode
+          - ErrorMessage
+          - RetryAttempt
+          - DataQualityChecksPassed
+          - DataQualityFailureDetails
+        output_variable: pipeline_health_results
+      - type: condition
+        expression: "{pipeline_health_results.any_failed}"
+        true_actions:
+          - type: message
+            text: >
+              Data Feed Health Report (last {lookback_hours} hours)
+              Status: One or more pipelines require attention.
+
+              {pipeline_health_summary_table}
+
+              Failed Pipelines: {failed_pipeline_names}
+              Recommendation: Review error details and retry if the issue is transient.
+              For persistent failures, check source system connectivity and data quality alerts.
+        false_actions:
+          - type: message
+            text: >
+              Data Feed Health Report (last {lookback_hours} hours)
+              Status: All data feeds are healthy.
+
+              {pipeline_health_summary_table}
