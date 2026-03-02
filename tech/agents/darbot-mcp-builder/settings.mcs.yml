@@ -1,0 +1,24 @@
+﻿displayName: Darbot MCP Builder
+schemaName: crb5d_darbotMcpBuilder
+accessControlPolicy: ChatbotReaders
+authenticationMode: Integrated
+authenticationTrigger: Always
+configuration:
+  settings:
+    GenerativeActionsEnabled: true
+
+  gPTSettings:
+    defaultSchemaName: crb5d_darbotMcpBuilder.gpt.default
+
+  aISettings:
+    useModelKnowledge: true
+    isFileAnalysisEnabled: true
+    isSemanticSearchEnabled: true
+    optInUseLatestModels: false
+
+  recognizer:
+    kind: GenerativeAIRecognizer
+
+publishedOn: 2025-06-10T19:08:49.0000000Z
+template: default-2.1.0
+language: 1033
