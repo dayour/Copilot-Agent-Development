@@ -1,0 +1,239 @@
+# Copilot Studio Agent Template -- Policy Advisor (Tech)
+# Import this file as a starting point. Customise trigger phrases,
+# knowledge sources, and escalation contacts to match your organization.
+
+agent:
+  name: Policy Advisor
+  description: >
+    Assists employees by providing accurate, policy-compliant guidance on HR,
+    Legal, and other company policies. Searches internal knowledge sources,
+    interprets policy language, and delivers actionable advice with citations.
+  language: en-US
+  model: gpt-5-chat
+  fallback_message: >
+    I wasn't able to find a specific policy related to your question. I recommend
+    contacting HR or Legal directly for further assistance. Would you like me to
+    provide their contact information?
+
+topics:
+
+  - name: Greeting
+    trigger_phrases:
+      - Hello
+      - Hi
+      - I have a policy question
+      - Help me with a policy
+      - Policy advisor
+    messages:
+      - text: >
+          Hello! I'm the Policy Advisor. I can help you find information about
+          HR policies, legal compliance, workplace accommodations, benefits,
+          and more. What would you like to know?
+    quick_replies:
+      - HR policy question
+      - Legal compliance question
+      - Workplace accommodations
+      - Benefits and leave
+      - Remote work policy
+
+  - name: Policy Inquiry
+    description: General policy lookup for any domain.
+    trigger_phrases:
+      - What is the policy on {topic}?
+      - Tell me about the {topic} policy
+      - I need information about {topic}
+      - Company policy for {topic}
+      - Where can I find the {topic} policy?
+    entities:
+      - name: topic
+        type: string
+        prompt: What policy topic are you looking for?
+    actions:
+      - type: knowledge_search
+        query: "{topic} policy"
+        sources:
+          - hr-policy-library
+          - legal-compliance-library
+          - operations-policy-library
+          - company-website
+    response_template: >
+      Based on the {topic} policy, here is what I found:
+
+      {knowledge_result_summary}
+
+      Source: {knowledge_result_citation}
+
+      Would you like more details, or do you have a follow-up question?
+    fallback_message: >
+      I could not find a policy specifically about {topic}. I recommend
+      contacting HR at the HR portal or Legal for further guidance.
+
+  - name: HR Policy Lookup
+    description: Targeted lookup for HR-specific policies.
+    trigger_phrases:
+      - HR policy on {topic}
+      - Employee handbook {topic}
+      - What does HR say about {topic}?
+      - Human resources policy for {topic}
+      - PTO policy
+      - Compensation policy
+      - Code of conduct
+    entities:
+      - name: topic
+        type: string
+        prompt: Which HR policy are you looking for?
+    actions:
+      - type: knowledge_search
+        query: "HR policy {topic}"
+        sources:
+          - hr-policy-library
+    response_template: >
+      According to the HR policy documentation:
+
+      {knowledge_result_summary}
+
+      Source: {knowledge_result_citation}
+
+      Next steps: If you need further clarification, you can contact HR
+      at the HR portal or email the HR team directly.
+
+  - name: Legal Compliance Query
+    description: Legal and regulatory compliance inquiries.
+    trigger_phrases:
+      - Legal policy on {topic}
+      - Compliance requirement for {topic}
+      - What are the legal requirements for {topic}?
+      - Data privacy policy
+      - Corporate governance
+      - Regulatory compliance
+    entities:
+      - name: topic
+        type: string
+        prompt: What legal or compliance topic do you need information about?
+    actions:
+      - type: knowledge_search
+        query: "legal compliance {topic}"
+        sources:
+          - legal-compliance-library
+    response_template: >
+      Based on our legal and compliance documentation:
+
+      {knowledge_result_summary}
+
+      Source: {knowledge_result_citation}
+
+      IMPORTANT: This is general guidance only. For specific legal advice or
+      interpretation, please consult with the Legal department directly.
+
+  - name: Workplace Accommodations
+    description: Accessibility and workplace accommodation requests.
+    trigger_phrases:
+      - Workplace accommodation
+      - I need an accommodation
+      - ADA accommodation
+      - Accessibility request
+      - Reasonable adjustment
+      - Disability accommodation
+    messages:
+      - text: >
+          I can help you understand the workplace accommodations process. Let me
+          search our policy documents for the relevant information.
+    actions:
+      - type: knowledge_search
+        query: "workplace accommodations ADA accessibility reasonable adjustment"
+        sources:
+          - hr-policy-library
+          - legal-compliance-library
+    response_template: >
+      Here is information about workplace accommodations:
+
+      {knowledge_result_summary}
+
+      Source: {knowledge_result_citation}
+
+      Next steps:
+      1. Discuss your accommodation needs with your manager or HR representative.
+      2. Submit a formal accommodation request through the HR portal.
+      3. HR will review your request and work with you to identify reasonable
+         accommodations.
+
+      Would you like me to provide the accommodation request form or HR contact?
+
+  - name: Benefits and Leave
+    description: Benefits, PTO, FMLA, and leave-related inquiries.
+    trigger_phrases:
+      - Benefits policy
+      - How much PTO do I have?
+      - FMLA eligibility
+      - Parental leave policy
+      - Health insurance options
+      - Retirement plan
+      - Leave of absence
+      - Sick leave policy
+    entities:
+      - name: benefit_type
+        type: string
+        prompt: Which benefit or leave type are you asking about?
+    actions:
+      - type: knowledge_search
+        query: "benefits leave {benefit_type}"
+        sources:
+          - hr-policy-library
+    response_template: >
+      Here is what I found about {benefit_type}:
+
+      {knowledge_result_summary}
+
+      Source: {knowledge_result_citation}
+
+      For specific questions about your personal benefits or leave balance,
+      please contact HR or check the employee self-service portal.
+
+  - name: Escalation to Human Agent
+    description: Hand off to HR or Legal when the agent cannot resolve the query.
+    trigger_phrases:
+      - I need to talk to HR
+      - Connect me to Legal
+      - Escalate this
+      - I need a human
+      - This is urgent
+      - I want to speak to someone
+    messages:
+      - text: >
+          I understand you need to speak with someone directly. Let me connect
+          you to the right team.
+    adaptive_card:
+      title: Escalation Request
+      fields:
+        - id: department
+          label: Which department do you need?
+          type: choice
+          options:
+            - HR (Human Resources)
+            - Legal
+            - Other
+          required: true
+        - id: urgency
+          label: Urgency level
+          type: choice
+          options:
+            - Standard (response within 2 business days)
+            - Urgent (response within 4 hours)
+            - Critical (immediate response needed)
+          required: true
+        - id: description
+          label: Brief description of your issue
+          type: text
+          multiline: true
+          required: true
+    submit_action:
+      type: power_automate_flow
+      flow_name: EscalatePolicyInquiry
+      input:
+        department: "{department}"
+        urgency: "{urgency}"
+        description: "{description}"
+      output_message: >
+        Your request has been escalated to the {department} team with
+        {urgency} priority. Reference: {ticket_id}. Someone will reach
+        out to you shortly.

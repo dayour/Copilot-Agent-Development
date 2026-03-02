@@ -1,0 +1,133 @@
+# Copilot Studio Solution Definition -- Policy Advisor (Tech)
+# This file defines the exportable solution components for the Policy Advisor agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: PolicyAdvisor
+  display_name: "Tech -- Policy Advisor"
+  version: "1.0.0.1"
+  publisher: Enterprise Platform Team
+  description: >
+    Solution for the Policy Advisor agent in the Tech vertical. Includes the
+    agent definition, topics, knowledge source bindings, environment variable
+    declarations, and Power Automate flow references. Assists employees with
+    accurate, policy-compliant guidance on HR, Legal, and company policies.
+
+environment_variables:
+  - name: SharePointPolicyLibraryUrl
+    display_name: SharePoint Policy Library URL
+    type: string
+    description: >
+      SharePoint site or document library URL containing HR, Legal, and
+      operational policy documents.
+    default_value: ""
+
+  - name: CompanyWebsiteUrl
+    display_name: Company Website URL
+    type: string
+    description: >
+      Public or intranet website URL where company policies are published.
+    default_value: "https://company.example.com"
+
+  - name: EscalationTeamsChannelId
+    display_name: Escalation Teams Channel ID
+    type: string
+    description: >
+      Microsoft Teams channel ID for routing escalated policy inquiries
+      to HR or Legal departments.
+    default_value: ""
+
+  - name: HrContactEmail
+    display_name: HR Contact Email
+    type: string
+    description: >
+      Email address for the HR department, used in escalation flows
+      and agent responses when directing users to HR.
+    default_value: "hr@company.example.com"
+
+  - name: LegalContactEmail
+    display_name: Legal Contact Email
+    type: string
+    description: >
+      Email address for the Legal department, used in escalation flows
+      and agent responses when directing users to Legal.
+    default_value: "legal@company.example.com"
+
+# ALM Configuration Notes
+# -----------------------
+# Dev Environment:
+#   - Import as UNMANAGED solution for active development.
+#   - Multiple authors can edit topics, knowledge sources, and instructions.
+#   - Use this environment for iterative testing and refinement.
+#
+# Sandbox Environment:
+#   - Import as MANAGED solution.
+#   - No direct solution editing; changes must come from Dev.
+#   - Use for functional validation and UAT with minimal user access.
+#   - Run solution checker before importing.
+#
+# Production Environment:
+#   - Import as MANAGED solution.
+#   - Enable Managed Environment features.
+#   - Apply DLP restrictions for least privileged roles.
+#   - No direct editing; all changes promoted from Sandbox.
+
+components:
+  agents:
+    - name: PolicyAdvisor
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: hr-policy-library
+          type: sharepoint
+          url: "${SharePointPolicyLibraryUrl}"
+          description: >
+            Internal HR policies including employee handbook, compensation,
+            benefits, leave, and workplace conduct.
+        - id: legal-compliance-library
+          type: sharepoint
+          url: "${SharePointPolicyLibraryUrl}"
+          description: >
+            Legal and regulatory compliance documents including data privacy,
+            corporate governance, and contractual policies.
+        - id: operations-policy-library
+          type: sharepoint
+          url: "${SharePointPolicyLibraryUrl}"
+          description: >
+            Operational procedures including remote work, travel, procurement,
+            and facility management.
+        - id: company-website
+          type: public_website
+          url: "${CompanyWebsiteUrl}"
+          description: >
+            Corporate policy website containing published HR, Legal, and
+            operational policies accessible to all employees.
+      authentication:
+        type: entra_id
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: EscalatePolicyInquiry
+      description: >
+        Routes escalated policy inquiries to the appropriate HR or Legal
+        Teams channel and sends a notification to the designated contact.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: microsoft_teams
+
+connections:
+  - connector: entra_id
+    display_name: Microsoft Entra ID
+  - connector: sharepoint
+    display_name: SharePoint Online
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+  - type: m365_copilot
+    enabled: true
+  - type: sharepoint
+    enabled: true
+  - type: web_chat
+    enabled: true
