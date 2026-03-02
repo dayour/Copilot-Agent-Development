@@ -1,0 +1,504 @@
+# Name: Advanced Threat Hunting Operations
+# Proactive threat hunting with advanced analytics and investigation workflows
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Advanced Threat Hunting Operations
+    triggerQueries:
+      - threat hunting
+      - proactive hunting
+      - hunt operations
+      - threat investigation
+      - advanced analytics
+      - behavioral hunting
+      - hunt hypothesis
+      - threat research
+
+  actions:
+    - kind: SendActivity
+      id: hunting_intro
+      activity: |
+        🎯 **Advanced Threat Hunting Operations Center**
+        
+        Welcome to proactive threat hunting operations. I'll guide you through sophisticated hunting methodologies to discover hidden threats in your environment.
+        
+        **Hunting Capabilities:**
+        
+        **🔍 Hypothesis-Driven Hunting**
+        - Structured hunting methodologies
+        - MITRE ATT&CK framework mapping
+        - Behavioral analytics and anomaly detection
+        - Custom hunting query development
+        
+        **📊 Advanced Analytics**
+        - Machine learning-powered detection
+        - Statistical analysis and correlation
+        - Time-series analysis for patterns
+        - Graph analytics for relationship mapping
+        
+        **🎯 Specialized Hunt Types**
+        - APT and nation-state actor hunting
+        - Insider threat investigations
+        - Supply chain compromise detection
+        - Living-off-the-land technique identification
+        
+        **🛠️ Hunt Management**
+        - Campaign planning and coordination
+        - Hunt team collaboration tools
+        - Results validation and tuning
+        - Knowledge base development
+        
+        What type of threat hunting operation do you need?
+
+    - kind: Question
+      id: hunting_type
+      interruptionPolicy:
+        allowInterruption: true
+      variable: Topic.huntingType
+      prompt:
+        kind: Activity
+        activity: |
+          Select your hunting operation:
+          
+          **1.** 🎯 Hypothesis-Driven Hunt Campaign
+          **2.** 🔍 Behavioral Anomaly Investigation  
+          **3.** 👤 APT/Nation-State Actor Hunt
+          **4.** 🕵️ Insider Threat Investigation
+          **5.** 🔗 Supply Chain Compromise Hunt
+          **6.** 🤖 Living-off-the-Land Detection
+          **7.** 📊 Custom Hunt Query Development
+          
+          Type the number or describe your hunting objective.
+
+    - kind: ConditionGroup
+      id: hunting_routing
+      conditions:
+        - kind: Condition
+          id: hypothesis_hunt
+          condition: "Topic.huntingType contains \"1\" || contains(toLower(Topic.huntingType), \"hypothesis\")"
+          actions:
+            - kind: BeginDialog
+              id: call_hypothesis_dialog
+              dialog: HypothesisHuntDialog
+
+        - kind: Condition
+          id: behavioral_investigation
+          condition: "Topic.huntingType contains \"2\" || contains(toLower(Topic.huntingType), \"behavioral\") || contains(toLower(Topic.huntingType), \"anomaly\")"
+          actions:
+            - kind: BeginDialog
+              id: call_behavioral_dialog
+              dialog: BehavioralHuntDialog
+
+        - kind: Condition
+          id: apt_hunt
+          condition: "Topic.huntingType contains \"3\" || contains(toLower(Topic.huntingType), \"apt\") || contains(toLower(Topic.huntingType), \"nation\")"
+          actions:
+            - kind: BeginDialog
+              id: call_apt_dialog
+              dialog: APTHuntDialog
+
+        - kind: Condition
+          id: insider_hunt
+          condition: "Topic.huntingType contains \"4\" || contains(toLower(Topic.huntingType), \"insider\")"
+          actions:
+            - kind: BeginDialog
+              id: call_insider_dialog
+              dialog: InsiderThreatDialog
+
+        - kind: Condition
+          id: supply_chain_hunt
+          condition: "Topic.huntingType contains \"5\" || contains(toLower(Topic.huntingType), \"supply\") || contains(toLower(Topic.huntingType), \"chain\")"
+          actions:
+            - kind: BeginDialog
+              id: call_supply_dialog
+              dialog: SupplyChainHuntDialog
+
+        - kind: Condition
+          id: lolbas_hunt
+          condition: "Topic.huntingType contains \"6\" || contains(toLower(Topic.huntingType), \"living\") || contains(toLower(Topic.huntingType), \"land\")"
+          actions:
+            - kind: BeginDialog
+              id: call_lolbas_dialog
+              dialog: LivingOffLandDialog
+
+        - kind: Condition
+          id: custom_query
+          condition: "Topic.huntingType contains \"7\" || contains(toLower(Topic.huntingType), \"custom\") || contains(toLower(Topic.huntingType), \"query\")"
+          actions:
+            - kind: BeginDialog
+              id: call_query_dialog
+              dialog: CustomQueryDialog
+
+      elseActions:
+        - kind: SendActivity
+          id: hunting_help
+          activity: |
+            I can help with various threat hunting operations:
+            - Hypothesis-driven hunt campaigns
+            - Advanced behavioral analysis
+            - APT and nation-state actor detection
+            - Custom hunt query development
+
+dialogs:
+  - kind: AdaptiveDialog
+    id: HypothesisHuntDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          🎯 **Hypothesis-Driven Threat Hunt Campaign**
+          
+          I'll guide you through a structured hypothesis-driven hunting methodology using the PEAK framework.
+
+      - kind: Question
+        variable: Dialog.huntingHypothesis
+        prompt:
+          kind: Activity
+          activity: |
+            **Step 1: Define Your Hunting Hypothesis**
+            
+            What specific threat behavior or technique do you want to hunt for?
+            
+            Examples:
+            - "Attackers are using legitimate admin tools for lateral movement"
+            - "Insider threat is exfiltrating data through cloud storage"
+            - "APT group is using DNS tunneling for C2 communication"
+            - "Ransomware operators are using WMI for reconnaissance"
+
+      - kind: Question
+        variable: Dialog.attackPhase
+        prompt:
+          kind: Activity
+          activity: |
+            **Step 2: Map to MITRE ATT&CK Framework**
+            
+            Which phase of the attack lifecycle does your hypothesis target?
+            
+            **1.** Initial Access (T1078, T1566, T1190)
+            **2.** Execution (T1059, T1053, T1047)
+            **3.** Persistence (T1547, T1543, T1136)
+            **4.** Privilege Escalation (T1548, T1055, T1134)
+            **5.** Defense Evasion (T1562, T1070, T1036)
+            **6.** Credential Access (T1003, T1558, T1110)
+            **7.** Discovery (T1083, T1087, T1018)
+            **8.** Lateral Movement (T1021, T1550, T1563)
+            **9.** Collection (T1560, T1005, T1039)
+            **10.** Exfiltration (T1567, T1041, T1020)
+
+      - kind: Question
+        variable: Dialog.dataSource
+        prompt:
+          kind: Activity
+          activity: |
+            **Step 3: Identify Data Sources**
+            
+            Which data sources will provide the best visibility for this hunt?
+            
+            **Available Sources:**
+            - 🔍 Windows Event Logs (Security, System, Application)
+            - 🛡️ Microsoft Defender XDR (Endpoint, Email, Identity)
+            - 🌐 Network Traffic Logs (Firewall, DNS, Proxy)
+            - ☁️ Cloud Audit Logs (Azure AD, M365, AWS CloudTrail)
+            - 📧 Email Security Logs (ATP, EOP)
+            - 🔒 Authentication Logs (ADFS, SAML, OAuth)
+
+      - kind: SendActivity
+        activity: |
+          🎯 **Hunt Campaign Plan Generated**
+          
+          **Hypothesis:** {Dialog.huntingHypothesis}
+          **MITRE ATT&CK Phase:** {Dialog.attackPhase}
+          **Data Sources:** {Dialog.dataSource}
+          
+          ## 📋 **PEAK Methodology Implementation**
+          
+          ### **P - Prepare**
+          
+          **Hunt Objectives:**
+          - Validate hypothesis: "{Dialog.huntingHypothesis}"
+          - Identify TTPs used by potential threat actors
+          - Develop detection logic for continuous monitoring
+          - Document findings for threat intelligence
+          
+          **Scope Definition:**
+          - **Timeframe:** Last 90 days (adjustable based on data retention)
+          - **Environment:** Production network and endpoints
+          - **Focus Areas:** {Dialog.dataSource}
+          - **Team:** Lead analyst + 2 junior analysts
+          
+          ### **E - Execute**
+          
+          **Phase 1: Baseline Analysis (Days 1-2)**
+          ```kql
+          // Example KQL for baseline establishment
+          DeviceProcessEvents
+          | where Timestamp > ago(30d)
+          | where FileName in ("powershell.exe", "cmd.exe", "wmic.exe")
+          | summarize 
+              ProcessCount = count(),
+              UniqueDevices = dcount(DeviceName),
+              UniqueUsers = dcount(AccountName)
+              by FileName, bin(Timestamp, 1d)
+          | render timechart
+          ```
+          
+          **Phase 2: Anomaly Detection (Days 3-4)**
+          ```kql
+          // Example: Detect unusual admin tool usage
+          DeviceProcessEvents
+          | where Timestamp > ago(7d)
+          | where FileName in ("net.exe", "nltest.exe", "dsquery.exe")
+          | where ProcessCommandLine contains_any ("domain", "trust", "group")
+          | join kind=leftouter (
+              DeviceLogonEvents
+              | where LogonType == "RemoteInteractive"
+              | project DeviceName, AccountName, LogonTime = Timestamp
+          ) on DeviceName, AccountName
+          | where datetime_diff('minute', Timestamp, LogonTime) < 30
+          | project Timestamp, DeviceName, AccountName, FileName, ProcessCommandLine
+          ```
+          
+          **Phase 3: Deep Investigation (Days 5-7)**
+          - Correlate findings across multiple data sources
+          - Analyze temporal patterns and relationships
+          - Validate true positives vs. false positives
+          - Document attack techniques and indicators
+          
+          ### **A - Analyze**
+          
+          **Analysis Framework:**
+          
+          **1. Pattern Recognition**
+          - Frequency analysis of suspicious activities
+          - Temporal correlation with known incidents
+          - Geographical and network segmentation analysis
+          - User behavior deviation assessment
+          
+          **2. Threat Attribution**
+          - TTP comparison with known threat actors
+          - Infrastructure overlap analysis
+          - Campaign timing and targeting patterns
+          - Tool and technique fingerprinting
+          
+          **3. Impact Assessment**
+          - Scope of potential compromise
+          - Data exposure and exfiltration risk
+          - Business impact and criticality
+          - Remediation complexity and timeline
+          
+          ### **K - Knowledge Transfer**
+          
+          **Deliverables:**
+          
+          **📊 Hunt Report Template:**
+          ```
+          Executive Summary:
+          - Hunt hypothesis validation (Confirmed/Refuted/Inconclusive)
+          - Key findings and threat indicators
+          - Business impact assessment
+          - Recommended actions
+          
+          Technical Details:
+          - Detection logic and queries used
+          - False positive analysis and tuning
+          - IOCs and TTPs identified
+          - Timeline of activities
+          
+          Future Improvements:
+          - Enhanced detection rules
+          - Additional data source integration
+          - Process improvements
+          - Training recommendations
+          ```
+          
+          **🔄 Continuous Monitoring:**
+          - Convert successful hunt queries to automated alerts
+          - Establish baseline metrics for ongoing detection
+          - Schedule regular hunt campaign reviews
+          - Update threat intelligence with findings
+          
+          **📚 Knowledge Sharing:**
+          - Document lessons learned for future hunts
+          - Share IOCs with threat intelligence community
+          - Update security awareness training materials
+          - Brief security operations team on new TTPs
+
+  - kind: AdaptiveDialog
+    id: APTHuntDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          👤 **Advanced Persistent Threat (APT) Hunt Campaign**
+          
+          I'll guide you through a sophisticated APT hunting operation targeting nation-state and advanced threat actors.
+
+      - kind: Question
+        variable: Dialog.aptTarget
+        prompt:
+          kind: Activity
+          activity: |
+            **APT Hunt Focus Selection**
+            
+            Which APT group or technique category do you want to hunt for?
+            
+            **Known APT Groups:**
+            **1.** APT1 (Comment Crew) - Chinese military intelligence
+            **2.** APT28 (Fancy Bear) - Russian GRU
+            **3.** APT29 (Cozy Bear) - Russian SVR
+            **4.** Lazarus Group - North Korean state-sponsored
+            **5.** FIN7 - Financial cybercrime syndicate
+            
+            **APT Technique Categories:**
+            **6.** Living-off-the-land techniques
+            **7.** Supply chain compromise indicators
+            **8.** Advanced persistence mechanisms
+            **9.** Custom malware and tools
+            **10.** General APT behavioral patterns
+
+      - kind: SendActivity
+        activity: |
+          👤 **APT Hunt Campaign: {Dialog.aptTarget}**
+          
+          ## 🎯 **APT-Specific Hunting Strategy**
+          
+          ### **🔍 APT Behavioral Indicators**
+          
+          **Operational Characteristics:**
+          - **Persistence:** Long-term access maintenance (months/years)
+          - **Stealth:** Minimal footprint and noise generation
+          - **Sophistication:** Custom tools and zero-day exploits
+          - **Targeting:** Strategic, high-value objectives
+          - **Resources:** Well-funded and professionally organized
+          
+          **Common APT TTPs:**
+          ```
+          Initial Access:     Spear phishing, watering hole attacks, supply chain
+          Execution:          PowerShell, WMI, scheduled tasks
+          Persistence:        Service creation, registry modification, DLL hijacking
+          Privilege Escalation: Token manipulation, exploits, credential dumping
+          Defense Evasion:    Process injection, rootkits, anti-forensics
+          Discovery:          Network reconnaissance, AD enumeration
+          Lateral Movement:   RDP, WMI, PowerShell remoting, stolen credentials
+          Collection:         File archiving, screen capture, keylogging
+          Exfiltration:       Encrypted channels, DNS tunneling, cloud storage
+          ```
+          
+          ### **🔍 Advanced Hunt Queries**
+          
+          **APT Persistence Detection:**
+          ```kql
+          // Hunt for sophisticated persistence mechanisms
+          union 
+          (
+              // Service-based persistence
+              DeviceEvents
+              | where ActionType == "ServiceInstalled"
+              | where ServiceAccount !in ("NT AUTHORITY\\SYSTEM", "NT AUTHORITY\\LOCAL SERVICE")
+              | project Timestamp, DeviceName, ServiceName, ServiceAccount, ServiceCommand = AdditionalFields.ServiceCommandLine
+          ),
+          (
+              // Registry persistence
+              DeviceRegistryEvents
+              | where RegistryKey has_any ("Run", "RunOnce", "Winlogon", "Explorer")
+              | where ActionType == "RegistryValueSet"
+              | project Timestamp, DeviceName, RegistryKey, RegistryValueName, RegistryValueData
+          ),
+          (
+              // Scheduled task persistence
+              DeviceProcessEvents
+              | where FileName == "schtasks.exe"
+              | where ProcessCommandLine has_any ("/create", "-create")
+              | project Timestamp, DeviceName, ProcessCommandLine, AccountName
+          )
+          | order by Timestamp desc
+          ```
+          
+          **APT Lateral Movement Detection:**
+          ```kql
+          // Detect APT-style lateral movement patterns
+          let timeframe = 7d;
+          let suspiciousProcesses = pack_array("net.exe", "nltest.exe", "ping.exe", "nslookup.exe");
+          
+          DeviceProcessEvents
+          | where Timestamp > ago(timeframe)
+          | where FileName in (suspiciousProcesses)
+          | where ProcessCommandLine has_any ("domain", "computers", "trusts", "groups")
+          | join kind=inner (
+              DeviceLogonEvents
+              | where Timestamp > ago(timeframe)
+              | where LogonType == "RemoteInteractive"
+              | where AccountName !endswith "$"
+          ) on DeviceName, $left.AccountName == $right.AccountName
+          | where datetime_diff('hour', ProcessCreationTime, LogonTime) < 2
+          | summarize 
+              ReconCommands = make_set(ProcessCommandLine),
+              UniqueDevices = dcount(DeviceName),
+              TimeSpan = datetime_diff('hour', max(Timestamp), min(Timestamp))
+              by AccountName
+          | where UniqueDevices > 3 or TimeSpan > 24
+          ```
+          
+          **APT Communication Detection:**
+          ```kql
+          // Hunt for APT C2 communication patterns
+          DeviceNetworkEvents
+          | where Timestamp > ago(30d)
+          | where RemotePort in (80, 443, 53, 8080, 8443)
+          | summarize 
+              TotalBytes = sum(SentBytes + ReceivedBytes),
+              ConnectionCount = count(),
+              UniqueDevices = dcount(DeviceName),
+              TimeSpan = datetime_diff('day', max(Timestamp), min(Timestamp))
+              by RemoteIP, RemotePort
+          | where TotalBytes < 10000000  // Small, regular communications
+          | where ConnectionCount > 100   // Persistent connections
+          | where TimeSpan > 7           // Long-term communication
+          | where UniqueDevices < 5      // Limited device scope
+          | join kind=leftouter (
+              DeviceNetworkEvents
+              | where ActionType == "ConnectionSuccess"
+              | summarize FirstSeen = min(Timestamp) by RemoteIP
+          ) on RemoteIP
+          | where FirstSeen > ago(90d)  // Recently established infrastructure
+          ```
+          
+          ### **🕵️ APT Investigation Workflow**
+          
+          **Phase 1: Initial Detection (Hours 1-4)**
+          1. Run APT-specific detection queries
+          2. Correlate findings across multiple data sources
+          3. Identify potential patient zero and timeline
+          4. Assess scope and potential impact
+          
+          **Phase 2: Deep Analysis (Hours 4-24)**
+          1. Forensic analysis of compromised systems
+          2. Memory dump analysis for advanced malware
+          3. Network traffic analysis for C2 patterns
+          4. Threat intelligence correlation and attribution
+          
+          **Phase 3: Containment Planning (Hours 24-48)**
+          1. Map full scope of compromise
+          2. Identify critical systems and data at risk
+          3. Develop containment strategy to avoid detection
+          4. Coordinate with legal and executive teams
+          
+          **Phase 4: Eradication (Days 2-7)**
+          1. Simultaneous removal from all compromised systems
+          2. Credential reset and access revocation
+          3. Network segmentation and monitoring
+          4. Threat hunting for persistence mechanisms
+          
+          ### **📊 APT Hunt Metrics**
+          
+          **Detection Effectiveness:**
+          - Time to initial detection
+          - Scope of compromise discovered
+          - Attribution confidence level
+          - False positive rate
+          
+          **Response Effectiveness:**
+          - Time to containment
+          - Completeness of eradication
+          - Recurrence prevention
+          - Intelligence value generated
