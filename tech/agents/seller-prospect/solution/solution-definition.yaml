@@ -34,6 +34,16 @@ environmentVariables:
     required: true
     isSecret: false
     description: Allowed external domain for website channel.
+  - name: PublicProductLibrarySiteUrl
+    type: string
+    required: true
+    isSecret: false
+    description: SharePoint site URL for the Public Product Library (product overviews, feature comparisons, pricing tiers, technical specs).
+  - name: InternalCompetitiveIntelLibraryUrl
+    type: string
+    required: true
+    isSecret: false
+    description: SharePoint site URL for the internal-only Competitive Intelligence Library. Restricted to internal Teams channel only.
 
 dataverse:
   tables:
@@ -173,13 +183,46 @@ knowledgeSources:
   - key: public-product-library
     name: Public Product Library
     visibility: external-and-internal
-    sourceType: website-or-public-docs
+    sourceType: sharepoint-document-library
     contentPolicy: public-safe-only
+    siteUrlRef: PublicProductLibrarySiteUrl
+    definition: knowledge-base/product-library.yaml
+    description: >
+      SharePoint document library with public-safe product overviews, feature comparisons,
+      pricing tiers, and technical specifications. Separate from internal knowledge.
+  - key: faq-collection
+    name: FAQ Collection
+    visibility: external-and-internal
+    sourceType: structured-faq
+    contentPolicy: public-safe-only
+    definition: knowledge-base/faq-collection.yaml
+    description: >
+      Structured FAQ covering prospect questions on pricing, implementation timeline,
+      integration capabilities, and support tiers.
+  - key: case-studies
+    name: Case Studies and Social Proof
+    visibility: external-and-internal
+    sourceType: structured-content
+    contentPolicy: public-safe-only
+    definition: knowledge-base/case-studies.yaml
+    description: >
+      Curated customer success stories referenced when prospects ask who else uses
+      the platform. All stories carry written customer reference approval.
   - key: competitive-intel-library
     name: Competitive Intelligence Library
     visibility: internal-only
-    sourceType: sharepoint-or-internal-docs
+    sourceType: sharepoint-document-library
     contentPolicy: restricted-confidential
+    siteUrlRef: InternalCompetitiveIntelLibraryUrl
+    definition: knowledge-base/competitive-positioning.yaml
+    channelRestriction:
+      allowedChannels:
+        - msteams
+      blockedChannels:
+        - webchat
+    description: >
+      Internal-only battlecards, objection handling, and win/loss insights.
+      Never surfaced to external prospects. Channel guard enforced at topic level.
 
 authentication:
   internal:
@@ -219,6 +262,12 @@ channels:
 
 agentDefinition:
   templatePath: ../templates/agent-template.yaml
+  knowledgeBaseDefinitions:
+    - knowledge-base/product-library.yaml
+    - knowledge-base/faq-collection.yaml
+    - knowledge-base/case-studies.yaml
+    - knowledge-base/competitive-positioning.yaml
+    - knowledge-base/content-governance.yaml
   topicCoverage:
     - Greeting
     - Lead Qualification

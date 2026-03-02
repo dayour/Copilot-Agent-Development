@@ -1,0 +1,155 @@
+schemaVersion: 1.0
+knowledgeSource:
+  key: competitive-intel-library
+  name: Competitive Positioning
+  visibility: internal-only
+  sourceType: sharepoint-document-library
+  contentPolicy: restricted-confidential
+  description: >
+    Internal-only competitive intelligence used by sales representatives to counter
+    competitor claims and position the platform effectively. This source is never
+    surfaced to external prospects. The agent enforces this boundary at topic
+    execution time by checking the channel context before querying this source.
+  channelRestriction:
+    allowedChannels:
+      - msteams
+    blockedChannels:
+      - webchat
+      - all-external
+  sharePoint:
+    libraryName: CompetitiveIntelligence
+    siteUrlRef: InternalCompetitiveIntelLibraryUrl
+    accessControl:
+      requiredRole: SalesRepresentative
+      audienceGroup: InternalSalesTeam
+
+battlecards:
+  - id: bc-competitor-a
+    competitor: Competitor A
+    competitorTier: primary
+    lastUpdated: "2025-11-01"
+    reviewedBy: Sales Enablement Team
+    summary: >
+      Competitor A is positioned as a workflow automation platform for mid-market
+      companies. Their core strength is ease of onboarding for non-technical buyers.
+      Key weaknesses include limited enterprise scalability, shallow CRM depth, and
+      absence of AI-assisted decisioning at the deal level.
+    strengths:
+      - Low-code interface with fast time to first value for SMB buyers
+      - Competitive pricing in the Essentials tier segment
+      - Strong community and partner ecosystem in North America
+    weaknesses:
+      - No native AI orchestration layer; relies on third-party LLM add-ons
+      - Salesforce integration is read-only in base tier; write-back requires add-on
+      - Data residency limited to US regions; no EU or APAC options
+      - Premier Support available only above $100k ACV
+    positioning:
+      headline: >
+        We offer native AI-assisted qualification and deal coaching that Competitor A
+        cannot match without additional third-party tooling and integration cost.
+      keyMessages:
+        - Our Sales Accelerator includes AI deal scoring out of the box; no add-ons required.
+        - Our Salesforce connector supports full bidirectional sync on all paid tiers.
+        - We operate in EU and APAC regions with local data residency compliance today.
+      objectionHandling:
+        - objection: Competitor A is cheaper.
+          response: >
+            Competitor A's base price appears lower, but the total cost rises quickly once
+            prospects add AI capabilities, premium connectors, and Premier Support. Our
+            Professional tier bundles these at a lower all-in cost above 50 users.
+        - objection: We already use Competitor A and it works fine.
+          response: >
+            For teams that have outgrown standard automation, the key question is whether
+            you need AI-assisted decisioning and deep CRM write-back. If those are on your
+            roadmap, migration now is more cost-effective than a platform change in 18 months.
+
+  - id: bc-competitor-b
+    competitor: Competitor B
+    competitorTier: primary
+    lastUpdated: "2025-10-15"
+    reviewedBy: Sales Enablement Team
+    summary: >
+      Competitor B targets enterprise buyers with a full CRM-plus-automation suite.
+      Their strength is deep Salesforce Einstein integration. Weaknesses include high
+      total cost of ownership, long implementation cycles, and limited external
+      channel flexibility for public-facing deployments.
+    strengths:
+      - Deep Salesforce Einstein and Salesforce Flow native integration
+      - Strong analyst recognition (Gartner, Forrester)
+      - Established enterprise reference base
+    weaknesses:
+      - Average implementation time: 9 to 18 months for enterprise deals
+      - Licensing model is complex with many per-feature add-ons
+      - External web chat requires separate SKU and partner-led deployment
+      - AI features locked behind highest license tier
+    positioning:
+      headline: >
+        We deliver comparable enterprise-grade AI and CRM depth in a fraction of the
+        implementation time, with simpler licensing and built-in external channel support.
+      keyMessages:
+        - Standard Professional implementations deploy in 8 to 12 weeks.
+        - Our pricing bundles AI, connectors, and channels without separate SKUs.
+        - External web chat with B2C authentication is included in core product.
+      objectionHandling:
+        - objection: We are standardizing on Competitor B because of our Salesforce investment.
+          response: >
+            We have a native bidirectional Salesforce connector that integrates directly
+            with your existing Salesforce org. Our platform can complement rather than
+            replace your Salesforce investment, with faster time to value for AI-assisted
+            workflows that Competitor B typically requires additional Einstein licenses to cover.
+        - objection: Competitor B is already approved by our procurement team.
+          response: >
+            We can support a parallel proof-of-concept in your sandbox environment to
+            demonstrate feature parity and implementation velocity. Many customers run us
+            alongside Competitor B for AI-heavy workloads while keeping Competitor B for
+            core CRM. Your procurement team can evaluate on outcomes rather than brand familiarity.
+
+  - id: bc-competitor-c
+    competitor: Competitor C
+    competitorTier: secondary
+    lastUpdated: "2025-09-01"
+    reviewedBy: Sales Enablement Team
+    summary: >
+      Competitor C is a point solution focused specifically on sales engagement
+      sequences (email, call cadences). Not a platform play. Relevant only when
+      prospects are evaluating pure sales engagement tooling rather than a full
+      AI-assisted sales operations platform.
+    strengths:
+      - Best-in-class email and call sequence automation
+      - High user adoption among SDR and BDR personas
+      - Strong deliverability tooling
+    weaknesses:
+      - No workflow orchestration beyond sequences
+      - No CRM write-back or qualification scoring
+      - No AI decisioning; rule-based only
+      - No internal knowledge or coaching layer
+    positioning:
+      headline: >
+        Competitor C is a sequence tool, not a platform. If the prospect needs
+        qualification scoring, AI coaching, CRM automation, and external chat,
+        Competitor C cannot address those requirements.
+      keyMessages:
+        - We are not just a cadence tool; we are an end-to-end AI sales operations platform.
+        - Our qualification scoring and CRM automation are features Competitor C does not offer.
+        - >
+          Many teams use both: Competitor C for outbound sequences and our platform for
+          inbound qualification, internal coaching, and CRM intelligence.
+
+winLossInsights:
+  summary: >
+    This section captures patterns from recent win and loss analysis. All data is
+    sourced from post-deal debrief interviews conducted by the Sales Enablement team.
+    Refresh cadence: quarterly.
+  lastRefreshed: "2025-Q3"
+  winPatterns:
+    - Deals where AI-assisted qualification was a named evaluation criterion win at 2.3x rate
+    - Deals evaluated on implementation speed win when we demonstrate 8-to-12-week track record
+    - Deals where external web chat is a requirement win at high rate due to B2C auth capability
+  lossPatterns:
+    - Deals lost to Competitor B when procurement has pre-existing vendor relationship
+    - Deals lost to Competitor A when budget is primary driver and user count is below 30
+    - Deals lost when champion leaves mid-cycle without executive sponsor established
+  recommendedActions:
+    - Establish executive sponsor contact in first 30 days of deal
+    - Quantify AI qualification ROI using BANT completion rate benchmark data
+    - Offer pilot program early in deals where Competitor B is incumbent

@@ -53,8 +53,10 @@ Seller Prospect is a Copilot Studio agent solution for enterprise sales organiza
 - Power Automate flows execute Salesforce actions via prebuilt Salesforce connector.
 - Microsoft Graph integration supports calendar-based scheduling.
 - Knowledge split:
-  - Public product library (external-safe)
-  - Internal competitive intelligence library (internal-only)
+  - Public product library (external-safe, SharePoint)
+  - FAQ collection (external-safe, structured content)
+  - Case studies and social proof (external-safe, curated references)
+  - Internal competitive intelligence library (internal-only, SharePoint)
 
 ## Folder Structure
 
@@ -66,6 +68,13 @@ tech/agents/seller-prospect/
     agent-template.yaml
   solution/
     solution-definition.yaml
+  knowledge-base/
+    README.md
+    product-library.yaml
+    faq-collection.yaml
+    case-studies.yaml
+    competitive-positioning.yaml
+    content-governance.yaml
 ```
 
 ## Design Notes

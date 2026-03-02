@@ -60,6 +60,8 @@ Configure the following environment variables immediately after import:
 | SalesforceInstanceUrl | `https://company.my.salesforce.com` | Yes |
 | AzureAdB2cTenantId | `contosoexternal.onmicrosoft.com` | Yes |
 | ProspectWebsiteDomain | `https://www.contoso.com` | Yes |
+| PublicProductLibrarySiteUrl | `https://contoso.sharepoint.com/sites/PublicProductKnowledge` | Yes |
+| InternalCompetitiveIntelLibraryUrl | `https://contoso.sharepoint.com/sites/CompetitiveIntel` | Yes |
 
 ## 4.3 Secret Storage
 - Store `SalesforceClientSecret` in environment secret store/Key Vault-backed configuration when available.
@@ -68,25 +70,64 @@ Configure the following environment variables immediately after import:
 ## 5. Knowledge Source Configuration
 
 ## 5.1 Public Product Library
-- Source type: Public-safe website/doc library
+- Source type: SharePoint document library
+- Environment variable: `PublicProductLibrarySiteUrl`
+- Definition file: `knowledge-base/product-library.yaml`
 - Contents:
-  - Product overview pages
-  - Public pricing guidance
-  - Approved case studies
-  - Public compliance statements
-- Used by: External Prospect Chat and qualification support
+  - `product-overviews/` -- platform and module overview documents
+  - `feature-comparisons/` -- Essentials vs. Professional vs. Enterprise matrices
+  - `pricing-tiers/` -- pricing guidance with required disclaimers
+  - `technical-specifications/` -- integration catalog, compliance certifications, architecture docs
+- Used by: External web chat (Prospect Chat topic) and internal Teams
+- Access: Public-safe; no authentication gate on SharePoint library index
 
-## 5.2 Internal Competitive Intelligence Library
-- Source type: Internal SharePoint/Dataverse restricted source
+## 5.2 FAQ Collection
+- Source type: Structured FAQ (defined in `knowledge-base/faq-collection.yaml`)
+- Definition file: `knowledge-base/faq-collection.yaml`
+- Contents: Approved Q and A pairs across four categories:
+  - Pricing and Packaging (5 entries)
+  - Implementation Timeline (4 entries)
+  - Integration Capabilities (4 entries)
+  - Support Tiers (4 entries)
+- Used by: External web chat (Prospect Chat topic) and internal Teams
+- Content governance: All entries require marketing and legal approval before publication
+
+## 5.3 Case Studies and Social Proof
+- Source type: Structured content (defined in `knowledge-base/case-studies.yaml`)
+- Definition file: `knowledge-base/case-studies.yaml`
+- Contents: Customer success stories organized by industry:
+  - Financial Services (2 cases)
+  - Technology (2 cases)
+  - Manufacturing (1 case)
+  - Professional Services (1 case)
+- Used by: External web chat (Prospect Chat topic) and internal Teams
+- Prerequisite: Each case study requires a signed Reference Authorization Form on file in Legal > Customer References SharePoint folder before publication
+
+## 5.4 Competitive Intelligence Library
+- Source type: SharePoint document library
+- Environment variable: `InternalCompetitiveIntelLibraryUrl`
+- Definition file: `knowledge-base/competitive-positioning.yaml`
 - Contents:
-  - Battlecards
-  - Competitor objection handling
-  - Internal win/loss playbooks
-- Used by: Internal Teams topics only
+  - Battlecards for primary and secondary competitors
+  - Objection handling scripts
+  - Win and loss pattern analysis
+- Used by: Internal Teams channel only (Competitive Intelligence topic)
+- Access: Restricted to `InternalSalesTeam` audience group. SharePoint library must be configured with audience targeting to block external access.
 
-## 5.3 Boundary Controls
-- External channel must not query internal competitive sources.
-- Validate source visibility by channel during UAT.
+## 5.5 Boundary Controls
+- External channel must not query the competitive intelligence library.
+- The Competitive Intelligence topic enforces this via a channel condition: `=Lower(System.Channel.Name) = "msteams"`.
+- Validate source visibility by channel during UAT using the checklist in section 8.
+- The `solution-definition.yaml` `channelRestriction` block documents the intended restriction for audit purposes.
+
+## 5.6 Content Governance
+- Governance workflow: `knowledge-base/content-governance.yaml`
+- All externally visible content (product library, FAQ, case studies) requires a three-step approval:
+  1. Product Marketing review (3 business day SLA)
+  2. Legal review (5 business day SLA)
+  3. Sales Enablement Owner final approval (2 business day SLA)
+- Content expiry policy: Pricing content expires every 6 months; all other external content expires every 12 months (case studies every 24 months).
+- Quarterly audit: Sales Enablement Owner reviews all content nearing expiry and archives past-expiry items.
 
 ## 6. Authentication Setup
 
