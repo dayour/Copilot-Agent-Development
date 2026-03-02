@@ -1,0 +1,49 @@
+testName: Publishing Page
+description: >
+  Verify that the publishing and channels page exposes the publish button and
+  channel toggles so that runbooks can deploy agents to Teams, web chat, and
+  other channels.
+page: publishing
+agentScoped: true
+
+navigation:
+  - action: navigate
+    target: "${COPILOT_STUDIO_URL}/environments/${COPILOT_ENV_ID}/bots/${COPILOT_TEST_AGENT_ID}/channels"
+  - action: wait
+    waitMs: 3000
+
+snapshot:
+  filter: interactive
+
+assertions:
+  - ref: "button[aria-label*='Publish'], button[data-testid*='publish-bot'], button[data-testid*='publish-agent']"
+    description: Primary publish button
+    required: true
+
+  - ref: "[data-testid='publish-status'], [aria-label*='publish status'], [aria-live][aria-label*='published'], [class*='publishStatus']"
+    description: Publish status indicator
+    required: true
+
+  - ref: "[data-testid='channel-teams'], [aria-label*='Microsoft Teams'], [role='switch'][aria-label*='Teams'], input[type='checkbox'][aria-label*='Teams']"
+    description: Microsoft Teams channel toggle
+    required: true
+
+  - ref: "[data-testid='channel-webchat'], [aria-label*='Custom website'], [aria-label*='Web chat'], [role='switch'][aria-label*='web']"
+    description: Web chat or custom website channel toggle
+    required: true
+
+  - ref: "[data-testid='channel-mobile'], [aria-label*='Mobile app'], [aria-label*='Power Apps']"
+    description: Mobile app or Power Apps channel toggle
+    required: false
+
+  - ref: "button[aria-label*='Configure'], button[data-testid*='configure-channel'], [aria-label*='channel settings']"
+    description: Channel configuration button
+    required: false
+
+  - ref: "[aria-label*='Publish history'], [data-testid*='publish-history'], button[aria-label*='history']"
+    description: Publish history link or section
+    required: false
+
+  - ref: "[aria-label*='Availability'], [data-testid*='availability'], [class*='availability']"
+    description: Agent availability status section
+    required: false
