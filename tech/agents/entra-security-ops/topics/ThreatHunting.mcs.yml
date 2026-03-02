@@ -1,0 +1,25 @@
+# Name: Threat Hunting
+# Domain-specific topic for Entra_Security_Ops
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Threat Hunting
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - threat hunting
+      - hunt threats
+      - security threats
+      - anomaly detection
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I can assist with threat hunting activities. What type of threats or indicators are you looking to investigate?
+        speak:
+          - I can assist with threat hunting activities. What type of threats or indicators are you looking to investigate?
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end
