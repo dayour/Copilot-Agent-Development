@@ -4,6 +4,9 @@ solution:
   version: 1.0.0.0
   publisher: transportation-platform
   managed: true
+  dependencies:
+    - solution_name: TransportationSharedDataverse
+      minimum_version: "1.0.0.0"
 
 environment_variables:
   - schema_name: FuelCardApiUrl
@@ -429,6 +432,100 @@ flows:
         connector: Dataverse
         table: VehicleFuelProfiles
       - action: respond_to_agent
+
+  - name: GetVehicleTankLevel
+    trigger: instant_from_agent
+    description: >
+      Reads current tank level percentage and capacity from VehicleMaster,
+      enriched with the latest telematics sensor reading. Called by Route
+      Optimizer during fuel-route correlation to determine whether fuel stop
+      insertion is needed.
+    inputs:
+      - vehicleId
+    outputs:
+      - tankLevelPct
+      - tankCapacityGallons
+      - fuelType
+      - estimatedRangeMiles
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: VehicleMaster
+        key: crd_vehicle_id
+        filter: crd_vehicle_id eq vehicleId
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/fuel-level
+        params:
+          vehicleId: "{vehicleId}"
+      - action: merge_telematics_with_master
+      - action: respond_to_agent
+
+  - name: GetFuelCardForVehicle
+    trigger: instant_from_agent
+    description: >
+      Returns the active fuel card record associated with the given vehicle.
+      Used by the Fuel Card Breakdown Check topic to identify which card may
+      need suspension after a breakdown.
+    inputs:
+      - vehicleId
+    outputs:
+      - cardLast4
+      - cardStatus
+      - cardNumber
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: FuelCards
+        filter: crd_vehicle_id eq vehicleId and crd_status eq 'active'
+      - action: respond_to_agent
+
+  - name: CheckFuelCardOnBreakdown
+    trigger: http_post
+    description: >
+      HTTP-triggered entry point called by Fleet Coordinator's
+      TriggerCrossAgentEscalation flow when a breakdown incident is reported.
+      Looks up the vehicle's fuel card, presents a suspension decision to the
+      dispatcher, and executes suspension if confirmed. Returns card action
+      status to the calling flow.
+    inputs:
+      - vehicle_id
+      - incident_id
+    outputs:
+      - card_action_taken
+      - card_last4
+      - provider_reference
+    steps:
+      - action: call_flow
+        flow: GetFuelCardForVehicle
+        input:
+          vehicleId: "{vehicle_id}"
+      - action: condition
+        if: cardStatus = 'active'
+        then:
+          - action: send_adaptive_card_with_override
+            channel: teams
+            title: "Fuel Card Check — Broken Down Vehicle"
+            body: "Vehicle {vehicle_id} is stranded (Incident {incident_id}). Suspend fuel card ending {cardLast4}?"
+            buttons:
+              - label: Suspend Card
+                value: suspend
+              - label: Leave Active
+                value: skip
+          - action: condition
+            if: dispatcher_response = suspend
+            then:
+              - action: call_flow
+                flow: SuspendFuelCard
+                input:
+                  cardLast4: "{cardLast4}"
+                  action: suspend
+      - action: http_response
+        status: 200
+        body:
+          card_action_taken: "{card_action_taken}"
+          card_last4: "{cardLast4}"
+          provider_reference: "{providerReference}"
 
 channels:
   - name: teams

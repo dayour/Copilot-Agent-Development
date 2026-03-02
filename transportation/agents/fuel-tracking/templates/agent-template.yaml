@@ -357,3 +357,89 @@ topics:
           - type: message
             text: "You are not authorized to perform card management actions."
 
+  - name: Vehicle Tank Level
+    description: Returns the current fuel tank level percentage for a vehicle as reported by the telematics feed. Used by Route Optimizer for fuel-route correlation decisions.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - tank level for vehicle
+        - how much fuel does vehicle have
+        - current tank level for truck
+        - fuel level check for vehicle
+    inputs:
+      - name: vehicle_id
+        type: string
+        required: true
+    nodes:
+      - type: question
+        id: askVehicleIdTank
+        prompt: "Which vehicle ID should I check the tank level for?"
+        variable: Topic.vehicle_id
+        entity: Text
+      - type: tool
+        id: getTankLevel
+        tool_name: GetVehicleTankLevel
+        input_mapping:
+          vehicleId: =Topic.vehicle_id
+      - type: message
+        text: |-
+          Tank level for vehicle {Topic.vehicle_id}:
+          - Current level: {Topic.TankLevelPct}%
+          - Tank capacity: {Topic.TankCapacityGallons} gallons
+          - Fuel type: {Topic.FuelType}
+          - Estimated range remaining: {Topic.EstimatedRangeMiles} miles
+
+  - name: Fuel Card Breakdown Check
+    description: Checks whether a fuel card associated with a broken-down vehicle should be suspended and executes the suspension with dispatcher confirmation. Called as part of the cross-agent escalation chain initiated by Fleet Coordinator.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - check fuel card for broken down vehicle
+        - suspend card for stranded vehicle
+        - fuel card check after breakdown
+        - breakdown fuel card suspension
+    inputs:
+      - name: vehicle_id
+        type: string
+        required: true
+      - name: incident_id
+        type: string
+        required: false
+    nodes:
+      - type: tool
+        id: lookupCard
+        tool_name: GetFuelCardForVehicle
+        input_mapping:
+          vehicleId: =Topic.vehicle_id
+      - type: condition
+        id: cardActiveCheck
+        branches:
+          - condition: =Topic.CardStatus = "active"
+            actions:
+              - type: message
+                text: "Vehicle {Topic.vehicle_id} has an active fuel card ending {Topic.CardLast4}. Suspend to prevent unauthorized charges while the vehicle is stranded?"
+              - type: question
+                id: confirmSuspend
+                prompt: "Type YES to suspend card ending {Topic.CardLast4}, or NO to leave it active."
+                variable: Topic.confirmation
+                entity: Text
+              - type: condition
+                id: suspendGate
+                branches:
+                  - condition: =Upper(Topic.confirmation) = "YES"
+                    actions:
+                      - type: tool
+                        id: suspendCard
+                        tool_name: SuspendFuelCard
+                        input_mapping:
+                          cardLast4: =Topic.CardLast4
+                          action: suspend
+                      - type: message
+                        text: "Card ending {Topic.CardLast4} suspended for vehicle {Topic.vehicle_id}. Reference: {Topic.ProviderReference}."
+                else_actions:
+                  - type: message
+                    text: "Card suspension skipped. Monitor card {Topic.CardLast4} for unauthorized activity."
+        else_actions:
+          - type: message
+            text: "No active fuel card found for vehicle {Topic.vehicle_id}. No action required."
+

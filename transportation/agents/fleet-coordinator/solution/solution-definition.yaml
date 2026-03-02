@@ -1,6 +1,7 @@
 # Copilot Studio Solution Definition — Fleet Coordinator (Transportation)
 # This file defines the exportable solution components for the Fleet Coordinator agent.
 # Import this into your Copilot Studio / Power Platform environment.
+# Requires TransportationSharedDataverse solution to be imported first.
 
 solution:
   name: TransportationFleetCoordinator
@@ -11,6 +12,9 @@ solution:
     Showcase solution for the Fleet Coordinator agent in the Transportation vertical.
     Includes the agent definition, topics, knowledge source bindings,
     environment variable declarations, and Power Automate flow references.
+  dependencies:
+    - solution_name: TransportationSharedDataverse
+      minimum_version: "1.0.0.0"
 
 environment_variables:
   - name: FleetManagementApiUrl
@@ -41,6 +45,30 @@ environment_variables:
     display_name: Compliance Document Library SharePoint URL
     type: string
     description: SharePoint document library containing compliance and safety documentation.
+    default_value: ""
+
+  - name: DispatchAlertEmail
+    display_name: Dispatch Alert Email
+    type: string
+    description: Distribution list for escalation and vehicle-unavailability notifications.
+    default_value: ""
+
+  - name: RouteOptimizerFlowBaseUrl
+    display_name: Route Optimizer Flow Base URL
+    type: string
+    description: >
+      Base URL for Power Automate HTTP-triggered flows in the Route Optimizer
+      solution. Used for cross-agent escalation calls. Required for
+      cross-agent escalation to function.
+    default_value: ""
+
+  - name: FuelTrackingFlowBaseUrl
+    display_name: Fuel Tracking Flow Base URL
+    type: string
+    description: >
+      Base URL for Power Automate HTTP-triggered flows in the Fuel Tracking
+      solution. Used for cross-agent fuel card suspension checks. Required for
+      cross-agent escalation to function.
     default_value: ""
 
 components:
@@ -87,6 +115,50 @@ components:
           type: datetime
           auto_set: true
 
+    - name: MaintenanceAlerts
+      display_name: Maintenance Alerts
+      description: >
+        Stores vehicle maintenance alerts raised by the Fleet Coordinator agent.
+        The maintenance_status column mirrors the value written back to
+        VehicleMaster so that Route Optimizer can query availability without
+        joining to this table directly.
+      columns:
+        - name: alert_id
+          type: autonumber
+          primary: true
+        - name: vehicle_id
+          type: string
+          required: true
+        - name: fault_type
+          type: choice
+          options: [Engine, Tyres, Brakes, Lights, Bodywork, Other]
+          required: true
+        - name: severity
+          type: choice
+          options:
+            - low_can_continue
+            - medium_needs_attention
+            - high_take_off_road
+          required: true
+        - name: description
+          type: multiline_text
+          required: true
+        - name: maintenance_status_set
+          type: choice
+          options:
+            - operational
+            - preventive_maintenance_due
+            - critical_maintenance_hold
+          required: true
+        - name: resolved
+          type: boolean
+          default_value: false
+        - name: resolved_at
+          type: datetime
+        - name: created_at
+          type: datetime
+          auto_set: true
+
   power_automate_flows:
     - name: GetVehicleAvailability
       description: Queries the fleet management system for vehicle availability on a given date.
@@ -113,6 +185,187 @@ components:
       trigger: copilot_studio_topic_action
       connector: http
 
+    - name: LogMaintenanceAlert
+      description: >
+        Logs a vehicle fault in Dataverse MaintenanceAlerts, emails the maintenance
+        team, updates VehicleMaster.maintenance_status, and calls
+        NotifyVehicleUnavailable if the vehicle is assigned to an active route.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: dataverse
+      cross_agent_calls:
+        - flow: NotifyVehicleUnavailable
+          condition: severity = high_take_off_road
+
+    - name: NotifyVehicleUnavailable
+      description: >
+        Reads active Routes records from Route Optimizer's Dataverse table where
+        the affected vehicle is assigned and status is planned or in_progress.
+        Sends a Teams adaptive card to the dispatcher and triggers the
+        HandleFleetIncidentEscalation flow in the Route Optimizer solution to
+        initiate re-routing.
+      trigger: internal_flow_call
+      connector: dataverse
+      inputs:
+        - vehicle_id
+        - alert_id
+        - hold_reason
+      steps:
+        - action: list_rows
+          connector: Dataverse
+          table: Routes
+          filter: crd_vehicle_id eq vehicle_id and crd_status in ('planned','in_progress')
+        - action: condition
+          if: affected_routes_count > 0
+          then:
+            - action: send_adaptive_card
+              channel: teams
+              recipient: DispatchAlertEmail
+              title: "Vehicle Unavailable — Route Impact"
+              body: "Vehicle {vehicle_id} has been placed on maintenance hold. {affected_routes_count} route(s) require reassignment."
+            - action: http_post
+              connector: RouteOptimizerHttp
+              path: /flows/HandleFleetIncidentEscalation/trigger
+              body:
+                vehicle_id: "{vehicle_id}"
+                incident_type: maintenance_hold
+                hold_reason: "{hold_reason}"
+
+    - name: TriggerCrossAgentEscalation
+      description: >
+        Handles breakdown and emergency incidents by:
+        (1) creating an IncidentReport record in Dataverse,
+        (2) updating VehicleMaster.maintenance_status to out_of_service,
+        (3) calling Route Optimizer's HandleFleetIncidentEscalation flow to
+            re-route affected active deliveries, and
+        (4) calling Fuel Tracking's CheckFuelCardOnBreakdown flow to assess
+            whether the stranded vehicle's fuel card should be suspended.
+        A manual override option is presented to the dispatcher before
+        step (3) and (4) are executed.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: dataverse
+      inputs:
+        - vehicle_id
+        - incident_type
+        - location
+        - description
+      outputs:
+        - escalation_id
+        - reroute_status
+        - fuel_card_check_status
+      steps:
+        - action: create_row
+          connector: Dataverse
+          table: IncidentReports
+        - action: update_row
+          connector: Dataverse
+          table: VehicleMaster
+          key: crd_vehicle_id
+          fields:
+            maintenance_status: out_of_service
+            maintenance_hold_reason: "{description}"
+        - action: send_adaptive_card_with_override
+          channel: teams
+          recipient: DispatchAlertEmail
+          title: "Escalation Confirmation Required"
+          body: "Breakdown reported for {vehicle_id} at {location}. Proceed with automatic re-routing and fuel card check? Select Override to handle manually."
+          buttons:
+            - label: Proceed
+              value: proceed
+            - label: Override — Handle Manually
+              value: manual_override
+        - action: condition
+          if: dispatcher_response = proceed
+          then:
+            - action: http_post
+              connector: RouteOptimizerHttp
+              path: /flows/HandleFleetIncidentEscalation/trigger
+              body:
+                vehicle_id: "{vehicle_id}"
+                incident_type: "{incident_type}"
+                location: "{location}"
+            - action: http_post
+              connector: FuelTrackingHttp
+              path: /flows/CheckFuelCardOnBreakdown/trigger
+              body:
+                vehicle_id: "{vehicle_id}"
+                incident_id: "{escalation_id}"
+        - action: respond_to_agent
+
+    - name: GetFleetDashboard
+      description: >
+        Aggregates fleet health, fuel, and route performance data from all three
+        agent Dataverse tables and returns a unified summary for the Fleet
+        Operations Dashboard adaptive card. Queries run in parallel.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      outputs:
+        - active_vehicle_count
+        - maintenance_alert_count
+        - next_maintenance_hold_expiry
+        - weekly_fuel_spend
+        - fuel_budget_variance
+        - open_anomaly_count
+        - routes_completed_this_week
+        - on_time_delivery_rate
+        - active_reroute_alerts
+        - dashboard_timestamp
+      steps:
+        - action: parallel
+          branches:
+            - name: fleet_health
+              steps:
+                - action: count_rows
+                  connector: Dataverse
+                  table: VehicleMaster
+                  filter: crd_active eq true
+                  output: active_vehicle_count
+                - action: count_rows
+                  connector: Dataverse
+                  table: MaintenanceAlerts
+                  filter: crd_resolved eq false
+                  output: maintenance_alert_count
+                - action: query_dataverse
+                  connector: Dataverse
+                  table: VehicleMaster
+                  select: min(crd_maintenance_hold_until)
+                  output: next_maintenance_hold_expiry
+            - name: fuel_overview
+              steps:
+                - action: query_dataverse
+                  connector: Dataverse
+                  table: FuelTransactions
+                  filter: crd_timestamp ge startof_week
+                  aggregate: sum(crd_total_cost)
+                  output: weekly_fuel_spend
+                - action: query_dataverse
+                  connector: Dataverse
+                  table: FuelTransactions
+                  output: fuel_budget_variance
+                - action: count_rows
+                  connector: Dataverse
+                  table: FuelAnomalies
+                  filter: crd_status in ('open','under_review')
+                  output: open_anomaly_count
+            - name: route_performance
+              steps:
+                - action: count_rows
+                  connector: Dataverse
+                  table: Routes
+                  filter: crd_status eq 'completed' and crd_planned_departure ge startof_week
+                  output: routes_completed_this_week
+                - action: query_dataverse
+                  connector: Dataverse
+                  table: Routes
+                  filter: crd_status eq 'completed' and crd_planned_departure ge startof_week
+                  aggregate: on_time_rate
+                  output: on_time_delivery_rate
+                - action: count_rows
+                  connector: Dataverse
+                  table: Routes
+                  filter: crd_status eq 'in_progress' and crd_reroute_active eq true
+                  output: active_reroute_alerts
+        - action: respond_to_agent
+
 connections:
   - connector: http
     display_name: HTTP (Fleet Management API + Mapping API)
@@ -122,6 +375,12 @@ connections:
     display_name: Office 365 Outlook
   - connector: microsoft_teams
     display_name: Microsoft Teams
+  - connector: http
+    display_name: HTTP (Route Optimizer cross-agent calls)
+    reference: RouteOptimizerHttp
+  - connector: http
+    display_name: HTTP (Fuel Tracking cross-agent calls)
+    reference: FuelTrackingHttp
 
 channels:
   - type: microsoft_teams
