@@ -1,0 +1,197 @@
+# transcript-analysis-config.yaml
+#
+# Sample configuration documenting the expected input schema for
+# transcript-analysis.py. Reference this file when exporting transcripts
+# from Copilot Studio analytics or Dataverse conversation logs.
+#
+# The pipeline accepts CSV or JSON input. Column/field names are resolved
+# via the alias table below. Any column not listed here is silently ignored.
+
+# ---------------------------------------------------------------------------
+# Input schema -- Copilot Studio analytics export (CSV)
+# ---------------------------------------------------------------------------
+# The analytics export from https://copilotstudio.microsoft.com uses the
+# following default column names. Map your export headers to these if they
+# differ using the aliases list in each field.
+
+input_schema:
+  conversation_id:
+    description: Unique identifier for the conversation session. No user identity.
+    aliases:
+      - conversation_id
+      - conversationId
+      - conv_id
+      - sessionId
+      - session_id
+    required: true
+    example: "conv_abc123"
+
+  agent_name:
+    description: Name of the Copilot Studio agent that handled the conversation.
+    aliases:
+      - agent_name
+      - agentName
+      - bot_name
+      - botName
+    required: false
+    example: "IT Help Desk"
+
+  vertical:
+    description: Business vertical for the agent (coffee, clothing, insurance, tech, transportation).
+    aliases:
+      - vertical
+      - channel
+      - product
+    required: false
+    example: "tech"
+
+  turn_index:
+    description: Zero-based sequential index of the turn within the conversation.
+    aliases:
+      - turn_index
+      - turnIndex
+      - turn_number
+      - turn_num
+    required: false
+    example: 0
+
+  timestamp:
+    description: >
+      UTC timestamp of the turn. Accepted formats:
+      YYYY-MM-DDTHH:MM:SS.ffffffZ, YYYY-MM-DDTHH:MM:SSZ,
+      YYYY-MM-DDTHH:MM:SS, YYYY-MM-DD HH:MM:SS, YYYY-MM-DD.
+    aliases:
+      - timestamp
+      - created_at
+      - createdAt
+      - time
+      - date
+    required: false
+    example: "2025-06-15T09:32:11Z"
+
+  speaker:
+    description: Who sent the turn. Use "user" for end-user messages and "agent" for bot responses.
+    aliases:
+      - speaker
+      - role
+      - from
+      - sender
+    required: false
+    default: "unknown"
+    accepted_values:
+      - user
+      - agent
+    example: "user"
+
+  text:
+    description: >
+      The turn message text. Used only for in-process analysis (clustering,
+      sentiment). Never written to the output report. PII redaction should be
+      applied upstream before running the pipeline.
+    aliases:
+      - text
+      - message
+      - utterance
+      - content
+      - body
+    required: false
+    pii_note: >
+      Redact or pseudonymize PII in this field before passing to the pipeline.
+      The pipeline never writes raw message text to the output.
+    example: "I need to reset my password"
+
+  topic_triggered:
+    description: The Copilot Studio topic or dialog that was matched for this turn.
+    aliases:
+      - topic_triggered
+      - topic
+      - intent
+      - dialog
+      - dialog_name
+    required: false
+    example: "Password Reset"
+
+  intent_score:
+    description: Confidence score (0-1) of the topic match. Used to weight routing analysis.
+    aliases:
+      - intent_score
+      - confidence
+      - score
+      - intent_confidence
+    required: false
+    default: 0.0
+    example: 0.92
+
+  is_fallback:
+    description: >
+      Boolean flag indicating the agent did not recognize the user intent.
+      When absent, the pipeline auto-detects fallback from agent response text.
+    aliases:
+      - is_fallback
+      - fallback
+      - unrecognized
+    required: false
+    accepted_values:
+      - "true" / "false"
+      - "1" / "0"
+      - "yes" / "no"
+    example: false
+
+  is_escalation:
+    description: >
+      Boolean flag indicating the conversation was handed off to a human agent.
+      When absent, the pipeline auto-detects escalation from message text keywords.
+    aliases:
+      - is_escalation
+      - escalation
+      - handoff
+      - human_handoff
+    required: false
+    accepted_values:
+      - "true" / "false"
+      - "1" / "0"
+      - "yes" / "no"
+    example: false
+
+  knowledge_result_count:
+    description: >
+      Number of knowledge-source results returned for the agent turn.
+      Set to 0 for no-result turns. Set to -1 (or omit) for turns that
+      are not knowledge queries.
+    aliases:
+      - knowledge_result_count
+      - search_result_count
+      - results_count
+    required: false
+    default: -1
+    example: 3
+
+# ---------------------------------------------------------------------------
+# Dataverse export mapping
+# ---------------------------------------------------------------------------
+# When exporting from the msdyn_conversationtranscript Dataverse table,
+# map columns using the aliases above. Recommended Dataverse columns:
+#
+#   msdyn_conversationid        -> conversation_id
+#   msdyn_createdon             -> timestamp
+#   msdyn_content               -> text  (redact PII before export)
+#   msdyn_agentid               -> agent_name
+#   cr_topictriggered           -> topic_triggered
+#   cr_isfallback               -> is_fallback
+#   cr_isescalation             -> is_escalation
+#   cr_knowledgeresultcount     -> knowledge_result_count
+#
+# Export the table to CSV via Power Automate or the Dataverse Web API:
+#   GET /api/data/v9.2/msdyn_conversationtranscripts
+#       ?$select=msdyn_conversationid,msdyn_createdon,...
+#       &$filter=msdyn_createdon ge <cutoff_date>
+
+# ---------------------------------------------------------------------------
+# Pipeline defaults
+# ---------------------------------------------------------------------------
+pipeline_defaults:
+  retention_days: 90
+  sample_size: 50
+  similarity_threshold: 0.30
+  drift_threshold: -0.40
+  report_format: markdown
