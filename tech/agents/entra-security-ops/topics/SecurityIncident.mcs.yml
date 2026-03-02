@@ -1,0 +1,25 @@
+# Name: Security Incident Investigation
+# Domain-specific topic for Entra_Security_Ops
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Security Incident Investigation
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - security incident
+      - suspicious activity
+      - security alert
+      - investigate
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I'll help you investigate security incidents. Please provide the incident details or alert information you'd like me to analyze.
+        speak:
+          - I'll help you investigate security incidents. Please provide the incident details or alert information you'd like me to analyze.
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end
