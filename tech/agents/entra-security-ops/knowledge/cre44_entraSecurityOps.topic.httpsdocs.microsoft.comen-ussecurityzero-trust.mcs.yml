@@ -1,0 +1,6 @@
+# Name: Zero Trust Security Model
+# This knowledge source searches information on the web found in https://docs.microsoft.com/en-us/security/zero-trust/ website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://docs.microsoft.com/en-us/security/zero-trust/
