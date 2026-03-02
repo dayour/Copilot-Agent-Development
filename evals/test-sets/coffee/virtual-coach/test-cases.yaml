@@ -1,0 +1,217 @@
+# Test cases for coffee/virtual-coach agent
+# Covers drink recipes, HR policy, and handover checklist capabilities.
+#
+# Tiers:
+#   critical      -- core drink recipe facts that must always be present
+#   functional    -- HR policy questions graded by LLM judge
+#   conversational -- handover checklist multi-turn exchanges
+
+- id: coffee-vc-crit-001
+  tier: critical
+  query: "What are the ingredients for a classic espresso?"
+  expected_keywords:
+    - espresso
+    - water
+    - pressure
+    - grind
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The virtual coach is a barista training assistant for a specialty coffee chain.
+    It covers drink recipes, preparation techniques, HR policies, and shift handover
+    procedures.
+  description: >
+    Verifies that the agent returns the essential components of an espresso:
+    water, ground coffee, and pressure.
+
+- id: coffee-vc-crit-002
+  tier: critical
+  query: "How do I make a flat white?"
+  expected_keywords:
+    - ristretto
+    - milk
+    - microfoam
+    - steamed
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The virtual coach is a barista training assistant. The flat white is a core
+    menu item made with ristretto shots and velvety microfoam milk.
+  description: >
+    Verifies that the flat white recipe response includes ristretto, milk,
+    and microfoam terminology.
+
+- id: coffee-vc-crit-003
+  tier: critical
+  query: "What is the difference between a latte and a cappuccino?"
+  expected_keywords:
+    - latte
+    - cappuccino
+    - milk
+    - foam
+    - espresso
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The virtual coach explains differences between espresso-based drinks.
+    A latte has more steamed milk and a thin layer of foam; a cappuccino has
+    equal parts espresso, steamed milk, and dry foam.
+  description: >
+    Verifies that the agent correctly distinguishes latte from cappuccino using
+    the key terms foam and milk ratio.
+
+- id: coffee-vc-crit-004
+  tier: critical
+  query: "What temperature should espresso machine steam wands be set to for steaming milk?"
+  expected_keywords:
+    - temperature
+    - steam
+    - milk
+    - degrees
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The virtual coach provides technical guidance on espresso machine operation.
+    Milk should be steamed to approximately 65 to 70 degrees Celsius.
+  description: >
+    Verifies that the agent provides a temperature reference for milk steaming.
+
+- id: coffee-vc-func-001
+  tier: functional
+  query: "What is the company policy on shift swaps?"
+  expected_keywords:
+    - shift
+    - swap
+    - manager
+    - approval
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The virtual coach covers HR policies for baristas, including shift scheduling,
+    time-off requests, and shift swap procedures. Shift swaps require manager
+    approval at least 24 hours in advance.
+  description: >
+    Tests that the agent accurately describes the shift swap policy including
+    the approval requirement.
+
+- id: coffee-vc-func-002
+  tier: functional
+  query: "How do I report a workplace safety incident?"
+  expected_keywords:
+    - incident
+    - report
+    - manager
+    - safety
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The virtual coach provides HR policy guidance. Workplace safety incidents
+    must be reported to a supervisor immediately and documented in the incident
+    report system within 24 hours.
+  description: >
+    Tests that the agent gives a clear, actionable answer on incident reporting
+    procedures.
+
+- id: coffee-vc-func-003
+  tier: functional
+  query: "What is the uniform policy for baristas?"
+  expected_keywords:
+    - uniform
+    - apron
+    - dress code
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The virtual coach covers HR policies. Baristas are required to wear the
+    company-issued apron, a clean plain shirt, and closed-toe shoes. Hair must
+    be tied back when working at the machine.
+  description: >
+    Verifies that the agent describes the barista uniform and appearance
+    requirements accurately.
+
+- id: coffee-vc-conv-001
+  tier: conversational
+  query: "I am starting my shift. What should I check on the handover checklist?"
+  expected_keywords:
+    - checklist
+    - handover
+    - equipment
+    - stock
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    This is the first turn in a handover checklist conversation. The virtual
+    coach walks baristas through opening and shift handover procedures including
+    equipment checks, stock levels, and cleanliness standards.
+  description: >
+    First turn of a multi-turn handover conversation. Verifies the agent
+    initiates the checklist workflow.
+
+- id: coffee-vc-conv-002
+  tier: conversational
+  query: "The espresso machine was cleaned last night. What should I check next on the handover?"
+  expected_keywords:
+    - grinder
+    - stock
+    - milk
+    - refrigerator
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Second turn of the handover checklist conversation. The barista has confirmed
+    the espresso machine is clean and is asking for the next step. The agent
+    should guide them to check grinder calibration, milk stock, and refrigerator
+    temperatures.
+  description: >
+    Second turn of the handover conversation. Tests context retention and
+    continued guidance on the checklist workflow.
+
+- id: coffee-vc-conv-003
+  tier: conversational
+  query: "All equipment checks are done. How do I close out the handover?"
+  expected_keywords:
+    - handover
+    - notes
+    - incoming
+    - complete
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Third turn of the handover checklist conversation. The barista has completed
+    all equipment checks and needs guidance on closing out the handover log and
+    briefing the incoming team member.
+  description: >
+    Final turn of the handover conversation. Tests that the agent provides
+    closure guidance including handing over notes to the incoming barista.

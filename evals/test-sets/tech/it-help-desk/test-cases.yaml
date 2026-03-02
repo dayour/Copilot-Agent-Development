@@ -1,0 +1,224 @@
+# Test cases for tech/it-help-desk agent
+# Covers IT ticket creation, status queries, troubleshooting, and multi-turn
+# support conversations.
+#
+# Tiers:
+#   critical      -- ticket creation and status queries that must always succeed
+#   functional    -- troubleshooting guidance graded by LLM judge
+#   conversational -- multi-turn support scenarios
+
+- id: tech-hd-crit-001
+  tier: critical
+  query: "Create a new IT ticket for a laptop that won't turn on."
+  expected_keywords:
+    - ticket
+    - created
+    - laptop
+    - power
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The IT help desk agent creates and manages ServiceNow tickets for employees.
+    Ticket creation requires a brief description, priority level, and the
+    submitting user's information. Hardware issues are routed to the hardware
+    support queue.
+  description: >
+    Verifies that the agent acknowledges ticket creation and references the
+    relevant hardware issue context.
+
+- id: tech-hd-crit-002
+  tier: critical
+  query: "What is the status of ticket INC0045821?"
+  expected_keywords:
+    - status
+    - ticket
+    - INC0045821
+    - assigned
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The IT help desk agent can look up ServiceNow incident records by ticket number.
+    Status values include: new, assigned, in progress, pending, resolved, closed.
+  description: >
+    Verifies that the agent returns a response that includes the ticket number
+    and a status reference.
+
+- id: tech-hd-crit-003
+  tier: critical
+  query: "How do I reset my Active Directory password?"
+  expected_keywords:
+    - password
+    - reset
+    - Active Directory
+    - account
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The IT help desk agent provides self-service guidance. Password resets for
+    Active Directory accounts can be done via the self-service portal at
+    https://aka.ms/sspr or by contacting the help desk directly.
+  description: >
+    Verifies that the agent provides clear password reset instructions with
+    Active Directory context.
+
+- id: tech-hd-crit-004
+  tier: critical
+  query: "My VPN is not connecting. What should I do?"
+  expected_keywords:
+    - VPN
+    - connection
+    - network
+    - troubleshoot
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The IT help desk agent provides VPN troubleshooting guidance. Common steps
+    include: verifying credentials, checking internet connectivity, reinstalling
+    the VPN client, and contacting the network team if the issue persists.
+  description: >
+    Verifies that the agent provides VPN troubleshooting steps with relevant
+    networking terminology.
+
+- id: tech-hd-func-001
+  tier: functional
+  query: "My email client stopped syncing with the Exchange server. How do I fix it?"
+  expected_keywords:
+    - email
+    - sync
+    - Exchange
+    - Outlook
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The IT help desk agent provides email troubleshooting for Microsoft 365
+    environments. Exchange sync issues are commonly caused by expired credentials,
+    Autodiscover misconfiguration, or local Outlook profile corruption.
+  description: >
+    Tests that the agent provides actionable troubleshooting steps for an email
+    sync issue in an Exchange environment.
+
+- id: tech-hd-func-002
+  tier: functional
+  query: "How do I request access to the shared Finance drive?"
+  expected_keywords:
+    - access
+    - request
+    - Finance
+    - permissions
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The IT help desk agent handles access requests. Shared drive access requires
+    manager approval and is provisioned via an IT access request form in
+    ServiceNow. Finance drive access requires Finance department head approval.
+  description: >
+    Tests that the agent describes the access request process correctly including
+    approval chain requirements.
+
+- id: tech-hd-func-003
+  tier: functional
+  query: "My printer is showing offline in Windows. What are the troubleshooting steps?"
+  expected_keywords:
+    - printer
+    - offline
+    - driver
+    - network
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The IT help desk agent troubleshoots printer connectivity issues. Common
+    causes include: network connectivity, outdated drivers, print spooler
+    service stopped, or incorrect default printer settings.
+  description: >
+    Tests that the agent provides a structured troubleshooting sequence for an
+    offline printer issue.
+
+- id: tech-hd-conv-001
+  tier: conversational
+  query: "My computer is running very slowly. Can you help me figure out what is wrong?"
+  expected_keywords:
+    - slow
+    - performance
+    - memory
+    - processes
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    First turn of a multi-turn diagnostic conversation. The IT help desk agent
+    should gather more information about the issue (symptoms, when it started,
+    recent changes) before suggesting a diagnosis. Common causes include high
+    memory usage, background processes, malware, or a failing drive.
+  description: >
+    First turn of a multi-turn support conversation. Tests that the agent
+    initiates diagnostic information gathering before prescribing a fix.
+
+- id: tech-hd-conv-002
+  tier: conversational
+  query: "It started after I installed some software from the internet two days ago."
+  expected_keywords:
+    - software
+    - install
+    - scan
+    - uninstall
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Second turn of the slow computer conversation. The user has revealed the
+    issue started after installing third-party software from the internet. The
+    agent should recommend running a malware scan and advise on safe software
+    installation practices.
+  description: >
+    Second turn of the diagnostic conversation. Tests context retention and
+    appropriate security-aware guidance.
+
+- id: tech-hd-conv-003
+  tier: conversational
+  query: "The scan found a threat. What should I do now?"
+  expected_keywords:
+    - quarantine
+    - remove
+    - threat
+    - ticket
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Third turn of the slow computer conversation. A malware scan has detected a
+    threat. The agent should guide the user to quarantine or remove the threat
+    using the antivirus tool, and escalate via a security ticket if the threat
+    is not automatically resolved.
+  description: >
+    Third turn of the diagnostic conversation. Tests that the agent provides
+    clear remediation steps including escalation path.

@@ -1,0 +1,149 @@
+# Test cases for transportation/fuel-tracking agent
+# Covers fuel consumption queries and fuel cost analysis.
+#
+# Tiers:
+#   critical   -- fuel consumption facts that must always be present
+#   functional -- fuel cost analysis graded by LLM judge
+
+- id: trans-ft-crit-001
+  tier: critical
+  query: "What was the total fuel consumption for the fleet last week?"
+  expected_keywords:
+    - fuel
+    - consumption
+    - total
+    - week
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fuel tracking agent aggregates fuel consumption data from the fleet card
+    API. Weekly consumption reports summarize total gallons or liters consumed
+    across all vehicles.
+  description: >
+    Verifies that the agent provides a response structured around total fleet
+    fuel consumption for a weekly reporting period.
+
+- id: trans-ft-crit-002
+  tier: critical
+  query: "Which vehicle had the highest fuel consumption this month?"
+  expected_keywords:
+    - vehicle
+    - highest
+    - fuel
+    - consumption
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fuel tracking agent can rank vehicles by fuel consumption. High-consumption
+    vehicles may indicate maintenance issues, route inefficiencies, or driver
+    behavior patterns that warrant investigation.
+  description: >
+    Verifies that the agent returns a response identifying the highest fuel
+    consumer in the fleet for the month.
+
+- id: trans-ft-crit-003
+  tier: critical
+  query: "What is the current average fuel efficiency for the fleet in miles per gallon?"
+  expected_keywords:
+    - miles per gallon
+    - average
+    - efficiency
+    - fleet
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fuel tracking agent computes average miles per gallon (MPG) across the
+    active fleet. MPG is calculated from odometer readings and fuel card
+    transaction data.
+  description: >
+    Verifies that the agent returns a response referencing average MPG and
+    fuel efficiency computation.
+
+- id: trans-ft-crit-004
+  tier: critical
+  query: "How many fuel fill-up transactions were recorded in the past 7 days?"
+  expected_keywords:
+    - transactions
+    - fill-up
+    - fuel
+    - 7 days
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fuel tracking agent queries the fuel card API for transaction counts.
+    Each fuel fill-up event is recorded as a transaction with vehicle ID,
+    date, quantity, and cost.
+  description: >
+    Verifies that the agent correctly references transaction count and the
+    relevant time window.
+
+- id: trans-ft-func-001
+  tier: functional
+  query: "What was the total fuel cost for the fleet in the last 30 days and how does it compare to the previous period?"
+  expected_keywords:
+    - cost
+    - total
+    - 30 days
+    - comparison
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The fuel tracking agent provides cost analysis by querying fuel card
+    transaction data. Period-over-period comparisons help identify trends in
+    fuel spend. Significant increases may indicate a fuel price spike, increased
+    operational activity, or a vehicle with a fuel efficiency problem.
+  description: >
+    Tests that the agent provides a clear analysis of fuel cost with a
+    period-over-period comparison and interpretation guidance.
+
+- id: trans-ft-func-002
+  tier: functional
+  query: "Which routes are causing the most fuel waste and how can we reduce it?"
+  expected_keywords:
+    - route
+    - fuel
+    - waste
+    - optimize
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The fuel tracking agent can correlate fuel consumption with route data from
+    the route optimizer. Fuel-inefficient routes may involve excess idling,
+    stop-and-go traffic, or suboptimal vehicle-route matching.
+  description: >
+    Tests that the agent provides actionable insight on route-level fuel waste
+    and recommends optimization strategies.
+
+- id: trans-ft-func-003
+  tier: functional
+  query: "Generate a fuel cost report for vehicle VH-0774 for this quarter."
+  expected_keywords:
+    - report
+    - VH-0774
+    - quarter
+    - cost
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The fuel tracking agent generates per-vehicle fuel cost reports by
+    querying the fuel card API. Reports include total cost, number of fill-ups,
+    average cost per gallon, and total gallons consumed for the period.
+  description: >
+    Tests that the agent handles a vehicle-specific fuel cost report request
+    correctly with the appropriate reporting period.
