@@ -1,0 +1,539 @@
+# Name: Crisis Response Coordination
+# Emergency security incident coordination and crisis management workflows
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Crisis Response Coordination
+    triggerQueries:
+      - crisis response
+      - emergency response
+      - major incident
+      - security crisis
+      - incident commander
+      - crisis management
+      - emergency coordination
+      - disaster response
+
+  actions:
+    - kind: SendActivity
+      id: crisis_intro
+      activity: |
+        🚨 **Crisis Response Coordination Center**
+        
+        **EMERGENCY SECURITY INCIDENT RESPONSE ACTIVATED**
+        
+        I'll coordinate the crisis response for major security incidents requiring enterprise-wide coordination and executive involvement.
+        
+        **Crisis Response Capabilities:**
+        
+        **🎯 Incident Command System (ICS)**
+        - Incident Commander role assignment
+        - Multi-team coordination and communication
+        - Resource allocation and management
+        - Decision making and escalation workflows
+        
+        **📞 Stakeholder Communication**
+        - Executive briefing and updates
+        - Customer and partner notifications
+        - Media relations and public statements
+        - Regulatory reporting requirements
+        
+        **⚡ Emergency Operations**
+        - Critical system isolation and containment
+        - Business continuity activation
+        - Forensic evidence preservation
+        - Legal and compliance coordination
+        
+        **📊 Crisis Tracking & Documentation**
+        - Real-time incident status updates
+        - Timeline and impact tracking
+        - Resource utilization monitoring
+        - Post-incident analysis preparation
+        
+        **⚠️ CRISIS SEVERITY LEVEL ASSESSMENT REQUIRED**
+
+    - kind: Question
+      id: crisis_severity
+      interruptionPolicy:
+        allowInterruption: true
+      variable: Topic.crisisSeverity
+      prompt:
+        kind: Activity
+        activity: |
+          **🚨 CRISIS SEVERITY ASSESSMENT**
+          
+          Select the appropriate crisis severity level:
+          
+          **🔴 SEVERITY 1 - CRITICAL CRISIS**
+          - Business operations completely disrupted
+          - Customer data confirmed compromised
+          - Public safety or national security impact
+          - Media attention and regulatory scrutiny expected
+          
+          **🟡 SEVERITY 2 - MAJOR INCIDENT**  
+          - Significant business impact or service disruption
+          - Potential data exposure or system compromise
+          - Executive leadership involvement required
+          - Customer notifications may be needed
+          
+          **🟠 SEVERITY 3 - SIGNIFICANT INCIDENT**
+          - Limited business impact but serious security concern
+          - Contained compromise with remediation needed
+          - Internal stakeholder coordination required
+          - Enhanced monitoring and response needed
+          
+          Type **1**, **2**, or **3** for severity level, or **EMERGENCY** for immediate escalation.
+
+    - kind: ConditionGroup
+      id: crisis_routing
+      conditions:
+        - kind: Condition
+          id: critical_crisis
+          condition: "Topic.crisisSeverity contains \"1\" || contains(toLower(Topic.crisisSeverity), \"critical\")"
+          actions:
+            - kind: BeginDialog
+              id: call_critical_dialog
+              dialog: CriticalCrisisDialog
+
+        - kind: Condition
+          id: major_incident
+          condition: "Topic.crisisSeverity contains \"2\" || contains(toLower(Topic.crisisSeverity), \"major\")"
+          actions:
+            - kind: BeginDialog
+              id: call_major_dialog
+              dialog: MajorIncidentDialog
+
+        - kind: Condition
+          id: significant_incident
+          condition: "Topic.crisisSeverity contains \"3\" || contains(toLower(Topic.crisisSeverity), \"significant\")"
+          actions:
+            - kind: BeginDialog
+              id: call_significant_dialog
+              dialog: SignificantIncidentDialog
+
+        - kind: Condition
+          id: emergency_escalation
+          condition: "contains(toLower(Topic.crisisSeverity), \"emergency\")"
+          actions:
+            - kind: BeginDialog
+              id: call_emergency_dialog
+              dialog: EmergencyEscalationDialog
+
+      elseActions:
+        - kind: SendActivity
+          id: crisis_help
+          activity: |
+            **🚨 CRISIS RESPONSE ASSISTANCE**
+            
+            I need to understand the severity level to activate the appropriate response procedures:
+            - **CRITICAL** (Severity 1): Business-critical crisis requiring full response
+            - **MAJOR** (Severity 2): Significant incident with executive involvement
+            - **SIGNIFICANT** (Severity 3): Serious security concern requiring coordination
+            - **EMERGENCY**: Immediate escalation to crisis management team
+
+dialogs:
+  - kind: AdaptiveDialog
+    id: CriticalCrisisDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          🔴 **CRITICAL CRISIS RESPONSE ACTIVATED (SEVERITY 1)**
+          
+          **⚠️ IMMEDIATE ACTIONS INITIATED**
+          
+          ✅ **Crisis Response Team Notified**
+          ✅ **Executive Leadership Alerted** 
+          ✅ **Incident Command Center Activated**
+          ✅ **Legal and Compliance Teams Engaged**
+
+      - kind: Question
+        variable: Dialog.incidentType
+        prompt:
+          kind: Activity
+          activity: |
+            **CRITICAL INCIDENT CLASSIFICATION**
+            
+            Select the primary incident type:
+            
+            **1.** 💰 Ransomware/Extortion Attack
+            **2.** 🕵️ Advanced Persistent Threat (APT)
+            **3.** 📊 Major Data Breach/Exfiltration
+            **4.** 🌐 Critical Infrastructure Attack
+            **5.** 🦠 Widespread Malware Outbreak
+            **6.** 👤 Insider Threat/Sabotage
+            **7.** ⚡ System Outage/Denial of Service
+            **8.** 🔗 Supply Chain Compromise
+
+      - kind: Question
+        variable: Dialog.businessImpact
+        prompt:
+          kind: Activity
+          activity: |
+            **BUSINESS IMPACT ASSESSMENT**
+            
+            Describe the current business impact:
+            - Systems/services affected
+            - Customer impact scope
+            - Revenue impact estimate
+            - Regulatory/legal implications
+            - Public/media exposure risk
+
+      - kind: Question
+        variable: Dialog.immediateActions
+        prompt:
+          kind: Activity
+          activity: |
+            **IMMEDIATE CONTAINMENT ACTIONS TAKEN**
+            
+            What immediate containment actions have been taken?
+            - System isolation/shutdown
+            - Account suspensions
+            - Network segmentation
+            - Evidence preservation
+            - External communications
+
+      - kind: SendActivity
+        activity: |
+          🔴 **CRITICAL CRISIS RESPONSE PLAN ACTIVATED**
+          
+          **Incident Type:** {Dialog.incidentType}
+          **Business Impact:** {Dialog.businessImpact}
+          **Actions Taken:** {Dialog.immediateActions}
+          
+          ## 🎯 **INCIDENT COMMAND STRUCTURE**
+          
+          **Incident Commander (IC):** CISO or designated security executive
+          **Deputy IC:** Senior Security Manager
+          **Communications Lead:** Chief Marketing Officer or designee
+          **Technical Lead:** Senior Security Architect
+          **Legal Counsel:** Chief Legal Officer or external counsel
+          **Business Continuity Lead:** COO or Operations Director
+          
+          ## ⚡ **IMMEDIATE RESPONSE ACTIONS (NEXT 30 MINUTES)**
+          
+          **🚨 Priority 1 - Life Safety & Critical Systems**
+          ```
+          ☐ Verify no immediate physical safety risks
+          ☐ Secure critical infrastructure and safety systems
+          ☐ Activate emergency communication systems
+          ☐ Notify first responders if required
+          ```
+          
+          **🔐 Priority 2 - Containment & Preservation**
+          ```
+          ☐ Implement network isolation and system quarantine
+          ☐ Preserve forensic evidence and maintain chain of custody
+          ☐ Document all actions taken with timestamps
+          ☐ Activate backup systems and recovery procedures
+          ```
+          
+          **📞 Priority 3 - Stakeholder Notification**
+          ```
+          ☐ Brief CEO and Board of Directors
+          ☐ Notify key customers and partners
+          ☐ Engage external legal counsel and PR firm
+          ☐ Prepare initial regulatory notifications
+          ```
+          
+          ## 📋 **CRISIS COMMUNICATION PLAN**
+          
+          **Internal Communications (First 2 Hours)**
+          ```
+          0-30 minutes:   Executive leadership briefing
+          30-60 minutes:  Department head notifications
+          60-90 minutes:  All-hands emergency communication
+          90-120 minutes: Customer-facing team briefing
+          ```
+          
+          **External Communications**
+          ```
+          Regulatory:     Within 72 hours (GDPR) or as required
+          Customers:      Within 4-8 hours depending on impact
+          Partners:       Within 6-12 hours for critical partners
+          Media:          Only through approved spokesperson
+          Public:         Coordinated message through legal/PR
+          ```
+          
+          ## 🔍 **INVESTIGATION & FORENSICS**
+          
+          **Evidence Preservation Protocol**
+          ```
+          ☐ Disconnect affected systems from network (do not power off)
+          ☐ Image critical systems for forensic analysis
+          ☐ Preserve log files and security telemetry
+          ☐ Document system configurations and changes
+          ☐ Coordinate with law enforcement if criminal activity suspected
+          ```
+          
+          **External Expert Engagement**
+          ```
+          ☐ Engage cyber incident response firm
+          ☐ Coordinate with law enforcement (FBI Cyber Division)
+          ☐ Notify cyber insurance carrier
+          ☐ Engage specialized forensics consultants
+          ```
+          
+          ## 📊 **CRISIS TRACKING DASHBOARD**
+          
+          **Real-time Status Tracking:**
+          - Incident timeline and key events
+          - System availability and recovery status
+          - Stakeholder notification completion
+          - Resource allocation and costs
+          - Media mentions and sentiment
+          - Legal and regulatory compliance status
+          
+          **Hourly Executive Briefings:**
+          - Current situation summary
+          - Actions completed and in progress
+          - Resource needs and constraints
+          - Timeline for restoration
+          - Risk assessment and next steps
+          
+          ## ⚠️ **CRITICAL SUCCESS FACTORS**
+          
+          **Communication Excellence**
+          - Single source of truth for all communications
+          - Consistent messaging across all channels
+          - Proactive updates vs. reactive responses
+          - Transparency balanced with legal considerations
+          
+          **Technical Response**
+          - Rapid containment without destroying evidence
+          - Coordinated response across all systems
+          - Systematic validation of fixes
+          - Continuous monitoring for secondary attacks
+          
+          **Business Continuity**
+          - Customer service maintenance
+          - Critical business process preservation
+          - Financial and operational stability
+          - Reputation and brand protection
+          
+          **🔄 NEXT UPDATE: 30 MINUTES**
+          **STATUS REVIEW: HOURLY**
+          **EXECUTIVE BRIEFING: EVERY 2 HOURS**
+
+  - kind: AdaptiveDialog
+    id: MajorIncidentDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          🟡 **MAJOR INCIDENT RESPONSE ACTIVATED (SEVERITY 2)**
+          
+          **COORDINATED RESPONSE INITIATED**
+          
+          ✅ **Security Operations Team Mobilized**
+          ✅ **Management Notification Complete**
+          ✅ **Enhanced Monitoring Activated**
+          ✅ **Investigation Team Assembled**
+
+      - kind: Question
+        variable: Dialog.impactScope
+        prompt:
+          kind: Activity
+          activity: |
+            **INCIDENT SCOPE ASSESSMENT**
+            
+            Describe the scope and impact:
+            - Number of systems/users affected
+            - Business processes impacted
+            - Data types potentially involved
+            - Geographic scope of impact
+            - Estimated duration of impact
+
+      - kind: SendActivity
+        activity: |
+          🟡 **MAJOR INCIDENT COORDINATION PLAN**
+          
+          **Impact Scope:** {Dialog.impactScope}
+          
+          ## 🎯 **RESPONSE TEAM STRUCTURE**
+          
+          **Incident Manager:** Senior Security Analyst
+          **Technical Lead:** Security Engineer
+          **Communications Coordinator:** IT Manager
+          **Business Liaison:** Department Manager
+          **Documentation Lead:** SOC Analyst
+          
+          ## ⚡ **RESPONSE PHASES (NEXT 4 HOURS)**
+          
+          **Phase 1: Assessment & Containment (0-1 hour)**
+          ```
+          ☐ Complete detailed impact assessment
+          ☐ Implement immediate containment measures
+          ☐ Establish secure communication channels
+          ☐ Begin evidence collection and preservation
+          ```
+          
+          **Phase 2: Investigation & Analysis (1-2 hours)**
+          ```
+          ☐ Conduct forensic analysis of affected systems
+          ☐ Identify attack vectors and indicators
+          ☐ Assess potential data exposure or compromise
+          ☐ Determine threat actor and motivation
+          ```
+          
+          **Phase 3: Eradication & Recovery (2-4 hours)**
+          ```
+          ☐ Remove threat from environment
+          ☐ Patch vulnerabilities and harden systems
+          ☐ Restore services and validate functionality
+          ☐ Implement enhanced monitoring
+          ```
+          
+          ## 📞 **STAKEHOLDER COMMUNICATION PLAN**
+          
+          **Internal Notifications:**
+          ```
+          Immediate:  Security team and direct management
+          1 hour:     IT leadership and affected departments
+          2 hours:    Executive team and legal counsel
+          4 hours:    All relevant stakeholders
+          ```
+          
+          **External Communications:**
+          ```
+          Customers:     If direct impact confirmed
+          Partners:      If shared systems affected
+          Regulators:    If compliance requirements triggered
+          Vendors:       If external support needed
+          ```
+          
+          ## 📋 **COORDINATION CHECKPOINTS**
+          
+          **30-minute Status Updates:**
+          - Progress on containment and investigation
+          - Resource needs and escalation decisions
+          - Communication status and next actions
+          
+          **Hourly Executive Briefings:**
+          - Current situation and impact assessment
+          - Response actions completed and planned
+          - Timeline for resolution
+          - Risk assessment and recommendations
+
+  - kind: AdaptiveDialog
+    id: EmergencyEscalationDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          🚨🚨 **EMERGENCY ESCALATION PROTOCOL ACTIVATED** 🚨🚨
+          
+          **⚡ IMMEDIATE ESCALATION TO CRISIS MANAGEMENT TEAM**
+          
+          **AUTOMATIC ACTIONS TRIGGERED:**
+          ✅ CEO and Executive Team IMMEDIATE Notification
+          ✅ Crisis Management Hotline Activated
+          ✅ Emergency Response Team Mobilized
+          ✅ Legal and PR Teams On Standby
+          ✅ Incident Command Center Prepared
+          
+          **🔴 EMERGENCY CONTACT PROTOCOL INITIATED**
+          
+          **Primary Contacts (IMMEDIATE):**
+          - Chief Executive Officer
+          - Chief Information Security Officer  
+          - Chief Legal Officer
+          - Chief Operating Officer
+          - Emergency Response Coordinator
+          
+          **Secondary Contacts (WITHIN 15 MINUTES):**
+          - Board of Directors (if required)
+          - External Legal Counsel
+          - Cyber Insurance Carrier
+          - Key Customer Executives
+          - Crisis Communication Firm
+
+      - kind: Question
+        variable: Dialog.emergencyDetails
+        prompt:
+          kind: Activity
+          activity: |
+            **🚨 EMERGENCY INCIDENT BRIEFING**
+            
+            Provide immediate emergency details:
+            - What triggered the emergency escalation?
+            - What is the immediate threat or impact?
+            - What systems or data are at risk?
+            - Are there any life safety concerns?
+            - What immediate actions are needed?
+
+      - kind: SendActivity
+        activity: |
+          🚨 **EMERGENCY RESPONSE COORDINATION ACTIVATED**
+          
+          **Emergency Details:** {Dialog.emergencyDetails}
+          
+          ## ⚡ **IMMEDIATE EMERGENCY RESPONSE (NEXT 15 MINUTES)**
+          
+          **🔴 CRITICAL ACTIONS**
+          ```
+          ☐ VERIFY: No immediate physical safety risks
+          ☐ SECURE: Critical systems and infrastructure
+          ☐ ISOLATE: Affected systems and networks
+          ☐ PRESERVE: Evidence and maintain chain of custody
+          ☐ DOCUMENT: All actions with precise timestamps
+          ```
+          
+          **📞 EXECUTIVE BRIEFING PROTOCOL**
+          ```
+          ☐ CEO notification with 3-minute executive summary
+          ☐ Board chair notification if governance impact
+          ☐ General counsel briefing on legal implications
+          ☐ CFO briefing on financial and operational impact
+          ☐ CMO/Communications briefing on reputation impact
+          ```
+          
+          **🆘 EMERGENCY RESOURCES ACTIVATION**
+          ```
+          ☐ Incident Command Center physical activation
+          ☐ Crisis communication bridge line setup
+          ☐ Emergency response team assembly
+          ☐ External expert engagement authorization
+          ☐ Emergency budget and resource authorization
+          ```
+          
+          ## 🎯 **EMERGENCY DECISION MATRIX**
+          
+          **Life Safety Decisions (IMMEDIATE)**
+          - Building evacuation protocols
+          - First responder notifications
+          - Emergency medical services
+          - Physical security measures
+          
+          **Business Critical Decisions (NEXT 30 MINUTES)**
+          - System shutdown authorizations
+          - Customer service interruptions
+          - Financial transaction suspensions
+          - Supply chain disruption notices
+          
+          **Legal and Regulatory Decisions (NEXT 60 MINUTES)**
+          - Law enforcement notifications
+          - Regulatory breach notifications
+          - Legal counsel engagement
+          - Insurance claim initiation
+          
+          ## 📊 **REAL-TIME EMERGENCY TRACKING**
+          
+          **Crisis Command Dashboard:**
+          - Executive team availability and contact status
+          - Critical system status and recovery timeline
+          - Customer impact scope and notifications
+          - Media monitoring and sentiment tracking
+          - Legal and regulatory compliance status
+          - Financial impact estimation and tracking
+          
+          **🔄 EMERGENCY UPDATE SCHEDULE:**
+          - **Every 15 minutes:** Crisis team status updates
+          - **Every 30 minutes:** Executive briefings
+          - **Every hour:** Stakeholder communications
+          - **Every 2 hours:** Public statement review
+          
+          **⚠️ EMERGENCY CONTACT HOTLINE: [CRISIS-HOTLINE-NUMBER]**
+          **🆘 INCIDENT COMMANDER: [ON-CALL-IC-CONTACT]**
+          
+          **THIS IS AN ACTIVE EMERGENCY RESPONSE**
+          **ALL ACTIONS MUST BE COORDINATED THROUGH INCIDENT COMMAND**
