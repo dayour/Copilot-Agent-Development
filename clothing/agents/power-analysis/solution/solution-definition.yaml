@@ -5,13 +5,15 @@
 solution:
   name: ClothingPowerAnalysis
   display_name: "Clothing — Power Analysis"
-  version: "1.0.0"
+  version: "2.0.0"
   publisher: Copilot Agent Development
   description: >
     Deep reasoning analytics solution for the Power Analysis agent in the
     Clothing vertical. Provides decomposition analysis, trend detection,
     anomaly identification, what-if simulation, and recommendation generation
-    backed by Dataverse and Power BI semantic models.
+    backed by Dataverse and Power BI semantic models. Version 2.0 adds AI Builder
+    models for demand forecasting, category classification, sentiment analysis,
+    and document processing.
 
 environment_variables:
   - name: PowerBiWorkspaceId
@@ -67,6 +69,53 @@ environment_variables:
     type: string
     description: SharePoint document library URL containing KPI definitions and BI glossary.
     default_value: ""
+
+  - name: AIBuilderEnvironmentId
+    display_name: AI Builder Environment ID
+    type: string
+    description: GUID of the Power Platform environment where AI Builder models are registered.
+    default_value: ""
+
+  - name: DemandForecastingModelId
+    display_name: Demand Forecasting Model ID
+    type: string
+    description: AI Builder model ID for the demand forecasting prediction model.
+    default_value: ""
+
+  - name: CategoryClassificationModelId
+    display_name: Category Classification Model ID
+    type: string
+    description: AI Builder model ID for the product category text classification model.
+    default_value: ""
+
+  - name: SentimentAnalysisModelId
+    display_name: Sentiment Analysis Model ID
+    type: string
+    description: AI Builder model ID for the customer feedback sentiment analysis model.
+    default_value: ""
+
+  - name: DocumentProcessingModelId
+    display_name: Document Processing Model ID
+    type: string
+    description: AI Builder model ID for the document processing (form recognition) model.
+    default_value: ""
+
+  - name: SentimentAlertThreshold
+    display_name: Sentiment Alert Threshold
+    type: decimal
+    description: >
+      Negative sentiment percentage threshold that triggers a Teams alert.
+      Default is 0.4 (40% negative feedback within the selected period).
+    default_value: "0.4"
+
+  - name: ModelRetrainingSchedule
+    display_name: Model Retraining Schedule
+    type: string
+    description: >
+      Schedule for periodic AI Builder model retraining. Accepts plain-text values
+      (e.g., "monthly", "weekly") or a cron expression (e.g., "0 0 1 * *" for the
+      first day of each calendar month at midnight).
+    default_value: "monthly"
 
 components:
   dataverse_tables:
@@ -165,6 +214,128 @@ components:
         - name: ReorderPoint
           type: decimal
 
+    - name: DemandForecasts
+      display_name: Demand Forecasts
+      description: >
+        AI Builder demand forecasting model outputs stored per SKU, store,
+        and forecast horizon. Used for replenishment planning and trend validation.
+      primary_key: ForecastId
+      columns:
+        - name: ForecastId
+          type: string
+        - name: ForecastDate
+          type: datetime
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: ForecastHorizon
+          type: string
+        - name: PredictedUnits
+          type: decimal
+        - name: ConfidenceLow
+          type: decimal
+        - name: ConfidenceHigh
+          type: decimal
+        - name: SeasonalityIndex
+          type: decimal
+        - name: PromotionImpact
+          type: decimal
+        - name: KeyDrivers
+          type: string
+        - name: ModelVersion
+          type: string
+
+    - name: SentimentResults
+      display_name: Sentiment Analysis Results
+      description: >
+        AI Builder sentiment analysis outputs aggregated by product category,
+        brand, feedback source, and analysis period.
+      primary_key: SentimentResultId
+      columns:
+        - name: SentimentResultId
+          type: string
+        - name: AnalysisDate
+          type: datetime
+        - name: Category
+          type: string
+        - name: Brand
+          type: string
+        - name: FeedbackSource
+          type: string
+        - name: PeriodLabel
+          type: string
+        - name: OverallScore
+          type: decimal
+        - name: PositivePct
+          type: decimal
+        - name: NeutralPct
+          type: decimal
+        - name: NegativePct
+          type: decimal
+        - name: TopPositiveThemes
+          type: string
+        - name: TopNegativeThemes
+          type: string
+        - name: AlertTriggered
+          type: boolean
+        - name: ModelVersion
+          type: string
+
+    - name: DocumentExtractionResults
+      display_name: Document Extraction Results
+      description: >
+        Structured data extracted by the AI Builder document processing model from
+        uploaded supplier invoices, delivery notes, and competitor price sheets.
+      primary_key: ExtractionId
+      columns:
+        - name: ExtractionId
+          type: string
+        - name: ExtractionDate
+          type: datetime
+        - name: DocumentType
+          type: string
+        - name: SupplierName
+          type: string
+        - name: DocumentDate
+          type: date
+        - name: LineItemCount
+          type: integer
+        - name: TotalValue
+          type: currency
+        - name: DiscrepancyCount
+          type: integer
+        - name: ExtractedPayload
+          type: string
+        - name: ReviewStatus
+          type: string
+        - name: ModelVersion
+          type: string
+
+    - name: CustomerFeedback
+      display_name: Customer Feedback
+      description: >
+        Raw customer feedback records from surveys, reviews, and social media ingested
+        for sentiment analysis model training and inference.
+      primary_key: FeedbackId
+      columns:
+        - name: FeedbackId
+          type: string
+        - name: FeedbackDate
+          type: datetime
+        - name: FeedbackText
+          type: string
+        - name: FeedbackSource
+          type: string
+        - name: Category
+          type: string
+        - name: Brand
+          type: string
+        - name: SentimentLabel
+          type: string
+
   relationships:
     - from_table: SalesTransactions
       from_column: StoreId
@@ -258,11 +429,62 @@ components:
       schedule: daily_and_intraday
       connector: custom_allocation_connector
 
+    - name: InvokeDemandForecastModel
+      description: >
+        Calls the AI Builder demand forecasting prediction model for a given SKU and store
+        combination. Writes forecast results to the DemandForecasts Dataverse table and
+        returns predicted units, confidence interval, and key drivers to the agent topic.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: prediction
+      model_id_variable: "${DemandForecastingModelId}"
+
+    - name: InvokeCategoryClassificationModel
+      description: >
+        Calls the AI Builder text classification model to assign merchandising categories
+        to submitted product IDs. Writes accepted classifications to ProductCatalog and
+        queues low-confidence results for human review.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: text_classification
+      model_id_variable: "${CategoryClassificationModelId}"
+
+    - name: InvokeSentimentAnalysisModel
+      description: >
+        Calls the AI Builder sentiment analysis model against aggregated customer feedback
+        for the requested category, period, and source. Writes results to SentimentResults
+        and triggers a Teams alert when negative sentiment exceeds the configured threshold.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: sentiment_analysis
+      model_id_variable: "${SentimentAnalysisModelId}"
+
+    - name: InvokeDocumentProcessingModel
+      description: >
+        Calls the AI Builder document processing model on an uploaded file. Extracts
+        structured fields and line items and writes results to DocumentExtractionResults
+        for downstream review and approval.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: document_processing
+      model_id_variable: "${DocumentProcessingModelId}"
+
+    - name: ScheduleModelRetraining
+      description: >
+        Orchestrates periodic retraining of all AI Builder models with fresh Dataverse data.
+        Publishes the new model version after passing accuracy and precision thresholds.
+        Logs version history and sends a status report to the analytics Teams channel.
+      trigger: scheduled_recurrence
+      schedule: "${ModelRetrainingSchedule}"
+      connector: ai_builder
+
 connections:
   - connector: power_bi
     display_name: Power BI
   - connector: microsoft_teams
     display_name: Microsoft Teams
+  - connector: ai_builder
+    display_name: AI Builder
   - connector: custom_pos_connector
     display_name: POS Connector
   - connector: custom_erp_connector
@@ -292,8 +514,126 @@ data_platform_extensions:
       - InventorySnapshots
       - ProductCatalog
       - StoreMaster
+      - DemandForecasts
+      - SentimentResults
+      - DocumentExtractionResults
+      - CustomerFeedback
     purpose: Historical and high-volume analytical workloads
     export_mode: incremental
+
+ai_builder_models:
+  - name: DemandForecastingModel
+    display_name: Demand Forecasting
+    type: prediction
+    model_id_variable: "${DemandForecastingModelId}"
+    description: >
+      Predicts next-period demand by SKU and store combination. Trained on 2+ years of
+      historical sales data incorporating seasonality, promotions, and trend signals.
+    training_data:
+      dataverse_table: SalesTransactions
+      feature_columns:
+        - ProductId
+        - StoreId
+        - TransactionDate
+        - UnitsSold
+        - Channel
+      label_column: UnitsSold
+      minimum_training_rows: 10000
+    performance_targets:
+      mean_absolute_percentage_error_max: 0.15
+      r_squared_min: 0.75
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_rows_to_trigger: 5000
+      ab_testing_enabled: true
+      ab_test_traffic_pct: 10
+
+  - name: CategoryClassificationModel
+    display_name: Category Classification
+    type: text_classification
+    model_id_variable: "${CategoryClassificationModelId}"
+    description: >
+      Classifies new products into merchandising categories based on product name,
+      description, material, and target demographic attributes.
+    training_data:
+      dataverse_table: ProductCatalog
+      feature_columns:
+        - SKU
+        - Brand
+        - SubCategory
+        - Season
+      label_column: Category
+      filter: "LifecycleStatus eq 'Active'"
+      minimum_training_rows: 500
+    performance_targets:
+      accuracy_min: 0.85
+      precision_min: 0.80
+      recall_min: 0.80
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_rows_to_trigger: 100
+      ab_testing_enabled: false
+
+  - name: SentimentAnalysisModel
+    display_name: Sentiment Analysis
+    type: sentiment_analysis
+    model_id_variable: "${SentimentAnalysisModelId}"
+    description: >
+      Analyzes customer feedback from surveys, reviews, and social media.
+      Returns positive, neutral, and negative sentiment scores and key themes
+      aggregated by product category and brand.
+    training_data:
+      source: CustomerFeedback
+      feature_columns:
+        - FeedbackText
+        - FeedbackSource
+        - Category
+        - Brand
+      label_column: SentimentLabel
+      minimum_training_rows: 2000
+    performance_targets:
+      accuracy_min: 0.80
+      f1_score_min: 0.78
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_rows_to_trigger: 500
+      ab_testing_enabled: false
+
+  - name: DocumentProcessingModel
+    display_name: Document Processing
+    type: document_processing
+    model_id_variable: "${DocumentProcessingModelId}"
+    description: >
+      Extracts structured fields and line items from supplier invoices, delivery notes,
+      and competitor price sheets using AI Builder form processing capabilities.
+    document_types:
+      - label: supplier invoice
+        fields:
+          - SupplierName
+          - DocumentDate
+          - InvoiceNumber
+          - LineItems
+          - TotalAmount
+          - CurrencyCode
+      - label: delivery note
+        fields:
+          - SupplierName
+          - DeliveryDate
+          - PurchaseOrderNumber
+          - ReceivedQuantities
+          - Discrepancies
+      - label: competitor price sheet
+        fields:
+          - CompetitorName
+          - EffectiveDate
+          - ProductMatches
+          - PriceComparisons
+    performance_targets:
+      field_extraction_accuracy_min: 0.90
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_documents_to_trigger: 50
+      ab_testing_enabled: false
 
 channels:
   - type: microsoft_teams
