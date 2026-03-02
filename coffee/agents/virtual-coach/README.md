@@ -1,6 +1,16 @@
-# Virtual Coach — Coffee
+# Virtual Coach - Coffee
 
-A Copilot Studio agent that acts as an always-available virtual coach for coffee shop employees. It helps staff with onboarding, policy questions, drink preparation guides, shift handover notes, and performance tips — reducing manager workload and improving employee confidence.
+Virtual Coach is a Copilot Studio agent for a large coffee chain operating 500+ stores. It provides a single conversational entry point for baristas, shift leads, and store managers to access operational knowledge stored in SharePoint Online.
+
+## SharePoint-Native Knowledge Backbone
+
+The solution uses a three-tier SharePoint hub architecture:
+
+1. Corporate Root Hub for enterprise standards, HR policies, and brand controls.
+2. Regional Hubs for market-specific operations, promotions, and compliance overlays.
+3. Store Sites for local handover logs, staffing context, and store-level notices.
+
+Copilot Studio knowledge grounding is aligned to hub-associated libraries with managed metadata (drink category, policy type, region, role) for accurate retrieval and permission-trimmed responses.
 
 ## Agent Details
 
@@ -8,33 +18,35 @@ A Copilot Studio agent that acts as an always-available virtual coach for coffee
 |-------|-------|
 | **Agent Name** | Virtual Coach |
 | **Vertical** | Coffee |
-| **Primary Users** | Baristas, shift supervisors, new hires |
-| **Channel** | Microsoft Teams, web chat |
+| **Primary Users** | Baristas, shift leads, store managers |
+| **Channels** | Microsoft Teams (desk staff), mobile web chat (floor staff) |
 | **Language** | English |
 
-## Key Topics
+## Topic-to-Library Mapping
 
-- **Onboarding & Training** — step-by-step guides for new employees
-- **Drink Recipes** — preparation instructions for all menu items
-- **HR & Policy Q&A** — answers to leave, dress-code, and conduct questions
-- **Shift Handover** — structured handover checklist assistant
-- **Performance Tips** — coaching prompts and motivational nudges
+- **Drink Recipes** -> `recipes-library`
+- **HR and Policy** -> `hr-policy-library`
+- **Onboarding and Training** -> `training-library`
+- **Store Operations** -> `operations-library`
+- **Menu Update** -> `seasonal-menu-library`
+- **Shift Handover** -> `shift-handover-list` (writeback)
+- **Store Lookup** -> `store-directory-list` (lookup)
 
 ## Folder Structure
 
-```
+```text
 virtual-coach/
-├── README.md               ← this file
-├── runbook.md              ← deployment & operations runbook
-├── templates/
-│   └── agent-template.yaml ← Copilot Studio topic/conversation template
-└── solution/
-    └── solution-definition.yaml ← Copilot Studio solution export definition
+|-- README.md
+|-- runbook.md
+|-- templates/
+|   |-- agent-template.yaml
+`-- solution/
+    `-- solution-definition.yaml
 ```
 
 ## Quick Start
 
-1. Review `runbook.md` for prerequisites and deployment steps.
-2. Import `solution/solution-definition.yaml` into your Copilot Studio environment.
-3. Customise topics using the files in `templates/` to match your shop's branding and menu.
-4. Publish the agent to the Microsoft Teams channel.
+1. Review `runbook.md` for SharePoint and Copilot Studio prerequisites.
+2. Import `solution/solution-definition.yaml` into the target environment.
+3. Validate knowledge sources and list bindings against your hub-associated libraries.
+4. Publish to Teams and mobile web chat channels.

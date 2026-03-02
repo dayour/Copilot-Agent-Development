@@ -1,142 +1,371 @@
-# Copilot Studio Agent Template — Claims Assistant (Insurance)
-# Import this file as a starting point. Customise trigger phrases,
-# API endpoints, and knowledge sources to match your insurance products.
+# Copilot Studio Agent Template — Claims Assistant (Enterprise P&C)
 
 agent:
   name: Claims Assistant
   description: >
-    A conversational agent that guides customers and claims handlers
-    through the insurance claims lifecycle — from first notice of loss
-    to escalation and status tracking.
+    Enterprise claims assistant for auto, property, and casualty lines.
+    Supports end-to-end FNOL intake, claim status, document submission,
+    and compliant escalation to human adjusters.
   language: en-US
+  orchestration: generative
   fallback_message: >
-    I'm sorry, I didn't quite understand that. Would you like me to connect
-    you with a claims handler?
+    I could not complete that request. I can continue digitally or connect you to a claims handler.
+
+global_variables:
+  - name: customer_state
+    type: string
+  - name: line_of_business
+    type: string
+  - name: claim_reference
+    type: string
+  - name: sla_status
+    type: string
+  - name: fraud_score
+    type: number
+  - name: cat_mode_active
+    type: boolean
+  - name: conversation_summary
+    type: string
 
 topics:
-
   - name: Greeting
+    description: >
+      Introduces the assistant and routes policyholders or handlers to intake,
+      status, coverage, documents, SLA operations, or catastrophe mode actions.
     trigger_phrases:
       - Hello
-      - Hi
-      - I need to make a claim
-      - I had an accident
-      - I want to report an incident
+      - I need help with a claim
+      - I want to report a loss
+      - Check my claim
     messages:
       - text: >
-          Hello! I'm your Claims Assistant. I can help you report a new claim,
-          check the status of an existing claim, or answer questions about your
-          cover. What would you like to do?
+          I can help you report a new loss, check your claim status, review coverage,
+          submit claim documents, or connect you to a claims handler.
     quick_replies:
       - Report a new claim
       - Check claim status
-      - Coverage questions
+      - Check all my active policies
       - Submit documents
+      - Connect me to a claims handler
 
   - name: First Notice of Loss (FNOL)
+    description: >
+      Collects complete first notice of loss intake across auto, property, and casualty
+      with state-required disclosures and hidden fraud signal collection.
     trigger_phrases:
       - Report a new claim
-      - I want to report an incident
-      - Log a claim
-    adaptive_card:
-      title: "New Claim — Incident Details"
-      fields:
-        - id: policy_number
-          label: Policy number
-          type: text
-          required: true
-        - id: incident_type
-          label: Type of incident
-          type: choice
-          options:
-            - Motor accident
-            - Property damage
-            - Personal injury
-            - Theft
-            - Other
-          required: true
-        - id: incident_date
-          label: Date of incident
-          type: date
-          required: true
-        - id: incident_description
-          label: Description of what happened
-          type: text
-          multiline: true
-          required: true
-        - id: location
-          label: Location of incident
-          type: text
-    submit_action:
-      type: power_automate_flow
-      flow_name: CreateClaimRecord
-      output_message: >
-        Thank you. Your claim reference is {claim_reference}. A claims handler
-        will be in touch within 2 business days.
+      - Start FNOL
+      - I need to file a claim
+    steps:
+      - type: question
+        variable: policy_number
+        prompt: Please provide your policy number.
+      - type: question
+        variable: customer_state
+        prompt: In which state did the loss occur?
+      - type: question
+        variable: line_of_business
+        prompt: Is this an auto, property, or casualty claim?
+        entity: choice
+        options: [auto, property, casualty]
+      - type: action
+        action: LookupStateDisclosure
+        input:
+          state_code: "{customer_state}"
+          line_of_business: "{line_of_business}"
+        output:
+          required_disclosure_text: required_disclosure_text
+      - type: message
+        text: "{required_disclosure_text}"
+      - type: question
+        variable: incident_date
+        prompt: What date did the incident occur?
+      - type: question
+        variable: incident_time
+        prompt: What time did the incident occur?
+      - type: question
+        variable: incident_location
+        prompt: Where did the incident occur?
+      - type: question
+        variable: incident_description
+        prompt: Please describe what happened.
+
+      - type: condition
+        expression: "{line_of_business} = 'auto'"
+        then:
+          - type: question
+            variable: auto_other_vehicle_details
+            prompt: Please provide the other vehicle details if available (plate, make, model, driver).
+          - type: question
+            variable: auto_police_report_number
+            prompt: Do you have a police report number?
+          - type: question
+            variable: auto_injuries_reported
+            prompt: Were any injuries reported at the scene?
+
+      - type: condition
+        expression: "{line_of_business} = 'property'"
+        then:
+          - type: question
+            variable: property_damage_location
+            prompt: Which part of the property was damaged?
+          - type: question
+            variable: property_emergency_services_called
+            prompt: Were emergency services called?
+          - type: question
+            variable: property_current_habitability
+            prompt: Is the property currently habitable?
+
+      - type: condition
+        expression: "{line_of_business} = 'casualty'"
+        then:
+          - type: question
+            variable: casualty_injury_description
+            prompt: Please describe the injury or alleged injury.
+          - type: question
+            variable: casualty_medical_provider
+            prompt: Which medical provider or facility was involved, if known?
+          - type: question
+            variable: casualty_attorney_involved
+            prompt: Is an attorney currently involved?
+
+      - type: action
+        action: CalculateFraudScore
+        visibility: internal_only
+        input:
+          policy_number: "{policy_number}"
+          incident_date: "{incident_date}"
+          report_timestamp: "{System.CurrentTime}"
+          incident_description: "{incident_description}"
+          line_of_business: "{line_of_business}"
+          incident_location: "{incident_location}"
+        output:
+          fraud_score: fraud_score
+          report_delay_days: report_delay_days
+          prior_claim_frequency: prior_claim_frequency
+          geo_anomaly_score: geo_anomaly_score
+          description_damage_mismatch: description_damage_mismatch
+
+      - type: action
+        action: CreateClaimRecord
+        input:
+          policy_number: "{policy_number}"
+          customer_state: "{customer_state}"
+          line_of_business: "{line_of_business}"
+          incident_date: "{incident_date}"
+          incident_time: "{incident_time}"
+          incident_location: "{incident_location}"
+          incident_description: "{incident_description}"
+          auto_other_vehicle_details: "{auto_other_vehicle_details}"
+          auto_police_report_number: "{auto_police_report_number}"
+          property_damage_location: "{property_damage_location}"
+          property_emergency_services_called: "{property_emergency_services_called}"
+          casualty_injury_description: "{casualty_injury_description}"
+          casualty_medical_provider: "{casualty_medical_provider}"
+          fraud_score: "{fraud_score}"
+        output:
+          claim_reference: claim_reference
+          intake_sla_due: intake_sla_due
+      - type: message
+        text: >
+          Your claim has been created. Claim number: {claim_reference}.
+          We will provide updates according to your state's claim handling requirements.
 
   - name: Coverage Questions
+    description: >
+      Answers coverage questions and supports account-level retrieval of all active policies.
     trigger_phrases:
-      - What does my policy cover?
-      - Am I covered for {incident_type}?
-      - What is my excess?
-      - What is not covered?
-    entities:
-      - name: incident_type
-        type: string
-        prompt: What type of incident are you asking about?
-    actions:
-      - type: knowledge_search
-        query: "coverage {incident_type} policy terms"
-        source: policy-wording-library
-    fallback_message: >
-      I couldn't find specific coverage details for that. Please contact your
-      broker or call our customer service line.
+      - What is covered?
+      - Check all my active policies
+      - Show my policies
+      - Am I covered for this incident?
+    steps:
+      - type: condition
+        expression: "contains(System.Activity.Text,'all my active policies')"
+        then:
+          - type: action
+            action: GetActivePolicies
+            input:
+              customer_id: "{User.Id}"
+            output:
+              policy_summary_table: policy_summary_table
+          - type: message
+            text: "Active policies on file: {policy_summary_table}"
+      - type: condition
+        expression: "not contains(System.Activity.Text,'all my active policies')"
+        then:
+          - type: question
+            variable: coverage_question
+            prompt: Please provide your coverage question.
+          - type: action
+            action: CoverageKnowledgeSearch
+            input:
+              question: "{coverage_question}"
+              policy_context: "{line_of_business}"
+            output:
+              coverage_response: coverage_response
+          - type: message
+            text: "{coverage_response}"
 
   - name: Claim Status
+    description: >
+      Provides current claim status, payment status, assigned adjuster contact details,
+      and next expected customer steps.
     trigger_phrases:
-      - What is the status of my claim?
-      - Check my claim
-      - Where is my claim up to?
-    entities:
-      - name: claim_reference
-        type: string
-        prompt: Please provide your claim reference number.
-    actions:
-      - type: power_automate_flow
-        flow_name: GetClaimStatus
+      - What is my claim status?
+      - Track my claim
+      - Has my payment been issued?
+    steps:
+      - type: question
+        variable: claim_reference
+        prompt: Please provide your claim number.
+      - type: action
+        action: GetClaimStatus
         input:
           claim_reference: "{claim_reference}"
-        output_message: >
-          Claim {claim_reference}: Status is **{claim_status}**.
-          Last updated: {last_updated}.
+        output:
+          claim_status: claim_status
+          payment_status: payment_status
+          payment_date: payment_date
+          adjuster_name: adjuster_name
+          adjuster_phone: adjuster_phone
+          adjuster_email: adjuster_email
+          next_steps: next_steps
+      - type: action
+        action: CheckSlaCompliance
+        input:
+          claim_reference: "{claim_reference}"
+        output:
+          sla_status: sla_status
+      - type: message
+        text: >
+          Claim {claim_reference} status: {claim_status}.
+          Payment status: {payment_status}. Expected payment date: {payment_date}.
+          Assigned adjuster: {adjuster_name}, {adjuster_phone}, {adjuster_email}.
+          Next steps: {next_steps}.
 
   - name: Document Submission
+    description: >
+      Accepts claim documentation and runs OCR extraction for police reports and repair estimates.
     trigger_phrases:
-      - I need to submit documents
-      - Upload evidence
-      - Send photos
-      - Attach documents
-    messages:
-      - text: >
-          Please upload the relevant documents below. Accepted formats:
-          PDF, JPG, PNG (max 10 MB each).
-    actions:
-      - type: file_upload
-        allowed_types: [pdf, jpg, png]
-        max_size_mb: 10
-        upload_flow: UploadClaimDocument
+      - Submit documents
+      - Upload police report
+      - Upload repair estimate
+      - Send claim files
+    steps:
+      - type: question
+        variable: claim_reference
+        prompt: Please provide your claim number.
+      - type: message
+        text: >
+          Upload accepted file types: PDF, JPG, PNG. Maximum 15 MB per file.
+      - type: action
+        action: UploadClaimDocument
+        input:
+          claim_reference: "{claim_reference}"
+        output:
+          document_id: document_id
+          document_type: document_type
+      - type: condition
+        expression: "{document_type} = 'police_report' or {document_type} = 'repair_estimate'"
+        then:
+          - type: action
+            action: AIBDocumentOCR
+            input:
+              document_id: "{document_id}"
+              claim_reference: "{claim_reference}"
+            output:
+              extracted_summary: extracted_summary
+          - type: message
+            text: >
+              Document received and processed. Extracted details summary: {extracted_summary}.
+      - type: condition
+        expression: "{document_type} <> 'police_report' and {document_type} <> 'repair_estimate'"
+        then:
+          - type: message
+            text: Document received and attached to claim {claim_reference}.
+
+  - name: SLA Status
+    description: >
+      Handler-only topic showing claims approaching SLA deadlines by state and line.
+    trigger_phrases:
+      - What claims are approaching SLA deadline?
+      - Show SLA risk queue
+      - SLA dashboard
+    audience: internal_handlers
+    steps:
+      - type: action
+        action: GetSlaRiskQueue
+        input:
+          handler_id: "{User.Id}"
+        output:
+          sla_risk_list: sla_risk_list
+      - type: message
+        text: "Current SLA at-risk claims: {sla_risk_list}"
+
+  - name: CAT Event Mode
+    description: >
+      Handler and supervisor topic to activate catastrophe intake mode and expedited routing.
+    trigger_phrases:
+      - Activate catastrophe mode
+      - Activate catastrophe mode for Hurricane X
+      - Enable CAT mode
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: cat_event_name
+        prompt: Enter catastrophe event name.
+      - type: question
+        variable: cat_affected_states
+        prompt: Enter affected states (comma separated).
+      - type: question
+        variable: cat_start_time
+        prompt: Enter CAT mode start date and time.
+      - type: action
+        action: ActivateCatMode
+        input:
+          event_name: "{cat_event_name}"
+          affected_states: "{cat_affected_states}"
+          start_time: "{cat_start_time}"
+          activated_by: "{User.Email}"
+        output:
+          cat_mode_active: cat_mode_active
+          cat_routing_profile: cat_routing_profile
+      - type: message
+        text: >
+          Catastrophe mode is now active for {cat_event_name}.
+          Routing profile {cat_routing_profile} has been applied.
 
   - name: Escalation
+    description: >
+      Transfers conversation to a human claims handler with full operational context.
     trigger_phrases:
-      - I want to speak to a claims handler
-      - Connect me to a human
-      - This is urgent
-    messages:
-      - text: >
-          I'll connect you to a claims handler now. Your reference number is
-          {claim_reference}. Average wait time is {estimated_wait}.
-    actions:
-      - type: handoff_to_agent
+      - Connect me to a claims handler
+      - I need a human adjuster
+      - This needs escalation
+      - I have an attorney
+    steps:
+      - type: action
+        action: BuildConversationSummary
+        input:
+          conversation_id: "{System.Conversation.Id}"
+        output:
+          conversation_summary: conversation_summary
+      - type: action
+        action: CheckSlaCompliance
+        input:
+          claim_reference: "{claim_reference}"
+        output:
+          sla_status: sla_status
+      - type: message
+        text: >
+          I am transferring you to a claims handler now.
+      - type: action
+        action: handoff_to_agent
         context:
           claim_reference: "{claim_reference}"
+          customer_state: "{customer_state}"
+          line_of_business: "{line_of_business}"
+          fraud_score: "{fraud_score}"
+          sla_status: "{sla_status}"
           conversation_summary: "{conversation_summary}"

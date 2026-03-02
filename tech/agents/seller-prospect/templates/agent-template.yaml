@@ -1,0 +1,313 @@
+schemaVersion: 1.0
+agent:
+  name: Seller Prospect
+  vertical: Tech
+  orchestrationMode: generative
+  description: >
+    Dual-channel sales agent for internal sellers and external prospects.
+    Internal users receive CRM pipeline support and coaching. External users receive public-safe guidance and qualification.
+  defaultLanguage: en-US
+  channels:
+    internal:
+      name: teams
+      audience: sales-reps
+    external:
+      name: webchat
+      audience: prospects
+
+variables:
+  global:
+    - name: Global.ChannelType
+      type: string
+    - name: Global.IsInternalUser
+      type: boolean
+    - name: Global.Authenticated
+      type: boolean
+    - name: Global.SalesforceUserId
+      type: string
+  topic:
+    - name: Topic.Budget
+      type: string
+    - name: Topic.Authority
+      type: string
+    - name: Topic.Need
+      type: string
+    - name: Topic.Timeline
+      type: string
+    - name: Topic.BantScore
+      type: number
+
+tools:
+  - name: CreateSalesforceLead
+    type: flow
+    description: Creates a Salesforce lead from qualified prospect data.
+  - name: GetSalesforceLead
+    type: flow
+    description: Retrieves Salesforce lead details by email or lead ID.
+  - name: GetOpportunityDetails
+    type: flow
+    description: Returns opportunity details for a specified deal name.
+  - name: GetPipelineSummary
+    type: flow
+    description: Aggregates opportunities by stage and total amount for a seller.
+  - name: ScheduleMeeting
+    type: flow
+    description: Checks Microsoft Graph calendar availability and proposes meeting slots.
+  - name: EscalateToSalesQueue
+    type: flow
+    description: Sends handoff package to live sales team queue in Teams.
+
+topics:
+  - name: Greeting
+    description: >
+      Handles welcome messages and branches by channel context.
+      Internal users receive rep-centric capabilities. External users receive prospect-safe guidance.
+    triggerPhrases:
+      - hello
+      - hi
+      - good morning
+      - help me get started
+    flow:
+      - kind: SetVariable
+        id: detectChannel
+        variable: Global.ChannelType
+        value: =System.Channel.Name
+      - kind: ConditionGroup
+        id: branchByChannel
+        conditions:
+          - id: internalBranch
+            condition: =Lower(Global.ChannelType) = "msteams"
+            actions:
+              - kind: SetVariable
+                variable: Global.IsInternalUser
+                value: true
+              - kind: SendMessage
+                message: >
+                  Welcome back. I can help with opportunity lookup, pipeline summary, deal health checks, and meeting scheduling.
+          - id: externalBranch
+            condition: =Lower(Global.ChannelType) = "webchat"
+            actions:
+              - kind: SetVariable
+                variable: Global.IsInternalUser
+                value: false
+              - kind: SendMessage
+                message: >
+                  Welcome. I can help with product questions, case studies, qualification, and connecting you with our sales team.
+        elseActions:
+          - kind: SendMessage
+            message: Welcome. Please tell me what you want to achieve today.
+
+  - name: Lead Qualification
+    description: >
+      Qualifies inbound prospects using BANT and creates a Salesforce lead with qualification score.
+      Use for external and SDR-led qualification scenarios.
+    triggerPhrases:
+      - qualify this lead
+      - assess prospect fit
+      - capture new lead
+      - start qualification
+    flow:
+      - kind: SendAdaptiveCard
+        id: bantCard
+        cardJson: |
+          {
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "type": "AdaptiveCard",
+            "version": "1.5",
+            "body": [
+              { "type": "TextBlock", "text": "BANT Qualification", "weight": "Bolder", "size": "Medium" },
+              { "type": "Input.Text", "id": "budget", "label": "Budget range", "isRequired": true },
+              { "type": "Input.Text", "id": "authority", "label": "Decision authority", "isRequired": true },
+              { "type": "Input.Text", "id": "need", "label": "Primary need", "isRequired": true },
+              { "type": "Input.Text", "id": "timeline", "label": "Timeline to purchase", "isRequired": true }
+            ],
+            "actions": [
+              { "type": "Action.Submit", "title": "Submit qualification" }
+            ]
+          }
+      - kind: SetVariable
+        variable: Topic.Budget
+        value: =Topic.Activity.Value.budget
+      - kind: SetVariable
+        variable: Topic.Authority
+        value: =Topic.Activity.Value.authority
+      - kind: SetVariable
+        variable: Topic.Need
+        value: =Topic.Activity.Value.need
+      - kind: SetVariable
+        variable: Topic.Timeline
+        value: =Topic.Activity.Value.timeline
+      - kind: SetVariable
+        variable: Topic.BantScore
+        value: =If(!IsBlank(Topic.Budget),25,0)+If(!IsBlank(Topic.Authority),25,0)+If(!IsBlank(Topic.Need),25,0)+If(!IsBlank(Topic.Timeline),25,0)
+      - kind: InvokeTool
+        tool: CreateSalesforceLead
+        inputs:
+          budget: =Topic.Budget
+          authority: =Topic.Authority
+          need: =Topic.Need
+          timeline: =Topic.Timeline
+          bantScore: =Topic.BantScore
+      - kind: SendMessage
+        message: >
+          Qualification recorded. BANT score: {Topic.BantScore}. I created a Salesforce lead and logged the qualification context.
+
+  - name: Opportunity Lookup
+    description: >
+      Retrieves details of a named Salesforce opportunity for internal sellers.
+      Example request: Tell me about the Contoso deal.
+    triggerPhrases:
+      - tell me about the contoso deal
+      - find opportunity details
+      - open deal summary
+      - show opportunity
+    flow:
+      - kind: Question
+        id: askOpportunityName
+        variable: Topic.OpportunityName
+        prompt: What opportunity name should I look up?
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        tool: GetOpportunityDetails
+        inputs:
+          opportunityName: =Topic.OpportunityName
+      - kind: SendMessage
+        message: >
+          Opportunity summary for {Topic.OpportunityName}: stage, amount, close date, owner, and next step have been retrieved from Salesforce.
+
+  - name: Pipeline Summary
+    description: >
+      Aggregates current pipeline by stage for an internal seller and returns coverage insights.
+    triggerPhrases:
+      - show my pipeline
+      - pipeline summary
+      - current pipeline by stage
+      - pipeline coverage
+    flow:
+      - kind: InvokeTool
+        tool: GetPipelineSummary
+        inputs:
+          sellerId: =User.Id
+      - kind: SendMessage
+        message: >
+          Here is your pipeline snapshot by stage including total amount, weighted pipeline, and top at-risk opportunities.
+
+  - name: Deal Health Check
+    description: >
+      Assesses deal health using activity recency, stakeholder engagement, and risk indicators.
+    triggerPhrases:
+      - check deal health
+      - risk assessment for deal
+      - is this deal healthy
+      - evaluate opportunity risk
+    flow:
+      - kind: Question
+        id: askDeal
+        variable: Topic.DealName
+        prompt: Which opportunity should I assess?
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        tool: GetOpportunityDetails
+        inputs:
+          opportunityName: =Topic.DealName
+      - kind: SetVariable
+        variable: Topic.RiskLevel
+        value: =If(Topic.LastActivityDays > 14 || Topic.StakeholderCount < 2 || Topic.NextStepMissing = true,"High",If(Topic.LastActivityDays > 7,"Medium","Low"))
+      - kind: SendMessage
+        message: >
+          Deal health assessment for {Topic.DealName}: risk level {Topic.RiskLevel}. I evaluated activity recency, stakeholder engagement, and execution risk.
+
+  - name: Meeting Scheduler
+    description: >
+      Schedules a prospect meeting by checking seller calendar availability through Microsoft Graph and proposing times.
+    triggerPhrases:
+      - schedule a meeting
+      - propose meeting times
+      - find time with prospect
+      - set up discovery call
+    flow:
+      - kind: Question
+        id: askProspectEmail
+        variable: Topic.ProspectEmail
+        prompt: What is the prospect email address?
+        entity: EmailPrebuiltEntity
+      - kind: Question
+        id: askMeetingWindow
+        variable: Topic.MeetingWindow
+        prompt: What date range should I use for suggestions?
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        tool: ScheduleMeeting
+        inputs:
+          repUserId: =User.Id
+          prospectEmail: =Topic.ProspectEmail
+          preferredWindow: =Topic.MeetingWindow
+      - kind: SendMessage
+        message: >
+          I found available slots and prepared options for the prospect. Confirm one option and I will finalize the invite.
+
+  - name: Prospect Chat
+    description: >
+      External-only topic for product, pricing guidance, and case-study questions using public knowledge sources.
+      Does not expose internal strategy or competitive battlecards.
+    triggerPhrases:
+      - tell me about your product
+      - what does your platform do
+      - share customer case studies
+      - how does pricing work
+    flow:
+      - kind: ConditionGroup
+        id: enforceExternalBoundary
+        conditions:
+          - id: allowExternal
+            condition: =Lower(System.Channel.Name) = "webchat"
+            actions:
+              - kind: GenerativeAnswer
+                knowledgeSources:
+                  - public-product-library
+                citationMode: required
+      - kind: SendMessage
+        message: >
+          If you want tailored recommendations, I can start a qualification flow and connect you with a sales specialist.
+
+  - name: Competitive Intelligence
+    description: >
+      Internal-only competitive positioning guidance for reps using restricted competitive intelligence knowledge.
+    triggerPhrases:
+      - competitor comparison
+      - how do we position against
+      - battlecard support
+      - objection handling for competitor
+    flow:
+      - kind: ConditionGroup
+        id: internalOnlyGuard
+        conditions:
+          - id: allowedInternal
+            condition: =Lower(System.Channel.Name) = "msteams"
+            actions:
+              - kind: GenerativeAnswer
+                knowledgeSources:
+                  - competitive-intel-library
+                citationMode: required
+        elseActions:
+          - kind: SendMessage
+            message: This information is only available through internal authenticated channels.
+
+  - name: Escalation
+    description: >
+      Escalates the conversation to a live sales representative queue with context payload.
+    triggerPhrases:
+      - talk to a sales rep
+      - connect me to a person
+      - escalate this conversation
+      - handoff to live agent
+    flow:
+      - kind: InvokeTool
+        tool: EscalateToSalesQueue
+        inputs:
+          conversationId: =System.Conversation.Id
+          transcriptSummary: =Topic.ConversationSummary
+          channel: =System.Channel.Name
+      - kind: SendMessage
+        message: >
+          I have escalated your request to our live sales queue. A representative will follow up shortly.

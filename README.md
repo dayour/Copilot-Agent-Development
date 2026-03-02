@@ -10,8 +10,8 @@ A showcase library of complete **Copilot Studio agents** for multiple industry v
 | [coffee/](./coffee/) | Coffee | [Virtual Coach](./coffee/agents/virtual-coach/) |
 | [clothing/](./clothing/) | Clothing | [Power Analysis](./clothing/agents/power-analysis/) |
 | [insurance/](./insurance/) | Insurance | [Claims Assistant](./insurance/agents/claims-assistant/) |
-| [tech/](./tech/) | Tech | [IT Help Desk](./tech/agents/it-help-desk/) |
-| [transportation/](./transportation/) | Transportation | [Fleet Coordinator](./transportation/agents/fleet-coordinator/) |
+| [tech/](./tech/) | Tech | [IT Help Desk](./tech/agents/it-help-desk/), [Seller Prospect](./tech/agents/seller-prospect/) |
+| [transportation/](./transportation/) | Transportation | [Fleet Coordinator](./transportation/agents/fleet-coordinator/), [Fuel Tracking](./transportation/agents/fuel-tracking/) |
 
 ## Agent Scaffold
 
@@ -35,4 +35,18 @@ Every agent follows the same four-file scaffold:
 4. Import `solution/solution-definition.yaml` and map the environment variables to your tenant.
 5. Customise `templates/agent-template.yaml` with your organisation's content.
 6. Publish the agent to Microsoft Teams or your preferred channel.
+
+## Documentation
+
+Cross-cutting guides covering shared concerns across all verticals:
+
+| Guide | Description |
+|-------|-------------|
+| [Connectors Reference](./docs/connectors.md) | All connector types, setup steps, auth patterns, rate limits, error handling |
+| [Authentication Architecture](./docs/authentication.md) | Azure AD, Azure AD B2C, Salesforce SSO, service accounts, RLS pass-through |
+| [Architecture and Flow Diagrams](./docs/architecture.md) | Mermaid diagrams for every agent conversation flow, data pipeline, and integration |
+| [Extensibility Guide](./docs/extensibility.md) | Adding topics, custom connectors, knowledge sources, new verticals, adaptive cards |
+| [Publishing Guide](./docs/publishing.md) | Channel deployment: Teams, web chat, mobile, Power Apps, external B2C channels |
+| [Admin and Governance](./docs/admin-governance.md) | Licensing, DLP policies, analytics, GDPR, security hardening, audit logging |
+| [Agent Lifecycle](./docs/agent-lifecycle.md) | Development, testing, staging, production, monitoring, updates, retirement |
 
