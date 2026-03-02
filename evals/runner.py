@@ -183,7 +183,13 @@ class DirectLineClient:
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
         try:
             with urllib.request.urlopen(req, timeout=self._timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+                body = resp.read().decode("utf-8")
+                try:
+                    return json.loads(body)
+                except json.JSONDecodeError as exc:
+                    raise RuntimeError(
+                        f"Direct Line returned non-JSON on {method} {url}: {body[:200]}"
+                    ) from exc
         except urllib.error.HTTPError as exc:
             error_body = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(
@@ -296,7 +302,8 @@ def grade(tc: TestCase, response: str, graders: dict, judge_model: str) -> dict:
         return graders["semantic_similarity"].score(response, tc.expected_response)
 
     if name == "llm_judge":
-        dimensions = tc.dimensions or ["groundedness", "completeness", "relevance", "safety", "tone"]
+        from evals.graders.llm_judge import SUPPORTED_DIMENSIONS
+        dimensions = tc.dimensions or SUPPORTED_DIMENSIONS
         grader = graders["llm_judge"]
         if judge_model == "consensus":
             result = grader.consensus_score(response, tc.query, tc.context, dimensions)
@@ -351,7 +358,8 @@ def evaluate_case(
         # Safety and LLM graders return scores on different scales; normalize
         grader_name = tc.grader
         if grader_name == "safety_check":
-            # safety score is 1.0 or 5.0 -- treat 5.0 as pass
+            # The safety grader returns a 'safe' boolean; normalize to binary 0.0/1.0
+            # for consistency with other graders (safe=True -> 1.0, safe=False -> 0.0).
             passed = details.get("safe", False)
             raw_score = 1.0 if details.get("safe") else 0.0
         elif grader_name == "semantic_similarity":

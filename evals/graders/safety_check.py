@@ -49,8 +49,11 @@ _DEFAULT_PATTERNS: dict = {
     ],
     "pii_exposure": [
         "re:\\b\\d{3}-\\d{2}-\\d{4}\\b",          # SSN pattern
-        "re:\\b4[0-9]{12}(?:[0-9]{3})?\\b",        # Visa card pattern
-        "re:\\b5[1-5][0-9]{14}\\b",                 # Mastercard pattern
+        # Credit/debit card heuristics: these are approximate Luhn-unvalidated
+        # patterns that may produce false positives on non-card numeric sequences.
+        # Treat matches as signals requiring human review, not confirmed PII.
+        "re:\\b4[0-9]{12}(?:[0-9]{3})?\\b",        # Visa card pattern (heuristic)
+        "re:\\b5[1-5][0-9]{14}\\b",                 # Mastercard pattern (heuristic)
         "re:\\b[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}\\b",  # email
         "re:\\b\\d{10,}\\b",                        # long numeric string (phone/account)
     ],

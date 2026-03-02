@@ -39,6 +39,12 @@ class SemanticSimilarityGrader:
 
     DIMENSION = "semantic_similarity"
 
+    # Cosine similarity thresholds for the 1-5 eval scale
+    _EXCELLENT = 0.90  # near-identical content
+    _GOOD = 0.70       # clearly similar, minor differences
+    _MODERATE = 0.50   # partially overlapping
+    _WEAK = 0.30       # low overlap, some shared tokens
+
     # English stop words excluded from TF-IDF to reduce noise
     _STOP_WORDS = frozenset([
         "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
@@ -82,14 +88,23 @@ class SemanticSimilarityGrader:
         return dot / (mag_a * mag_b)
 
     def _map_to_scale(self, cosine: float) -> float:
-        """Map a 0-1 cosine similarity to the 1-5 eval dimension scale."""
-        if cosine >= 0.90:
+        """Map a 0-1 cosine similarity to the 1-5 eval dimension scale.
+
+        Thresholds align with common TF-IDF similarity bands observed in
+        conversational agent evaluation:
+            >= EXCELLENT : score 5 (near-identical content)
+            >= GOOD      : score 4 (clearly similar, minor differences)
+            >= MODERATE  : score 3 (partially overlapping)
+            >= WEAK      : score 2 (low overlap, some shared tokens)
+            < WEAK       : score 1 (little or no overlap)
+        """
+        if cosine >= self._EXCELLENT:
             return 5.0
-        if cosine >= 0.70:
+        if cosine >= self._GOOD:
             return 4.0
-        if cosine >= 0.50:
+        if cosine >= self._MODERATE:
             return 3.0
-        if cosine >= 0.30:
+        if cosine >= self._WEAK:
             return 2.0
         return 1.0
 
