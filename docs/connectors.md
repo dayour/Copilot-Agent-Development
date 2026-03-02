@@ -3,6 +3,8 @@
 ## Overview
 Copilot Studio agents in this solution use Power Automate cloud flows to integrate with Microsoft 365, Dataverse, analytics platforms, and external line-of-business APIs. Connectors provide standardized integration surfaces for authentication, request/response shaping, retry behavior, and operational error handling. In practice, each vertical composes these connectors differently, but all implementations should follow common governance, ALM, and security controls.
 
+For Model Context Protocol (MCP) server integrations, see [connectors/mcp-servers.md](connectors/mcp-servers.md).
+
 ## Connector Inventory
 
 | Connector Type | Vertical(s) | Auth Type | License Requirement |
