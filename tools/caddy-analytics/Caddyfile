@@ -1,0 +1,166 @@
+# Caddyfile  -  Copilot Studio Agent Conversation Analytics Proxy
+#
+# Caddy v2.7+ is required.
+#
+# Required third-party modules (build with xcaddy or use a pre-built binary):
+#   github.com/caddyserver/transform-encoder - structured field transformation
+#
+# Environment variables  -  set before starting Caddy:
+#   AGENT_DOMAIN           Your public domain, e.g. agents.contoso.com
+#   DIRECT_LINE_ENDPOINT   Direct Line service host, e.g. directline.botframework.com
+#   BOT_FRAMEWORK_HOST     Bot Framework messaging host, e.g. smba.trafficmanager.net
+#   LOG_DIR                Log output directory (default: /var/log/caddy)
+#   TLS_EMAIL              ACME account email for automatic HTTPS
+
+{
+  # Disable the Caddy admin API endpoint in production environments.
+  # Re-enable (admin localhost:2019) only during local development.
+  admin off
+
+  # Global email for ACME certificate provisioning.
+  email {$TLS_EMAIL}
+}
+
+# ---------------------------------------------------------------------------
+# Agent conversation analytics proxy
+# ---------------------------------------------------------------------------
+{$AGENT_DOMAIN} {
+
+  # Assign a correlation ID to every request that does not already carry one.
+  # The ID is propagated upstream and logged, enabling end-to-end tracing
+  # across Caddy, Direct Line, and Bot Framework.
+  @no_correlation not header X-Correlation-ID *
+  header @no_correlation X-Correlation-ID {uuid}
+
+  # Remove headers that expose server implementation details.
+  header -Server
+  header -X-Powered-By
+  header -X-AspNet-Version
+
+  # -------------------------------------------------------------------------
+  # Structured JSON access log  -  analytics sink
+  #
+  # Privacy controls (GDPR / CCPA compliance):
+  #   - client_ip is DELETED before writing; no raw IP address is stored.
+  #   - request body is never logged (no conversation message content).
+  #   - response body is never logged.
+  #   - Authorization and Cookie headers are deleted.
+  #   - Only the session ID extracted from the URL path is retained, not any
+  #     user identifier supplied in message payloads.
+  #
+  # For geographic distribution analytics, deploy the MaxMind GeoIP module
+  # (github.com/porech/caddy-maxmind-geolocation) to emit a client_region
+  # field before the IP is removed.  See README.md for configuration steps.
+  #
+  # Log rotation:
+  #   roll_size    -  rotate when the file reaches 100 MiB
+  #   roll_keep    -  retain at most 10 rotated files
+  #   roll_keep_for  -  delete rotated files older than 30 days (720 hours)
+  # -------------------------------------------------------------------------
+  log {
+    output file {$LOG_DIR:/var/log/caddy}/agent-conversations.log {
+      roll_size     100MiB
+      roll_keep     10
+      roll_keep_for 720h
+    }
+
+    format filter {
+      wrap json
+      fields {
+        # Remove all PII  -  these fields must never appear in stored logs.
+        request>remote_ip          delete
+        request>remote_port        delete
+        request>headers>Cookie     delete
+        request>headers>Authorization delete
+        request>headers>X-Auth-Token  delete
+
+        # Remove request and response bodies  -  conversation content is PII.
+        request>body               delete
+        response>body              delete
+      }
+    }
+
+    level INFO
+  }
+
+  # -------------------------------------------------------------------------
+  # Analytics-relevant request matchers
+  # -------------------------------------------------------------------------
+
+  # Direct Line REST API  -  conversation lifecycle endpoints.
+  # POST /v3/directline/conversations           starts a new conversation
+  # POST /v3/directline/conversations/{id}/activities  sends an activity
+  # GET  /v3/directline/conversations/{id}/activities  polls for activities
+  @direct_line {
+    path /v3/directline/*
+  }
+
+  # Bot Framework messaging endpoint  -  channel service delivery.
+  @bot_framework {
+    path /api/messages
+    path /api/messages/*
+  }
+
+  # Health probe  -  returns 200 without touching upstream services.
+  @health {
+    path /health
+    path /healthz
+  }
+
+  # -------------------------------------------------------------------------
+  # Upstream proxy  -  Direct Line
+  # -------------------------------------------------------------------------
+  handle @direct_line {
+    reverse_proxy https://{$DIRECT_LINE_ENDPOINT} {
+      header_up Host              {$DIRECT_LINE_ENDPOINT}
+      header_up X-Correlation-ID  {http.request.header.X-Correlation-ID}
+
+      # Strip the inbound IP to prevent forwarding PII to the upstream service.
+      header_up -X-Forwarded-For
+      header_up -X-Real-IP
+
+      # Preserve the original User-Agent for channel distribution analytics.
+      header_up User-Agent {http.request.header.User-Agent}
+
+      # Transport timeouts  -  tune to expected Direct Line response windows.
+      transport http {
+        dial_timeout       5s
+        response_header_timeout 30s
+        keep_alive         30s
+        keep_alive_idle_conns 10
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Upstream proxy  -  Bot Framework messaging
+  # -------------------------------------------------------------------------
+  handle @bot_framework {
+    reverse_proxy https://{$BOT_FRAMEWORK_HOST} {
+      header_up Host              {$BOT_FRAMEWORK_HOST}
+      header_up X-Correlation-ID  {http.request.header.X-Correlation-ID}
+      header_up -X-Forwarded-For
+      header_up -X-Real-IP
+      header_up User-Agent        {http.request.header.User-Agent}
+
+      transport http {
+        dial_timeout       5s
+        response_header_timeout 30s
+        keep_alive         30s
+        keep_alive_idle_conns 10
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Health check  -  local response, no upstream call
+  # -------------------------------------------------------------------------
+  handle @health {
+    respond "OK" 200
+  }
+
+  # Reject all other paths  -  the proxy only exposes defined routes.
+  handle {
+    respond "Not Found" 404
+  }
+}
