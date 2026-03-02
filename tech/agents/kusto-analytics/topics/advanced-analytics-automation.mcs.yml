@@ -1,0 +1,330 @@
+name: AdvancedAnalyticsAutomation
+displayName: Advanced Analytics Automation
+triggers:
+  - machine learning kusto
+  - time series analysis
+  - anomaly detection
+  - predictive analytics
+  - ml automation
+  - kusto machine learning
+  - advanced analytics
+  - time series forecasting
+  - pattern recognition
+  - statistical analysis
+entities: []
+actions:
+  - action: Topic.AdvancedAnalyticsAutomation
+variables: []
+
+topic: |
+  # Advanced Analytics Automation
+
+  ## Description
+  Comprehensive machine learning integration with Azure Data Explorer, featuring time series analysis, anomaly detection, predictive analytics, and automated ML workflows using Kusto's advanced analytics capabilities.
+
+  ## Conversation Flow
+
+  **System:** Welcome! I'm here to help you implement advanced analytics automation in Kusto. I can assist with machine learning integration, time series forecasting, anomaly detection, and automated analytics pipelines.
+
+  **Options:**
+  - 🤖 Machine Learning Integration & Automation
+  - 📈 Time Series Analysis & Forecasting
+  - 🚨 Anomaly Detection & Pattern Recognition
+  - 📊 Predictive Analytics & Statistical Modeling
+  - 🔄 Automated ML Workflows & Pipelines
+
+  ---
+
+  ### 🤖 Machine Learning Integration & Automation
+  **ML Platform Integration:**
+  - **Azure ML Integration**: Seamless integration with Azure Machine Learning for model training and deployment
+  - **Python/R Integration**: Native Python and R execution in Kusto with ML library support
+  - **AutoML Integration**: Automated machine learning pipeline integration with model selection and hyperparameter tuning
+  - **MLOps Integration**: ML lifecycle management with model versioning, monitoring, and automated retraining
+  - **Real-time Scoring**: Low-latency model inference integration with streaming data pipelines
+
+  **Advanced ML Operators:**
+  ```kql
+  // Machine Learning Functions in KQL
+  | evaluate python(
+      typeof(*),
+      ```
+      import pandas as pd
+      from sklearn.ensemble import IsolationForest
+      from sklearn.preprocessing import StandardScaler
+      
+      def anomaly_detection(df):
+          scaler = StandardScaler()
+          scaled_data = scaler.fit_transform(df[['cpu_usage', 'memory_usage', 'disk_io']])
+          
+          model = IsolationForest(contamination=0.1, random_state=42)
+          anomalies = model.fit_predict(scaled_data)
+          
+          df['anomaly_score'] = model.decision_function(scaled_data)
+          df['is_anomaly'] = anomalies == -1
+          return df
+      
+      result = anomaly_detection(df)
+      ```
+  )
+  ```
+
+  **Automated Analytics Workflows:**
+  - **Feature Engineering**: Automated feature extraction and transformation with domain-specific templates
+  - **Model Training**: Scheduled model training with data drift detection and automated retraining
+  - **Performance Monitoring**: ML model performance tracking with accuracy degradation alerts
+  - **A/B Testing**: Statistical testing framework for model comparison and validation
+  - **Ensemble Methods**: Multiple model combination with weighted voting and stacking techniques
+
+  ---
+
+  ### 📈 Time Series Analysis & Forecasting
+  **Advanced Time Series Functions:**
+  ```kql
+  // Comprehensive Time Series Analysis
+  let TimeSeriesForecast = 
+  Events
+  | where timestamp > ago(90d)
+  | make-series value = avg(metric_value) default=0 
+    on timestamp from ago(90d) to now() step 1h by service_name
+  | extend forecast = series_decompose_forecast(value, 24, -1, 'linefit')
+  | extend trend = series_decompose(value).trend
+  | extend seasonal = series_decompose(value).seasonal
+  | extend residual = series_decompose(value).residual
+  | extend anomaly_score = series_outliers(value, 2.5, 7, false)
+  | extend prediction_intervals = series_fit_2lines(value)
+  | extend changepoints = series_periods_detect(value, 0.8, 2h/1h, 2)
+  | project-away value;
+  ```
+
+  **Forecasting Capabilities:**
+  - **Multi-step Forecasting**: Short, medium, and long-term predictions with confidence intervals
+  - **Seasonal Decomposition**: Trend, seasonal, and residual component analysis with automated pattern detection
+  - **Change Point Detection**: Automatic detection of trend changes and anomalous behavior patterns
+  - **Cross-validation**: Time series cross-validation for model selection and performance estimation
+  - **Ensemble Forecasting**: Multiple forecasting model combination for improved accuracy and robustness
+
+  **Real-time Analytics:**
+  - **Streaming Forecasting**: Real-time prediction updates with sliding window analysis
+  - **Adaptive Models**: Self-adjusting models that adapt to changing data patterns
+  - **Nowcasting**: Near real-time state estimation for immediate decision making
+  - **Alert Integration**: Forecast-based alerting with predictive threshold management
+  - **Business Intelligence**: Forecast integration with Power BI and executive dashboards
+
+  ---
+
+  ### 🚨 Anomaly Detection & Pattern Recognition
+  **Multi-dimensional Anomaly Detection:**
+  ```kql
+  // Advanced Anomaly Detection Framework
+  let AnomalyDetectionPipeline = 
+  SecurityEvents
+  | where TimeGenerated > ago(7d)
+  | summarize 
+      LoginCount = count(),
+      DistinctIPs = dcount(SrcIP),
+      DistinctUsers = dcount(Account),
+      AvgSessionDuration = avg(SessionDuration)
+      by bin(TimeGenerated, 5m), Computer
+  | make-series 
+      LoginSeries = sum(LoginCount),
+      IPSeries = sum(DistinctIPs),
+      UserSeries = sum(DistinctUsers),
+      DurationSeries = avg(AvgSessionDuration)
+      on TimeGenerated from ago(7d) to now() step 5m by Computer
+  | extend
+      LoginAnomalies = series_decompose_anomalies(LoginSeries, 1.5, -1, 'linefit'),
+      IPAnomalies = series_decompose_anomalies(IPSeries, 1.5, -1, 'linefit'),
+      UserAnomalies = series_decompose_anomalies(UserSeries, 1.5, -1, 'linefit'),
+      DurationAnomalies = series_decompose_anomalies(DurationSeries, 2.0, -1, 'linefit')
+  | extend CombinedAnomalyScore = 
+      array_length(LoginAnomalies) + array_length(IPAnomalies) + 
+      array_length(UserAnomalies) + array_length(DurationAnomalies)
+  | where CombinedAnomalyScore > 0;
+  ```
+
+  **Pattern Recognition Framework:**
+  - **Behavioral Analytics**: User and entity behavior analysis with deviation detection
+  - **Clustering Analysis**: Automated pattern clustering with outlier identification
+  - **Graph Analytics**: Relationship pattern analysis with community detection
+  - **Sequence Mining**: Temporal pattern mining with anomalous sequence detection
+  - **Correlation Analysis**: Multi-variate correlation analysis with causality detection
+
+  **Intelligent Alerting:**
+  - **Dynamic Thresholds**: Self-adjusting thresholds based on historical patterns and seasonality
+  - **Multi-layer Detection**: Hierarchical anomaly detection from infrastructure to application level
+  - **False Positive Reduction**: ML-based false positive filtering with feedback learning
+  - **Root Cause Analysis**: Automated investigation with correlation and dependency analysis
+  - **Priority Scoring**: Risk-based alert prioritization with business impact assessment
+
+  ---
+
+  ### 📊 Predictive Analytics & Statistical Modeling
+  **Advanced Statistical Functions:**
+  ```kql
+  // Comprehensive Statistical Analysis
+  let StatisticalAnalysis = 
+  PerformanceCounters
+  | where TimeGenerated > ago(30d)
+  | summarize 
+      avg_cpu = avg(CounterValue),
+      p50_cpu = percentile(CounterValue, 50),
+      p95_cpu = percentile(CounterValue, 95),
+      p99_cpu = percentile(CounterValue, 99),
+      std_cpu = stdev(CounterValue),
+      variance_cpu = variance(CounterValue),
+      skewness = series_stats_dynamic(make_list(CounterValue)).skewness,
+      kurtosis = series_stats_dynamic(make_list(CounterValue)).kurtosis
+      by Computer, bin(TimeGenerated, 1h)
+  | extend 
+      zscore = (avg_cpu - avg(avg_cpu)) / stdev(avg_cpu),
+      cv = std_cpu / avg_cpu,
+      control_limits_upper = avg_cpu + 3 * std_cpu,
+      control_limits_lower = avg_cpu - 3 * std_cpu
+  | where abs(zscore) > 2 or cv > 0.5;
+  ```
+
+  **Predictive Modeling Capabilities:**
+  - **Regression Analysis**: Linear, polynomial, and non-linear regression with feature selection
+  - **Classification Models**: Multi-class classification with performance metrics and validation
+  - **Survival Analysis**: Time-to-event analysis with censoring and hazard function estimation
+  - **Causal Inference**: Causal analysis with intervention effects and confounding control
+  - **Bayesian Analysis**: Bayesian inference with uncertainty quantification and credible intervals
+
+  **Model Validation & Selection:**
+  - **Cross-validation**: K-fold and time series cross-validation with performance estimation
+  - **Model Comparison**: Statistical model comparison with information criteria and hypothesis testing
+  - **Feature Importance**: Feature ranking and selection with stability analysis
+  - **Hyperparameter Tuning**: Automated hyperparameter optimization with grid and random search
+  - **Model Interpretability**: SHAP values and feature attribution for model explainability
+
+  ---
+
+  ### 🔄 Automated ML Workflows & Pipelines
+  **End-to-End ML Automation:**
+  ```kql
+  // Automated ML Pipeline Orchestration
+  .create-or-alter function AutoMLPipeline() {
+      // Data Preparation
+      let PreparedData = 
+      RawData
+      | where ingestion_time() > ago(1d)
+      | extend 
+          features = pack_all(),
+          target = target_variable
+      | where isnotnull(target);
+      
+      // Feature Engineering
+      let FeatureEngineered = 
+      PreparedData
+      | evaluate python(
+          typeof(*),
+          ```
+          import pandas as pd
+          from sklearn.preprocessing import StandardScaler, LabelEncoder
+          from sklearn.feature_selection import SelectKBest, f_regression
+          
+          def feature_engineering(df):
+              # Automated feature engineering pipeline
+              scaler = StandardScaler()
+              selector = SelectKBest(f_regression, k=10)
+              
+              # Apply transformations
+              scaled_features = scaler.fit_transform(df.drop(['target'], axis=1))
+              selected_features = selector.fit_transform(scaled_features, df['target'])
+              
+              return pd.DataFrame(selected_features)
+          
+          result = feature_engineering(df)
+          ```
+      );
+      
+      // Model Training and Evaluation
+      FeatureEngineered
+      | evaluate python(
+          typeof(*),
+          ```
+          from sklearn.ensemble import RandomForestRegressor
+          from sklearn.model_selection import train_test_split
+          from sklearn.metrics import mean_squared_error, r2_score
+          
+          def train_evaluate_model(df):
+              X = df.drop(['target'], axis=1)
+              y = df['target']
+              
+              X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+              
+              model = RandomForestRegressor(n_estimators=100)
+              model.fit(X_train, y_train)
+              
+              predictions = model.predict(X_test)
+              mse = mean_squared_error(y_test, predictions)
+              r2 = r2_score(y_test, predictions)
+              
+              return pd.DataFrame({
+                  'mse': [mse],
+                  'r2': [r2],
+                  'model_version': [datetime.now().strftime('%Y%m%d_%H%M%S')]
+              })
+          
+          result = train_evaluate_model(df)
+          ```
+      )
+  }
+  ```
+
+  **Pipeline Components:**
+  - **Data Validation**: Automated data quality checks with schema validation and drift detection
+  - **Feature Store**: Centralized feature management with versioning and lineage tracking
+  - **Model Registry**: Model versioning with metadata tracking and governance
+  - **Experiment Tracking**: Comprehensive experiment logging with parameter and metric tracking
+  - **Deployment Automation**: Automated model deployment with canary releases and rollback capabilities
+
+  **Monitoring & Governance:**
+  - **Data Drift Detection**: Statistical tests for data distribution changes with alerting
+  - **Model Performance Monitoring**: Continuous model performance tracking with degradation alerts
+  - **Bias Detection**: Fairness monitoring with bias metrics and remediation suggestions
+  - **Compliance Tracking**: Regulatory compliance monitoring with audit trails
+  - **Cost Optimization**: Resource usage optimization with cost attribution and budgeting
+
+  ## Advanced Features
+
+  ### 🔬 Research & Development
+  - **Experimental Analytics**: A/B testing framework for analytics methodology validation
+  - **Custom Algorithm Development**: Framework for developing domain-specific algorithms
+  - **Academic Integration**: Integration with research institutions and academic datasets
+  - **Benchmarking Suite**: Comprehensive performance benchmarking with industry comparisons
+  - **Innovation Labs**: Sandbox environment for experimenting with cutting-edge analytics
+
+  ### 📊 Enterprise Integration
+  - **Multi-tenant Architecture**: Secure analytics sharing across organizational boundaries
+  - **Federated Learning**: Distributed machine learning across multiple Kusto clusters
+  - **Real-time Dashboards**: Live analytics dashboards with streaming data integration
+  - **API Management**: RESTful APIs for analytics consumption with authentication and rate limiting
+  - **Data Governance**: Comprehensive data governance with lineage tracking and privacy controls
+
+  ## Starter Prompts
+
+  ### Quick Actions
+  - "Set up anomaly detection for website traffic patterns with ML-based thresholds"
+  - "Create time series forecasting model for server capacity planning"
+  - "Implement real-time fraud detection using ensemble methods"
+  - "Configure automated A/B testing framework for feature rollouts"
+
+  ### Advanced Operations
+  - "Design end-to-end ML pipeline for predictive maintenance in IoT environment"
+  - "Implement multi-dimensional customer churn prediction with feature engineering"
+  - "Set up automated model retraining with data drift detection and performance monitoring"
+  - "Create intelligent alerting system with pattern recognition and false positive reduction"
+
+  ### Specialized Analytics
+  - "Build recommendation engine using collaborative filtering in Kusto"
+  - "Implement natural language processing pipeline for log analysis"
+  - "Design computer vision analytics for video surveillance data"
+  - "Create supply chain optimization model with demand forecasting"
+
+  ### Research & Innovation
+  - "Develop custom clustering algorithm for network traffic analysis"
+  - "Implement quantum-inspired optimization for large-scale analytics"
+  - "Create explainable AI framework for regulatory compliance"
+  - "Design federated analytics system for multi-organization collaboration"
