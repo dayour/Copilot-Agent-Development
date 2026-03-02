@@ -1,0 +1,56 @@
+name: "Copilot Setup Steps"
+
+on: workflow_dispatch
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install YAML validation tools
+        run: |
+          pip install pyyaml yamllint
+          npm install -g ajv-cli
+
+      - name: Install Power Platform CLI
+        run: |
+          npm install -g @microsoft/powerplatform-cli || true
+
+      - name: Validate repository structure
+        run: |
+          echo "Validating vertical directory structure..."
+          for vertical in coffee clothing insurance tech transportation; do
+            if [ -d "$vertical/agents" ]; then
+              echo "OK: $vertical/agents exists"
+            else
+              echo "WARNING: $vertical/agents missing"
+            fi
+          done
+
+      - name: Validate YAML files
+        run: |
+          echo "Validating all YAML files..."
+          find . -name "*.yaml" -o -name "*.yml" | while read f; do
+            python -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null && echo "OK: $f" || echo "FAIL: $f"
+          done
+
+      - name: Summary
+        run: |
+          echo "Copilot coding agent environment ready."
+          echo "Python: $(python --version)"
+          echo "Node: $(node --version)"
+          echo "YAML tools: installed"
