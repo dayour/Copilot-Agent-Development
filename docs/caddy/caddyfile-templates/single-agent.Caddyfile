@@ -1,0 +1,141 @@
+# Single Agent Caddyfile Template
+#
+# Deployment pattern: one custom domain proxied to one Copilot Studio web chat endpoint.
+#
+# Required environment variables:
+#   AGENT_DOMAIN          - Public domain (e.g. agent.contoso.com)
+#   COPILOT_UPSTREAM      - Copilot Studio web chat upstream URL
+#   DIRECTLINE_SECRET     - Azure Bot Service Direct Line channel secret
+#   ALLOWED_ORIGINS       - Approved CORS origin (e.g. https://agent.contoso.com)
+#   RATE_LIMIT_REQUESTS   - Requests allowed per window per IP (e.g. 20)
+#   RATE_LIMIT_WINDOW     - Time window for rate limiting (e.g. 10s)
+#   LOG_FILE              - Absolute path for access log (e.g. /var/log/caddy/access.log)
+#   TLS_EMAIL             - Email address for Let's Encrypt registration
+
+{
+  # Global options block
+  email {$TLS_EMAIL}
+}
+
+{$AGENT_DOMAIN} {
+
+  # -------------------------------------------------------------------------
+  # TLS -- Automatic HTTPS via Let's Encrypt
+  # Caddy handles certificate issuance and renewal automatically.
+  # -------------------------------------------------------------------------
+  tls {$TLS_EMAIL}
+
+  # -------------------------------------------------------------------------
+  # Access logging for audit trail
+  # -------------------------------------------------------------------------
+  log {
+    output file {$LOG_FILE} {
+      roll_size 100MiB
+      roll_keep 10
+      roll_keep_for 720h
+    }
+    format json
+    level INFO
+  }
+
+  # -------------------------------------------------------------------------
+  # Health check endpoint
+  # Returns 200 OK. Used by load balancers and monitoring systems.
+  # -------------------------------------------------------------------------
+  handle /healthz {
+    respond "OK" 200
+  }
+
+  # -------------------------------------------------------------------------
+  # Direct Line token proxy
+  # The Direct Line secret is never sent to the client browser.
+  # The browser requests a short-lived token from this endpoint.
+  # -------------------------------------------------------------------------
+  handle /api/token {
+    # Strip this path prefix before forwarding to the Direct Line token API.
+    uri strip_prefix /api/token
+
+    reverse_proxy https://directline.botframework.com/v3/directline/tokens/generate {
+      header_up Authorization "Bearer {$DIRECTLINE_SECRET}"
+      header_up Content-Type "application/json"
+      header_down -Server
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Main reverse proxy to Copilot Studio web chat endpoint
+  # -------------------------------------------------------------------------
+  handle {
+    reverse_proxy {$COPILOT_UPSTREAM} {
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Proto {scheme}
+
+      # Remove identifying server headers from upstream responses.
+      header_down -Server
+      header_down -X-Powered-By
+
+      # WebSocket upgrade support for Direct Line streaming.
+      transport http {
+        dial_timeout 10s
+        response_header_timeout 30s
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Security response headers
+  # See security-hardening.md for detailed rationale for each header.
+  # -------------------------------------------------------------------------
+  header {
+    # HTTP Strict Transport Security -- 1 year, include subdomains.
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Content Security Policy for web chat iframe embedding.
+    # Adjust frame-ancestors to the specific host(s) that embed this chat.
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.botframework.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://directline.botframework.com wss://directline.botframework.com; frame-ancestors {$ALLOWED_ORIGINS};"
+
+    # Prevent the web chat page itself from being framed by unknown origins.
+    X-Frame-Options "SAMEORIGIN"
+
+    # Disable MIME sniffing.
+    X-Content-Type-Options "nosniff"
+
+    # Referrer policy.
+    Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Permissions policy -- restrict browser features.
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+    # Remove server identification.
+    -Server
+  }
+
+  # -------------------------------------------------------------------------
+  # CORS for approved origins
+  # -------------------------------------------------------------------------
+  @cors_preflight {
+    method OPTIONS
+  }
+  handle @cors_preflight {
+    header Access-Control-Allow-Origin "{$ALLOWED_ORIGINS}"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization"
+    header Access-Control-Max-Age "3600"
+    respond "" 204
+  }
+
+  # -------------------------------------------------------------------------
+  # Rate limiting
+  # Requires the caddy-ratelimit module:
+  #   xcaddy build --with github.com/mholt/caddy-ratelimit
+  # -------------------------------------------------------------------------
+  rate_limit {
+    zone per_ip {
+      key {remote_host}
+      events {$RATE_LIMIT_REQUESTS}
+      window {$RATE_LIMIT_WINDOW}
+    }
+  }
+}
