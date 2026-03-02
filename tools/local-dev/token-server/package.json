@@ -1,0 +1,15 @@
+{
+  "name": "token-server",
+  "version": "1.0.0",
+  "description": "Direct Line token exchange server for local Copilot Studio agent development",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "4.21.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
