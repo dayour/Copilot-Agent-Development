@@ -1,0 +1,717 @@
+name: PerformanceMonitoringOptimization
+displayName: Performance Monitoring Optimization
+triggers:
+  - kusto performance monitoring
+  - cluster optimization
+  - capacity planning
+  - cost management
+  - resource optimization
+  - query performance
+  - cluster monitoring
+  - kusto metrics
+  - performance tuning
+  - resource planning
+entities: []
+actions:
+  - action: Topic.PerformanceMonitoringOptimization
+variables: []
+
+topic: |
+  # Performance Monitoring & Optimization
+
+  ## Description
+  Comprehensive Kusto cluster monitoring with advanced query optimization, intelligent capacity planning, and enterprise-scale cost management strategies for optimal performance and resource utilization.
+
+  ## Conversation Flow
+
+  **System:** Welcome! I'm here to help you implement advanced performance monitoring and optimization for your Kusto clusters. I can assist with cluster monitoring, query optimization, capacity planning, and comprehensive cost management.
+
+  **Options:**
+  - 📊 Cluster Performance Monitoring & Metrics
+  - 🚀 Query Optimization & Performance Tuning
+  - 📈 Capacity Planning & Resource Management
+  - 💰 Cost Management & Optimization Strategies
+  - 🔧 Automated Optimization & Self-Healing
+
+  ---
+
+  ### 📊 Cluster Performance Monitoring & Metrics
+  **Comprehensive Monitoring Framework:**
+  ```kql
+  // Advanced cluster performance dashboard
+  .create-or-alter function ClusterPerformanceDashboard() {
+      let PerformanceMetrics = 
+      .show cluster performance
+      | extend 
+          CPUUtilization = CpuUsage * 100,
+          MemoryUtilization = MemoryUsage * 100,
+          DiskUtilization = DiskUsage * 100,
+          NetworkUtilization = NetworkUsage * 100
+      | project 
+          Timestamp = Timestamp,
+          CPUUtilization,
+          MemoryUtilization, 
+          DiskUtilization,
+          NetworkUtilization,
+          ActiveQueries = ActiveQueryCount,
+          QueuedQueries = QueuedQueryCount,
+          IngestionRate = IngestionEventsRate,
+          QueryLatency = AvgQueryDuration;
+      
+      let HealthScore = 
+      PerformanceMetrics
+      | extend 
+          CPUScore = case(CPUUtilization > 90, 0, CPUUtilization > 70, 50, 100),
+          MemoryScore = case(MemoryUtilization > 85, 0, MemoryUtilization > 65, 50, 100),
+          DiskScore = case(DiskUtilization > 80, 0, DiskUtilization > 60, 50, 100),
+          LatencyScore = case(QueryLatency > 10000, 0, QueryLatency > 5000, 50, 100)
+      | extend OverallHealth = (CPUScore + MemoryScore + DiskScore + LatencyScore) / 4
+      | project Timestamp, OverallHealth, CPUScore, MemoryScore, DiskScore, LatencyScore;
+      
+      union PerformanceMetrics, HealthScore
+  }
+  
+  // Real-time resource utilization monitoring
+  .create materialized-view ResourceUtilization on table .show cluster performance
+  {
+      .show cluster performance
+      | where Timestamp > ago(1h)
+      | summarize 
+          AvgCPU = avg(CpuUsage),
+          MaxCPU = max(CpuUsage),
+          AvgMemory = avg(MemoryUsage),
+          MaxMemory = max(MemoryUsage),
+          AvgDisk = avg(DiskUsage),
+          MaxDisk = max(DiskUsage)
+          by bin(Timestamp, 1m)
+      | extend 
+          CPUTrend = series_decompose(make_list(AvgCPU)).trend,
+          MemoryTrend = series_decompose(make_list(AvgMemory)).trend
+  }
+  ```
+
+  **Advanced Metrics Collection:**
+  - **Infrastructure Metrics**: CPU, memory, disk I/O, network throughput with granular node-level monitoring
+  - **Query Performance Metrics**: Execution time, resource consumption, queue depth, and concurrency tracking
+  - **Ingestion Metrics**: Throughput, latency, error rates, and batch processing efficiency
+  - **Storage Metrics**: Hot/warm/cold tier utilization, compression ratios, and data lifecycle tracking
+  - **User Experience Metrics**: Query success rates, response times, and user satisfaction scoring
+
+  **Intelligent Alerting System:**
+  ```kql
+  // Multi-dimensional alerting with machine learning
+  .create-or-alter function IntelligentAlerting() {
+      let BaselineMetrics = 
+      .show cluster performance
+      | where Timestamp between (ago(30d) .. ago(1d))
+      | summarize 
+          BaselineCPU = percentile(CpuUsage, 95),
+          BaselineMemory = percentile(MemoryUsage, 95),
+          BaselineLatency = percentile(AvgQueryDuration, 95)
+          by dayofweek(Timestamp), bin(Timestamp, 1h) % 24;
+      
+      let CurrentMetrics = 
+      .show cluster performance
+      | where Timestamp > ago(1h)
+      | summarize 
+          CurrentCPU = avg(CpuUsage),
+          CurrentMemory = avg(MemoryUsage),
+          CurrentLatency = avg(AvgQueryDuration)
+          by bin(Timestamp, 5m);
+      
+      CurrentMetrics
+      | join kind=leftouter BaselineMetrics on $left.dayofweek(Timestamp) == $right.dayofweek(Timestamp)
+      | extend 
+          CPUAnomaly = CurrentCPU > BaselineCPU * 1.5,
+          MemoryAnomaly = CurrentMemory > BaselineMemory * 1.3,
+          LatencyAnomaly = CurrentLatency > BaselineLatency * 2.0
+      | where CPUAnomaly or MemoryAnomaly or LatencyAnomaly
+      | extend 
+          Severity = case(
+              CurrentCPU > BaselineCPU * 2.0 or CurrentMemory > BaselineMemory * 2.0, "Critical",
+              CurrentCPU > BaselineCPU * 1.8 or CurrentMemory > BaselineMemory * 1.7, "High",
+              "Medium"
+          ),
+          AlertMessage = strcat(
+              "Performance anomaly detected - ",
+              case(CPUAnomaly, "High CPU usage", ""),
+              case(MemoryAnomaly, " High Memory usage", ""),
+              case(LatencyAnomaly, " High Query Latency", "")
+          )
+  }
+  ```
+
+  **Proactive Monitoring:**
+  - **Trend Analysis**: Predictive analytics for resource usage trends with early warning systems
+  - **Anomaly Detection**: ML-based anomaly detection for unusual patterns and behavior changes
+  - **Correlation Analysis**: Cross-metric correlation analysis for root cause identification
+  - **Baseline Management**: Dynamic baseline adjustment based on seasonal patterns and growth trends
+  - **Impact Assessment**: Automated impact analysis for performance degradation and service disruption
+
+  ---
+
+  ### 🚀 Query Optimization & Performance Tuning
+  **Advanced Query Analysis:**
+  ```kql
+  // Comprehensive query performance analyzer
+  .create-or-alter function QueryPerformanceAnalyzer() {
+      .show queries
+      | where StartedOn > ago(24h)
+      | extend 
+          Duration = TotalCpu,
+          MemoryPeak = MemoryPeak,
+          DataScanned = DataScannedSize,
+          CacheHitRatio = CacheStatistics.HitRatio,
+          QueryComplexity = case(
+              Text contains "join" and Text contains "summarize", "High",
+              Text contains "join" or Text contains "mv-expand", "Medium",
+              "Low"
+          )
+      | summarize 
+          QueryCount = count(),
+          AvgDuration = avg(Duration),
+          MaxDuration = max(Duration),
+          TotalDataScanned = sum(DataScanned),
+          AvgMemoryPeak = avg(MemoryPeak),
+          AvgCacheHitRatio = avg(CacheHitRatio)
+          by QueryComplexity, Database, Principal
+      | extend 
+          PerformanceScore = case(
+              AvgDuration < 1000 and AvgCacheHitRatio > 0.8, "Excellent",
+              AvgDuration < 5000 and AvgCacheHitRatio > 0.6, "Good",
+              AvgDuration < 10000, "Fair",
+              "Poor"
+          ),
+          OptimizationPriority = case(
+              TotalDataScanned > 1000000000 and AvgDuration > 10000, "Critical",
+              TotalDataScanned > 100000000 or AvgDuration > 5000, "High",
+              "Medium"
+          )
+  }
+  
+  // Query pattern optimization recommendations
+  .create-or-alter function QueryOptimizationRecommendations() {
+      .show queries
+      | where StartedOn > ago(7d) and State == "Completed"
+      | project Text, Duration = TotalCpu, MemoryPeak, DataScanned = DataScannedSize
+      | extend 
+          HasUnnecessaryColumns = Text matches regex @"project\s+\*",
+          HasUnoptimizedJoins = Text matches regex @"join\s+(?!.*hint\.strategy)",
+          HasUnoptimizedSummarize = Text matches regex @"summarize.*by.*,.*,.*,",
+          HasNoTimeFilter = not(Text matches regex @"where.*timestamp.*>.*ago\("),
+          UsesExpensiveOperators = Text matches regex @"mv-expand|sort\s+by.*desc.*asc"
+      | extend 
+          Recommendations = pack_array(
+              iff(HasUnnecessaryColumns, "Use explicit column projection instead of project *", ""),
+              iff(HasUnoptimizedJoins, "Add join strategy hints for better performance", ""),
+              iff(HasUnoptimizedSummarize, "Consider reducing summarize dimensions", ""),
+              iff(HasNoTimeFilter, "Add time range filters to limit data scanning", ""),
+              iff(UsesExpensiveOperators, "Review expensive operators like mv-expand and complex sorts", "")
+          )
+      | where array_length(Recommendations) > 0
+      | extend PotentialImpact = case(
+          Duration > 60000 and MemoryPeak > 1000000000, "High",
+          Duration > 10000 or MemoryPeak > 100000000, "Medium",
+          "Low"
+      )
+  }
+  ```
+
+  **Automated Query Optimization:**
+  - **Query Rewriting**: Intelligent query rewriting with performance-optimized alternatives
+  - **Index Recommendations**: Automated index and materialized view recommendations
+  - **Partition Optimization**: Optimal partitioning strategies for query patterns and data access
+  - **Caching Strategy**: Intelligent caching recommendations based on query patterns and frequency
+  - **Resource Allocation**: Dynamic resource allocation based on query complexity and priority
+
+  **Performance Benchmarking:**
+  ```kql
+  // Query performance benchmarking suite
+  .create-or-alter function QueryBenchmarkSuite() {
+      let BenchmarkQueries = pack_array(
+          "Events | where timestamp > ago(1d) | count",
+          "Events | where timestamp > ago(1d) | summarize count() by bin(timestamp, 1h)",
+          "Events | where timestamp > ago(1d) | join kind=inner Users on userId | count",
+          "Events | where timestamp > ago(7d) | make-series count() on timestamp from ago(7d) to now() step 1h",
+          "Events | where timestamp > ago(1d) | mv-expand properties | where isnotnull(properties.value) | count"
+      );
+      
+      BenchmarkQueries
+      | mv-expand QueryText to typeof(string)
+      | extend 
+          QueryType = case(
+              QueryText contains "join", "Join Query",
+              QueryText contains "make-series", "Time Series Query",
+              QueryText contains "mv-expand", "Complex Expansion Query",
+              QueryText contains "summarize", "Aggregation Query",
+              "Simple Query"
+          ),
+          BenchmarkRun = now()
+      | evaluate hint.materialized=true (
+          QueryText
+          | evaluate query_profiler()
+          | project 
+              QueryType,
+              Duration = TotalCpu,
+              MemoryUsage = MemoryPeak,
+              DataScanned = DataScannedSize,
+              BenchmarkRun
+      )
+  }
+  ```
+
+  ---
+
+  ### 📈 Capacity Planning & Resource Management
+  **Intelligent Capacity Planning:**
+  ```kql
+  // Comprehensive capacity planning model
+  .create-or-alter function CapacityPlanningModel() {
+      let HistoricalGrowth = 
+      .show cluster performance
+      | where Timestamp > ago(90d)
+      | summarize 
+          DataVolume = sum(DataIngested),
+          QueryVolume = sum(QueryCount),
+          StorageUsed = avg(StorageUsed)
+          by bin(Timestamp, 1d)
+      | extend 
+          DataGrowthRate = (DataVolume - prev(DataVolume)) / prev(DataVolume),
+          QueryGrowthRate = (QueryVolume - prev(QueryVolume)) / prev(QueryVolume),
+          StorageGrowthRate = (StorageUsed - prev(StorageUsed)) / prev(StorageUsed)
+      | where isfinite(DataGrowthRate) and isfinite(QueryGrowthRate);
+      
+      let ForecastModel = 
+      HistoricalGrowth
+      | make-series 
+          DataTrend = avg(DataVolume),
+          QueryTrend = avg(QueryVolume),
+          StorageTrend = avg(StorageUsed)
+          on Timestamp from ago(90d) to now() + 180d step 1d
+      | extend 
+          DataForecast = series_decompose_forecast(DataTrend, 30, -1, 'linefit'),
+          QueryForecast = series_decompose_forecast(QueryTrend, 30, -1, 'linefit'),
+          StorageForecast = series_decompose_forecast(StorageTrend, 30, -1, 'linefit')
+      | project 
+          FutureTimestamp = range(now(), now() + 180d, 1d),
+          PredictedDataVolume = DataForecast,
+          PredictedQueryVolume = QueryForecast,
+          PredictedStorageUsage = StorageForecast;
+      
+      ForecastModel
+      | extend 
+          RecommendedNodes = case(
+              PredictedDataVolume > current_capacity * 0.8, current_nodes + 2,
+              PredictedDataVolume > current_capacity * 0.6, current_nodes + 1,
+              current_nodes
+          ),
+          EstimatedCost = RecommendedNodes * node_cost_per_hour * 24 * 30,
+          CapacityUtilization = PredictedDataVolume / (RecommendedNodes * node_capacity)
+  }
+  
+  // Resource optimization recommendations
+  .create-or-alter function ResourceOptimizationRecommendations() {
+      let CurrentUtilization = 
+      .show cluster performance
+      | where Timestamp > ago(24h)
+      | summarize 
+          AvgCPU = avg(CpuUsage),
+          MaxCPU = max(CpuUsage),
+          AvgMemory = avg(MemoryUsage),
+          MaxMemory = max(MemoryUsage),
+          AvgStorage = avg(StorageUsed)
+      | extend 
+          CPUOptimization = case(
+              AvgCPU < 0.3, "Consider downsizing - CPU underutilized",
+              MaxCPU > 0.9, "Consider upsizing - CPU frequently at capacity",
+              "CPU utilization optimal"
+          ),
+          MemoryOptimization = case(
+              AvgMemory < 0.4, "Consider memory optimization - underutilized",
+              MaxMemory > 0.85, "Consider memory upgrade - reaching limits",
+              "Memory utilization optimal"
+          ),
+          StorageOptimization = case(
+              AvgStorage > 0.8, "Implement data archival strategy",
+              AvgStorage < 0.3, "Review data retention policies",
+              "Storage utilization optimal"
+          );
+      
+      CurrentUtilization
+      | extend 
+          PriorityRecommendations = pack_array(
+              iff(MaxCPU > 0.9 or MaxMemory > 0.85, "Urgent: Scale up cluster capacity", ""),
+              iff(AvgCPU < 0.2 and AvgMemory < 0.3, "Opportunity: Scale down for cost savings", ""),
+              iff(AvgStorage > 0.7, "Plan: Implement data lifecycle management", "")
+          ),
+          EstimatedSavings = case(
+              AvgCPU < 0.2 and AvgMemory < 0.3, current_monthly_cost * 0.3,
+              0.0
+          )
+  }
+  ```
+
+  **Dynamic Resource Allocation:**
+  - **Auto-scaling Logic**: Intelligent auto-scaling based on workload patterns and business requirements
+  - **Workload Prediction**: ML-based workload prediction with proactive resource provisioning
+  - **Resource Pooling**: Shared resource pools with dynamic allocation based on priority and demand
+  - **Multi-tenant Management**: Resource isolation and allocation for multi-tenant environments
+  - **Cost-Performance Optimization**: Automated cost-performance trade-off optimization
+
+  **Cluster Architecture Optimization:**
+  ```kql
+  // Cluster architecture analyzer
+  .create-or-alter function ClusterArchitectureAnalyzer() {
+      let NodeAnalysis = 
+      .show cluster nodes
+      | extend 
+          NodeType = case(
+              NodeRole == "DataManagement", "Management Node",
+              NodeRole == "DataNode", "Data Node",
+              "Other"
+          ),
+          ResourceEfficiency = (CpuUsage + MemoryUsage) / 2,
+          LoadBalance = abs(CpuUsage - avg(CpuUsage))
+      | summarize 
+          NodeCount = count(),
+          AvgEfficiency = avg(ResourceEfficiency),
+          LoadImbalance = max(LoadBalance),
+          UnhealthyNodes = countif(IsHealthy == false)
+          by NodeType;
+      
+      let ArchitectureRecommendations = 
+      NodeAnalysis
+      | extend 
+          Recommendations = case(
+              LoadImbalance > 0.3, "High load imbalance - consider rebalancing",
+              AvgEfficiency < 0.4, "Low resource efficiency - consider consolidation",
+              UnhealthyNodes > 0, "Unhealthy nodes detected - investigate immediately",
+              NodeCount < 3 and NodeType == "Data Node", "Consider adding more data nodes for redundancy",
+              "Cluster architecture appears optimal"
+          ),
+          Priority = case(
+              UnhealthyNodes > 0, "Critical",
+              LoadImbalance > 0.5, "High",
+              "Medium"
+          );
+      
+      ArchitectureRecommendations
+  }
+  ```
+
+  ---
+
+  ### 💰 Cost Management & Optimization Strategies
+  **Comprehensive Cost Analysis:**
+  ```kql
+  // Advanced cost monitoring and optimization
+  .create-or-alter function CostOptimizationAnalysis() {
+      let ComputeCosts = 
+      .show cluster performance
+      | where Timestamp > ago(30d)
+      | extend 
+          HourlyComputeCost = NodeCount * ComputeCostPerNodeHour,
+          StorageCost = StorageUsed * StorageCostPerGB,
+          NetworkCost = NetworkEgress * NetworkCostPerGB
+      | summarize 
+          TotalComputeCost = sum(HourlyComputeCost),
+          TotalStorageCost = sum(StorageCost),
+          TotalNetworkCost = sum(NetworkCost)
+          by bin(Timestamp, 1d);
+      
+      let UsagePatterns = 
+      .show queries
+      | where StartedOn > ago(30d)
+      | extend 
+          QueryCost = (TotalCpu / 1000) * ComputeCostPerCpuSecond + 
+                     (MemoryPeak / 1000000000) * MemoryCostPerGBSecond,
+          QueryHour = bin(StartedOn, 1h)
+      | summarize 
+          QueryCount = count(),
+          TotalQueryCost = sum(QueryCost),
+          AvgQueryCost = avg(QueryCost)
+          by QueryHour, Database, Principal
+      | extend 
+          CostPerQuery = TotalQueryCost / QueryCount,
+          CostEfficiency = case(
+              CostPerQuery < 0.01, "Excellent",
+              CostPerQuery < 0.05, "Good",
+              CostPerQuery < 0.1, "Fair",
+              "Poor"
+          );
+      
+      let OptimizationOpportunities = 
+      UsagePatterns
+      | where CostEfficiency in ("Fair", "Poor")
+      | summarize 
+          PotentialSavings = sum(TotalQueryCost * 0.3),  // Estimated 30% savings
+          QueriesNeedingOptimization = sum(QueryCount)
+          by Database
+      | extend RecommendedActions = pack_array(
+          "Implement query optimization best practices",
+          "Review and optimize expensive queries",
+          "Consider materialized views for frequent patterns",
+          "Implement query result caching"
+      );
+      
+      union ComputeCosts, UsagePatterns, OptimizationOpportunities
+  }
+  
+  // Data lifecycle cost optimization
+  .create-or-alter function DataLifecycleCostOptimization() {
+      let DataAgeAnalysis = 
+      .show tables details
+      | extend 
+          TableSize = OriginalSize + CompressedSize,
+          DataAge = now() - MinCreatedOn,
+          AccessFrequency = case(
+              HotPeriod > 30d, "High",
+              HotPeriod > 7d, "Medium", 
+              "Low"
+          ),
+          CurrentTier = case(
+              HotPeriod > 0d, "Hot",
+              "Cold"
+          )
+      | project 
+          TableName,
+          TableSize,
+          DataAge,
+          AccessFrequency,
+          CurrentTier,
+          OptimalTier = case(
+              DataAge < 7d or AccessFrequency == "High", "Hot",
+              DataAge < 90d and AccessFrequency == "Medium", "Warm",
+              "Cold"
+          ),
+          MonthlyCost = case(
+              CurrentTier == "Hot", TableSize * HotStorageCostPerGB,
+              TableSize * ColdStorageCostPerGB
+          ),
+          OptimizedCost = case(
+              OptimalTier == "Hot", TableSize * HotStorageCostPerGB,
+              OptimalTier == "Warm", TableSize * WarmStorageCostPerGB,
+              TableSize * ColdStorageCostPerGB
+          )
+      | extend 
+          PotentialSavings = MonthlyCost - OptimizedCost,
+          SavingsPercentage = (PotentialSavings / MonthlyCost) * 100
+      | where PotentialSavings > 0
+      | order by PotentialSavings desc
+  }
+  ```
+
+  **Cost Optimization Strategies:**
+  - **Reserved Capacity**: Reserved instance optimization with usage pattern analysis
+  - **Spot Instance Integration**: Spot instance utilization for non-critical workloads
+  - **Data Compression**: Advanced compression strategies with cost-performance analysis
+  - **Query Optimization**: Cost-focused query optimization with resource consumption tracking
+  - **Resource Scheduling**: Intelligent resource scheduling based on business hours and usage patterns
+
+  **Budget Management:**
+  ```kql
+  // Intelligent budget monitoring and forecasting
+  .create-or-alter function BudgetMonitoringForecast() {
+      let MonthlySpend = 
+      CostData
+      | where Timestamp > startofmonth(ago(6m))
+      | summarize MonthlyCost = sum(Cost) by startofmonth(Timestamp)
+      | extend 
+          MonthOverMonth = (MonthlyCost - prev(MonthlyCost)) / prev(MonthlyCost),
+          SpendTrend = case(
+              MonthOverMonth > 0.2, "Rapidly Increasing",
+              MonthOverMonth > 0.1, "Increasing", 
+              MonthOverMonth < -0.1, "Decreasing",
+              "Stable"
+          );
+      
+      let BudgetForecast = 
+      MonthlySpend
+      | make-series SpendSeries = avg(MonthlyCost) on Timestamp from ago(6m) to now() + 3m step 1m
+      | extend ForecastedSpend = series_decompose_forecast(SpendSeries, 3, -1, 'linefit')
+      | project 
+          ForecastTimestamp = range(now(), now() + 3m, 1m),
+          PredictedMonthlyCost = ForecastedSpend;
+      
+      BudgetForecast
+      | extend 
+          BudgetStatus = case(
+              PredictedMonthlyCost > MonthlyBudget * 1.1, "Over Budget",
+              PredictedMonthlyCost > MonthlyBudget * 0.9, "Approaching Limit",
+              "Within Budget"
+          ),
+          RecommendedActions = case(
+              BudgetStatus == "Over Budget", "Immediate cost reduction required",
+              BudgetStatus == "Approaching Limit", "Monitor usage closely and implement optimizations",
+              "Continue current spending patterns"
+          )
+  }
+  ```
+
+  ---
+
+  ### 🔧 Automated Optimization & Self-Healing
+  **Self-Healing Cluster Management:**
+  ```kql
+  // Automated cluster health monitoring and remediation
+  .create-or-alter function SelfHealingClusterManager() {
+      let HealthChecks = 
+      .show cluster health
+      | extend 
+          OverallHealth = case(
+              HealthStatus == "Healthy" and PerformanceScore > 80, "Excellent",
+              HealthStatus == "Healthy" and PerformanceScore > 60, "Good",
+              HealthStatus == "Warning" or PerformanceScore > 40, "Warning",
+              "Critical"
+          ),
+          RequiresAction = OverallHealth in ("Warning", "Critical");
+      
+      let AutoRemediationActions = 
+      HealthChecks
+      | where RequiresAction
+      | extend 
+          RemediationPlan = case(
+              MemoryPressure > 85, pack_array("Clear query cache", "Restart memory-intensive queries"),
+              CPUUsage > 90, pack_array("Scale up cluster", "Implement query throttling"),
+              DiskUsage > 80, pack_array("Archive old data", "Compress tables"),
+              NetworkLatency > 1000, pack_array("Check network connectivity", "Restart networking services"),
+              pack_array("Monitor closely")
+          ),
+          ExecutionPriority = case(
+              OverallHealth == "Critical", 1,
+              OverallHealth == "Warning", 2,
+              3
+          ),
+          EstimatedDowntime = case(
+              "Scale up cluster" in (RemediationPlan), 300,  // 5 minutes
+              "Restart networking services" in (RemediationPlan), 120,  // 2 minutes
+              0  // No downtime
+          );
+      
+      AutoRemediationActions
+      | order by ExecutionPriority asc, EstimatedDowntime asc
+  }
+  
+  // Automated query optimization system
+  .create-or-alter function AutoQueryOptimizer() {
+      let SlowQueries = 
+      .show queries
+      | where StartedOn > ago(1h) and TotalCpu > 30000  // Queries > 30 seconds
+      | extend 
+          OptimizationOpportunity = case(
+              Text contains "project *", "Remove wildcard projections",
+              Text contains "join" and not(Text contains "hint.strategy"), "Add join strategy hints",
+              not(Text contains "where") and Text contains "summarize", "Add filtering before aggregation",
+              Text contains "sort" and Text contains "take", "Use top operator instead of sort + take",
+              "Manual review required"
+          ),
+          AutoOptimizable = OptimizationOpportunity != "Manual review required",
+          OptimizedQuery = case(
+              OptimizationOpportunity == "Remove wildcard projections", 
+                  replace_regex(Text, @"project\s+\*", "project Column1, Column2"),
+              OptimizationOpportunity == "Add join strategy hints",
+                  replace_regex(Text, @"join\s+", "join hint.strategy=broadcast "),
+              Text  // Return original if no auto-optimization available
+          );
+      
+      SlowQueries
+      | where AutoOptimizable
+      | project OriginalQuery = Text, OptimizedQuery, EstimatedImprovement = "20-40% performance gain"
+  }
+  ```
+
+  **Intelligent Automation Framework:**
+  - **Predictive Maintenance**: ML-based predictive maintenance with failure prevention
+  - **Dynamic Configuration**: Self-adjusting configuration parameters based on workload patterns
+  - **Anomaly Response**: Automated response to performance anomalies with rollback capabilities
+  - **Resource Optimization**: Continuous resource optimization with cost-performance balancing
+  - **Workflow Automation**: End-to-end workflow automation with approval workflows for critical changes
+
+  **Enterprise Governance:**
+  ```kql
+  // Automated governance and compliance monitoring
+  .create-or-alter function GovernanceComplianceMonitor() {
+      let SecurityCompliance = 
+      .show cluster policies
+      | extend 
+          SecurityScore = case(
+              RowLevelSecurity == "Enabled" and ColumnLevelSecurity == "Enabled", 100,
+              RowLevelSecurity == "Enabled" or ColumnLevelSecurity == "Enabled", 70,
+              50
+          ),
+          DataPrivacyScore = case(
+              DataClassification == "Implemented" and PIIDetection == "Enabled", 100,
+              DataClassification == "Implemented" or PIIDetection == "Enabled", 70,
+              30
+          ),
+          AuditScore = case(
+              AuditLogging == "Comprehensive", 100,
+              AuditLogging == "Basic", 70,
+              0
+          );
+      
+      let PerformanceGovernance = 
+      .show queries
+      | where StartedOn > ago(7d)
+      | summarize 
+          LongRunningQueries = countif(TotalCpu > 300000),  // > 5 minutes
+          HighResourceQueries = countif(MemoryPeak > 10000000000),  // > 10GB
+          UnoptimizedQueries = countif(Text contains "project *" or not(Text contains "where"))
+          by Database
+      | extend 
+          PerformanceComplianceScore = 100 - 
+              (LongRunningQueries * 5 + HighResourceQueries * 10 + UnoptimizedQueries * 2);
+      
+      union SecurityCompliance, PerformanceGovernance
+      | extend 
+          OverallComplianceScore = (SecurityScore + DataPrivacyScore + AuditScore + PerformanceComplianceScore) / 4,
+          ComplianceStatus = case(
+              OverallComplianceScore >= 90, "Excellent",
+              OverallComplianceScore >= 75, "Good",
+              OverallComplianceScore >= 60, "Needs Improvement",
+              "Non-Compliant"
+          )
+  }
+  ```
+
+  ## Advanced Features
+
+  ### 🔬 Advanced Analytics
+  - **Predictive Performance**: Machine learning models for performance prediction and optimization
+  - **Behavior Analytics**: User and application behavior analysis with optimization recommendations
+  - **Cost Forecasting**: Advanced cost forecasting with scenario planning and budget optimization
+  - **Capacity Modeling**: Statistical capacity modeling with confidence intervals and risk assessment
+  - **Optimization Scoring**: Comprehensive optimization scoring with prioritized recommendation ranking
+
+  ### 📊 Enterprise Integration
+  - **Multi-Cloud Monitoring**: Cross-cloud performance monitoring with unified dashboards
+  - **DevOps Integration**: CI/CD pipeline integration with performance testing and deployment gates
+  - **Business Intelligence**: Executive dashboards with business impact metrics and KPI tracking
+  - **Third-Party Integration**: Integration with enterprise monitoring tools and ITSM systems
+  - **API Management**: Comprehensive API for integration with custom monitoring and automation solutions
+
+  ## Starter Prompts
+
+  ### Quick Actions
+  - "Set up comprehensive cluster performance monitoring with intelligent alerting"
+  - "Analyze current query performance and provide optimization recommendations"
+  - "Create capacity planning model for next 6 months with cost projections"
+  - "Implement automated cost optimization with budget monitoring"
+
+  ### Advanced Operations
+  - "Design self-healing cluster architecture with automated remediation"
+  - "Implement enterprise-scale performance optimization with ML-based recommendations"
+  - "Set up comprehensive governance framework with compliance monitoring"
+  - "Create intelligent workload management with dynamic resource allocation"
+
+  ### Specialized Monitoring
+  - "Build financial services performance monitoring with regulatory compliance"
+  - "Implement healthcare data monitoring with HIPAA compliance tracking"
+  - "Create IoT performance monitoring with edge device optimization"
+  - "Design retail analytics monitoring with seasonal capacity planning"
+
+  ### Innovation & Research
+  - "Develop predictive performance modeling using advanced machine learning"
+  - "Implement quantum-inspired optimization algorithms for cluster management"
+  - "Create AI-driven cost optimization with multi-objective optimization"
+  - "Design next-generation monitoring with natural language query interfaces"
