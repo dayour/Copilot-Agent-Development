@@ -24,3 +24,26 @@ This is the Copilot Agent Development repository containing agent solution templ
 ├── tech/agents/           # Tech industry agents
 └── transportation/agents/ # Transportation industry agents
 ```
+
+
+## Coding Agent Coordination
+
+This repository is configured for two coding agents:
+
+### GitHub Copilot Coding Agent
+- Triggered by assigning issues to `Copilot` or via the Agents tab.
+- Configuration: `.github/copilot-instructions.md`
+- Environment: `.github/workflows/copilot-setup-steps.yml`
+- Custom agent: `.github/agents/copilot-studio-builder.md`
+- Works autonomously on assigned issues, creates branches prefixed with `copilot/`, and opens PRs.
+
+### Claude Code Agent
+- Triggered by mentioning `@claude` in issues, comments, or PR reviews.
+- Configuration: `CLAUDE.md` (this file) and `.github/workflows/claude.yml`
+- Works on tasks when explicitly mentioned.
+
+### Coordination Rules
+- Both agents follow the same repository conventions and directory structure.
+- Neither agent should merge its own PRs -- human review is required.
+- If both agents are assigned to the same issue, Copilot takes the implementation lead and Claude handles review.
+- All agent-generated PRs must pass YAML validation before merge.
