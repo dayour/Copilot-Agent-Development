@@ -1,0 +1,167 @@
+# Copilot Studio Agent Template — SupportBot (Tech)
+# Import this file as a starting point. Customise trigger phrases,
+# connected agent references, and knowledge sources to match your environment.
+
+agent:
+  name: SupportBot
+  description: >
+    A multi-agent orchestration primary support agent for the Tech vertical.
+    Handles general support inquiries, routes warranty issues to WarrantyGuard,
+    escalates complex cases to human agents, and provides knowledge base search.
+  language: en-US
+  orchestration: generative_ai
+  model: gpt-4o
+  fallback_message: >
+    I was not able to find an answer to that. Would you like me to search the
+    knowledge base, connect you to a specialist, or create a support case?
+
+topics:
+
+  - name: Greeting and Routing
+    trigger_phrases:
+      - Hello
+      - Hi
+      - I need help
+      - Support
+      - I have a question
+    messages:
+      - text: >
+          Welcome to SupportBot. I can help with general support questions,
+          warranty inquiries, and more. How can I assist you today?
+    quick_replies:
+      - I have a warranty question
+      - General support question
+      - Search the knowledge base
+      - I need to speak to someone
+      - Give feedback
+
+  - name: General Support Inquiry
+    trigger_phrases:
+      - I have a question about {topic}
+      - Help me with {topic}
+      - I need support for {topic}
+      - How do I {topic}?
+    entities:
+      - name: topic
+        type: string
+        prompt: What do you need help with?
+    actions:
+      - type: knowledge_search
+        query: "{topic}"
+        source: support-knowledge-base
+    fallback_message: >
+      I could not find a specific answer in the knowledge base. Let me create
+      a support case so our team can follow up with you directly.
+
+  - name: Warranty Issue Handoff
+    trigger_phrases:
+      - I have a warranty issue
+      - My product is under warranty
+      - Warranty claim
+      - I need warranty support
+      - My device broke and it is under warranty
+    messages:
+      - text: >
+          I can see this is a warranty-related inquiry. Let me connect you
+          with our warranty specialist for detailed assistance.
+    actions:
+      - type: connected_agent
+        agent_name: WarrantyGuard
+        agent_id: "${WarrantyGuardAgentId}"
+        handoff_message: >
+          Transferring to WarrantyGuard for warranty-specific assistance.
+        return_message: >
+          You are back with SupportBot. Is there anything else I can help
+          you with?
+
+  - name: Complex Case Escalation
+    trigger_phrases:
+      - I need to speak to a person
+      - Transfer me to an agent
+      - This is urgent
+      - Escalate my issue
+      - I want to talk to a human
+    messages:
+      - text: >
+          I understand you need additional assistance. Let me connect you
+          with a support team member who can help.
+    adaptive_card:
+      title: Case Summary for Escalation
+      fields:
+        - id: issue_summary
+          label: Brief summary of your issue
+          type: text
+          multiline: true
+          required: true
+        - id: priority
+          label: Priority
+          type: choice
+          options:
+            - Low
+            - Medium
+            - High
+            - Critical
+          required: true
+    submit_action:
+      type: power_automate_flow
+      flow_name: EscalateToHumanAgent
+      input:
+        issue_summary: "{issue_summary}"
+        priority: "{priority}"
+        channel_id: "${EscalationTeamsChannelId}"
+      output_message: >
+        Your case has been escalated to our support team. A team member will
+        reach out to you shortly. Reference: {case_id}.
+
+  - name: FAQ and Knowledge Base Search
+    trigger_phrases:
+      - Search for {query}
+      - How do I {query}?
+      - What is {query}?
+      - Find information about {query}
+    entities:
+      - name: query
+        type: string
+        prompt: What would you like to search for?
+    actions:
+      - type: knowledge_search
+        query: "{query}"
+        source: support-knowledge-base
+
+  - name: Feedback Collection
+    trigger_phrases:
+      - I want to give feedback
+      - Rate this experience
+      - Leave feedback
+      - How was my experience
+    messages:
+      - text: >
+          Thank you for taking the time to share your feedback. Your input
+          helps us improve our support experience.
+    adaptive_card:
+      title: Support Experience Feedback
+      fields:
+        - id: satisfaction_rating
+          label: How satisfied are you with your support experience?
+          type: choice
+          options:
+            - Very satisfied
+            - Satisfied
+            - Neutral
+            - Dissatisfied
+            - Very dissatisfied
+          required: true
+        - id: feedback_comments
+          label: Additional comments (optional)
+          type: text
+          multiline: true
+          required: false
+    submit_action:
+      type: power_automate_flow
+      flow_name: RecordCustomerFeedback
+      input:
+        satisfaction_rating: "{satisfaction_rating}"
+        feedback_comments: "{feedback_comments}"
+      output_message: >
+        Thank you for your feedback. We appreciate your time and will use
+        your input to improve our support services.
