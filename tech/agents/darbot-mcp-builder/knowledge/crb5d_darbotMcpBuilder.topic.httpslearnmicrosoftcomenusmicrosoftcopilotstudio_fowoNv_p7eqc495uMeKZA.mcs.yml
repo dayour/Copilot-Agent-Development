@@ -1,0 +1,6 @@
+# Name: https://learn.microsoft.com/en-us/microsoft-copilot-studio/
+# This knowledge source searches information on the web found in https://learn.microsoft.com/en-us/microsoft-copilot-studio/ website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://learn.microsoft.com/en-us/microsoft-copilot-studio/
