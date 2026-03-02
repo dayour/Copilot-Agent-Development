@@ -1,0 +1,75 @@
+# Copilot Studio Solution Definition — Virtual Coach (Coffee)
+# This file defines the exportable solution components for the Virtual Coach agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: CoffeeVirtualCoach
+  display_name: "Coffee — Virtual Coach"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Showcase solution for the Virtual Coach agent in the Coffee vertical.
+    Includes the agent definition, topics, knowledge source bindings,
+    environment variable declarations, and Power Automate flow references.
+
+environment_variables:
+  - name: StoreManagerEmail
+    display_name: Store Manager Email
+    type: string
+    description: Email address used for shift handover notifications.
+    default_value: ""
+
+  - name: ManagerTeamsChannelId
+    display_name: Manager Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for manager escalation notifications.
+    default_value: ""
+
+  - name: CoffeeKnowledgeBaseUrl
+    display_name: Coffee Knowledge Base SharePoint URL
+    type: string
+    description: SharePoint site URL containing drink recipes and training materials.
+    default_value: ""
+
+  - name: HrPolicyLibraryUrl
+    display_name: HR Policy Library SharePoint URL
+    type: string
+    description: SharePoint document library URL containing HR and store policies.
+    default_value: ""
+
+components:
+  agents:
+    - name: VirtualCoach
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: coffee-knowledge-base
+          type: sharepoint
+          url: "${CoffeeKnowledgeBaseUrl}"
+        - id: hr-policy-library
+          type: sharepoint
+          url: "${HrPolicyLibraryUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: SendShiftHandoverEmail
+      description: Sends completed shift handover form to the store manager.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: office365_outlook
+
+    - name: SendManagerTeamsNotification
+      description: Posts an escalation notification to the manager Teams channel.
+      trigger: copilot_studio_topic_action
+      connector: microsoft_teams
+
+connections:
+  - connector: office365_outlook
+    display_name: Office 365 Outlook
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false

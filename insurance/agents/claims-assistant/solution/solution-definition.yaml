@@ -1,0 +1,82 @@
+# Copilot Studio Solution Definition — Claims Assistant (Insurance)
+# This file defines the exportable solution components for the Claims Assistant agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: InsuranceClaimsAssistant
+  display_name: "Insurance — Claims Assistant"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Showcase solution for the Claims Assistant agent in the Insurance vertical.
+    Includes the agent definition, topics, knowledge source bindings,
+    environment variable declarations, and Power Automate flow references.
+
+environment_variables:
+  - name: PolicyManagementApiUrl
+    display_name: Policy Management API URL
+    type: string
+    description: REST base URL for the policy management system (claims status lookup).
+    default_value: ""
+
+  - name: ClaimsEscalationEmail
+    display_name: Claims Escalation Email
+    type: string
+    description: Distribution list email for complex case escalations.
+    default_value: ""
+
+  - name: PolicyWordingLibraryUrl
+    display_name: Policy Wording SharePoint URL
+    type: string
+    description: SharePoint document library URL containing policy wordings and FAQ documents.
+    default_value: ""
+
+  - name: DocumentStorageLibraryUrl
+    display_name: Document Storage SharePoint URL
+    type: string
+    description: SharePoint document library URL for storing uploaded claim evidence.
+    default_value: ""
+
+components:
+  agents:
+    - name: ClaimsAssistant
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: policy-wording-library
+          type: sharepoint
+          url: "${PolicyWordingLibraryUrl}"
+      authentication:
+        type: azure_ad_b2c
+        allow_unauthenticated: false
+
+  power_automate_flows:
+    - name: CreateClaimRecord
+      description: Creates a new claim record in the policy management system from FNOL data.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: http
+
+    - name: GetClaimStatus
+      description: Retrieves the current status of a claim from the policy management system.
+      trigger: copilot_studio_topic_action
+      connector: http
+
+    - name: UploadClaimDocument
+      description: Saves an uploaded document to the claims document storage library.
+      trigger: copilot_studio_file_upload
+      connector: sharepoint
+
+connections:
+  - connector: http
+    display_name: HTTP (Policy Management API)
+  - connector: sharepoint
+    display_name: SharePoint
+  - connector: office365_outlook
+    display_name: Office 365 Outlook
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+  - type: custom_website
+    enabled: true
+    embed_type: iframe

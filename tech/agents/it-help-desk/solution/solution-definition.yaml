@@ -1,0 +1,79 @@
+# Copilot Studio Solution Definition — IT Help Desk (Tech)
+# This file defines the exportable solution components for the IT Help Desk agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: TechItHelpDesk
+  display_name: "Tech — IT Help Desk"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Showcase solution for the IT Help Desk agent in the Tech vertical.
+    Includes the agent definition, topics, knowledge source bindings,
+    environment variable declarations, and Power Automate flow references.
+
+environment_variables:
+  - name: ItsmApiUrl
+    display_name: ITSM API URL
+    type: string
+    description: REST base URL for the ITSM platform (ServiceNow or Jira Service Management).
+    default_value: ""
+
+  - name: ItsmApiKey
+    display_name: ITSM API Key
+    type: secret
+    description: API key or OAuth2 client credentials for the ITSM platform.
+    default_value: ""
+
+  - name: KnowledgeBaseSharePointUrl
+    display_name: IT Knowledge Base SharePoint URL
+    type: string
+    description: SharePoint document library URL containing IT KB articles and how-to guides.
+    default_value: ""
+
+  - name: EscalationTeamsChannelId
+    display_name: L2 Escalation Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for Level 2 support escalations.
+    default_value: ""
+
+components:
+  agents:
+    - name: ItHelpDesk
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: it-knowledge-base
+          type: sharepoint
+          url: "${KnowledgeBaseSharePointUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: InitiatePasswordReset
+      description: Triggers a self-service password reset for the specified employee.
+      trigger: copilot_studio_topic_action
+      connector: azure_ad
+
+    - name: CreateHardwareRequestTicket
+      description: Creates a hardware request ticket and initiates the manager approval flow.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: http
+
+    - name: CreateItsmTicket
+      description: Creates a general IT support ticket in the ITSM platform.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: http
+
+connections:
+  - connector: azure_ad
+    display_name: Azure Active Directory
+  - connector: http
+    display_name: HTTP (ITSM API)
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
