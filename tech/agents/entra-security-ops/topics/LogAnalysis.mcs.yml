@@ -1,0 +1,25 @@
+# Name: Security Log Analysis
+# Domain-specific topic for Entra_Security_Ops
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Security Log Analysis
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - log analysis
+      - security logs
+      - audit logs
+      - sign-in logs
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I'll help analyze security logs. Which logs would you like to examine - sign-in logs, audit logs, or security events?
+        speak:
+          - I'll help analyze security logs. Which logs would you like to examine - sign-in logs, audit logs, or security events?
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end
