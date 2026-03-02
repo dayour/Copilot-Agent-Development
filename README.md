@@ -10,7 +10,7 @@ A showcase library of complete **Copilot Studio agents** for multiple industry v
 | [coffee/](./coffee/) | Coffee | [Virtual Coach](./coffee/agents/virtual-coach/) |
 | [clothing/](./clothing/) | Clothing | [Power Analysis](./clothing/agents/power-analysis/) |
 | [insurance/](./insurance/) | Insurance | [Claims Assistant](./insurance/agents/claims-assistant/) |
-| [tech/](./tech/) | Tech | [IT Help Desk](./tech/agents/it-help-desk/), [Seller Prospect](./tech/agents/seller-prospect/) |
+| [tech/](./tech/) | Tech | [IT Help Desk](./tech/agents/it-help-desk/), [Seller Prospect](./tech/agents/seller-prospect/), [SupportBot](./tech/agents/support-bot/), [Policy Advisor](./tech/agents/policy-advisor/), [Power Platform Advisor](./tech/agents/power-platform-advisor/) |
 | [transportation/](./transportation/) | Transportation | [Fleet Coordinator](./transportation/agents/fleet-coordinator/), [Fuel Tracking](./transportation/agents/fuel-tracking/) |
 
 ## Agent Scaffold
@@ -49,4 +49,5 @@ Cross-cutting guides covering shared concerns across all verticals:
 | [Publishing Guide](./docs/publishing.md) | Channel deployment: Teams, web chat, mobile, Power Apps, external B2C channels |
 | [Admin and Governance](./docs/admin-governance.md) | Licensing, DLP policies, analytics, GDPR, security hardening, audit logging |
 | [Agent Lifecycle](./docs/agent-lifecycle.md) | Development, testing, staging, production, monitoring, updates, retirement |
+| [Agent Configuration Guide](./docs/agent-config-guide.md) | End-to-end Copilot Studio agent creation: architecture layers, instructions design, knowledge sources, publishing, ALM lifecycle |
 
