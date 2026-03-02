@@ -1,0 +1,6 @@
+# Name: Azure AD Privileged Identity Management
+# This knowledge source searches information on the web found in https://docs.microsoft.com/en-us/azure/active-directory/privileged-identity-management/ website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://docs.microsoft.com/en-us/azure/active-directory/privileged-identity-management/
