@@ -1,0 +1,180 @@
+# Test cases for insurance/self-service-portal agent
+# Covers claim status portal, document upload, payment status, policy summary,
+# and communication preferences.
+#
+# Tiers:
+#   critical   -- portal functionality facts that must always be present
+#   functional -- nuanced queries graded by LLM judge
+
+- id: ins-ssp-crit-001
+  tier: critical
+  query: "How do I check the status of my insurance claim?"
+  expected_keywords:
+    - claim
+    - status
+    - number
+    - portal
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The self-service portal allows authenticated policyholders to check claim
+    status by providing their claim number. The agent returns the current
+    status, assigned adjuster details, next steps, and a list of documents
+    attached to the claim.
+  description: >
+    Verifies that the agent explains how to check claim status via the portal,
+    including the requirement to provide a claim number.
+
+- id: ins-ssp-crit-002
+  tier: critical
+  query: "What types of documents can I upload through the portal?"
+  expected_keywords:
+    - document
+    - upload
+    - police
+    - estimate
+    - medical
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The portal accepts police reports, medical bills, repair estimates, and
+    other supporting documents. Accepted file types are PDF, JPG, and PNG
+    with a maximum size of 15 MB per file. OCR extraction runs automatically
+    for police reports, medical bills, and repair estimates.
+  description: >
+    Verifies that the agent lists accepted document types and file format
+    requirements for portal uploads.
+
+- id: ins-ssp-crit-003
+  tier: critical
+  query: "How can I see my claim payment history and upcoming payments?"
+  expected_keywords:
+    - payment
+    - history
+    - claim
+    - upcoming
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The portal provides payment history for a claim, upcoming scheduled
+    disbursement amounts and dates, and the payment method on file in masked
+    form. Policyholders must provide their claim number to retrieve payment
+    details.
+  description: >
+    Verifies that the agent explains how policyholders can access payment
+    history and upcoming disbursement information.
+
+- id: ins-ssp-crit-004
+  tier: critical
+  query: "How do I update my notification preferences?"
+  expected_keywords:
+    - notification
+    - preferences
+    - email
+    - sms
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The portal allows policyholders to view and update their notification
+    preferences for email, SMS, and Microsoft Teams. Changes are saved to
+    their customer profile. Policyholders can also opt out of all notifications.
+  description: >
+    Verifies that the agent explains how to view and update notification
+    channel preferences through the portal.
+
+- id: ins-ssp-func-001
+  tier: functional
+  query: "I uploaded my repair estimate but I have not received a confirmation. What should I do?"
+  expected_keywords:
+    - upload
+    - confirmation
+    - document
+    - claim
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    After a successful document upload through the portal, the agent provides
+    an extracted data summary for police reports, medical bills, and repair
+    estimates. If no confirmation was received, the policyholder should check
+    their claim number was entered correctly and retry the upload. They can
+    also contact their adjuster directly.
+  description: >
+    Tests that the agent provides helpful troubleshooting guidance for a
+    missing document upload confirmation.
+
+- id: ins-ssp-func-002
+  tier: functional
+  query: "What does my auto policy cover for rental car reimbursement? My policy number is POL-448821."
+  expected_keywords:
+    - rental
+    - reimbursement
+    - coverage
+    - policy
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The policy summary topic retrieves plain-language coverage details for
+    the authenticated policyholder's policy. Rental car reimbursement is an
+    optional endorsement. The agent provides a coverage summary and can answer
+    specific coverage questions using the policy knowledge source.
+  description: >
+    Tests that the agent retrieves and explains policy-specific coverage
+    information for a given policy number.
+
+- id: ins-ssp-func-003
+  tier: functional
+  query: "I want to receive claim updates only by email and stop all SMS messages."
+  expected_keywords:
+    - email
+    - sms
+    - notification
+    - preferences
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The communication preferences topic allows policyholders to update their
+    notification channels. Selecting email disables other channels unless
+    explicitly enabled. The agent confirms the updated preferences and writes
+    them to the customer profile in Dataverse.
+  description: >
+    Tests that the agent correctly handles a request to switch from SMS to
+    email-only notifications.
+
+- id: ins-ssp-func-004
+  tier: functional
+  query: "Can I change my payment method through the portal?"
+  expected_keywords:
+    - payment
+    - method
+    - handler
+    - secure
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    Payment method updates are PCI-sensitive operations. The portal agent
+    captures the request but does not modify payment data directly. Instead
+    it escalates to a live claims handler who can process the change securely.
+  description: >
+    Tests that the agent correctly declines to modify payment method data
+    directly and escalates the request to a claims handler.

@@ -1,0 +1,285 @@
+# Copilot Studio Solution Definition — Self-Service Portal (Insurance Customer Portal)
+
+schemaVersion: "1.0"
+solutionName: InsuranceSelfServicePortal
+publisher: Copilot Agent Development
+description: >
+  Customer self-service portal agent for authenticated insurance policyholders.
+  Covers claim status with document access, secure document upload with OCR
+  extraction, payment history and method display, plain-language policy
+  summaries, and communication preference management via Azure AD B2C.
+
+environmentVariables:
+  - name: ClaimsManagementApiBaseUrl
+    display_name: Claims Management API Base URL
+    type: string
+    description: Guidewire ClaimCenter or Duck Creek API base URL for claim status and document retrieval.
+    default_value: ""
+
+  - name: ClaimsManagementApiClientId
+    display_name: Claims Management API Client ID
+    type: string
+    description: OAuth client ID for claims management API.
+    default_value: ""
+
+  - name: ClaimsManagementApiClientSecret
+    display_name: Claims Management API Client Secret
+    type: secret
+    description: OAuth client secret for claims management API.
+    default_value: ""
+
+  - name: DocumentStorageBaseUrl
+    display_name: Document Storage Base URL
+    type: string
+    description: Base URL for enterprise claim document repository.
+    default_value: ""
+
+  - name: OcrApiEndpoint
+    display_name: OCR API Endpoint
+    type: string
+    description: >
+      Endpoint for OCR processing. Set to the AI Builder model endpoint or
+      Azure Document Intelligence endpoint depending on deployment choice.
+    default_value: ""
+
+  - name: OcrApiKey
+    display_name: OCR API Key
+    type: secret
+    description: API key for Azure Document Intelligence endpoint (if used).
+    default_value: ""
+
+  - name: PaymentGatewayApiBaseUrl
+    display_name: Payment Gateway API Base URL
+    type: string
+    description: API endpoint for claim payment history and upcoming disbursement retrieval.
+    default_value: ""
+
+  - name: PolicyAdminApiBaseUrl
+    display_name: Policy Administration API Base URL
+    type: string
+    description: API endpoint for policy terms, coverage limits, and deductible retrieval.
+    default_value: ""
+
+  - name: PolicyAdminApiClientId
+    display_name: Policy Administration API Client ID
+    type: string
+    description: OAuth client ID for policy administration API.
+    default_value: ""
+
+  - name: PolicyAdminApiClientSecret
+    display_name: Policy Administration API Client Secret
+    type: secret
+    description: OAuth client secret for policy administration API.
+    default_value: ""
+
+  - name: AzureCommunicationServicesEndpoint
+    display_name: Azure Communication Services Endpoint
+    type: string
+    description: Endpoint for SMS and email notification dispatch.
+    default_value: ""
+
+  - name: AzureCommunicationServicesKey
+    display_name: Azure Communication Services Key
+    type: secret
+    description: Access key for Azure Communication Services.
+    default_value: ""
+
+  - name: AzureAdB2cTenantName
+    display_name: Azure AD B2C Tenant Name
+    type: string
+    description: Azure AD B2C tenant name used for policyholder authentication.
+    default_value: ""
+
+  - name: AzureAdB2cClientId
+    display_name: Azure AD B2C Client ID
+    type: string
+    description: Application (client) ID registered in Azure AD B2C for the portal.
+    default_value: ""
+
+  - name: HandlerEscalationQueueEmail
+    display_name: Handler Escalation Queue Email
+    type: string
+    description: Email distribution for portal session escalations requiring live handler support.
+    default_value: ""
+
+components:
+  dataverse_tables:
+    - name: CustomerProfile
+      display_name: Customer Profile
+      description: Policyholder identity and communication preference record.
+      columns:
+        - PolicyholderId
+        - PreferredChannel
+        - EmailAddress
+        - PhoneNumber
+        - TeamsUpn
+        - NotificationsEnabled
+        - LastUpdatedOn
+
+    - name: PortalDocumentLog
+      display_name: Portal Document Log
+      description: Audit log of documents uploaded through the self-service portal.
+      columns:
+        - DocumentId
+        - ClaimReference
+        - PolicyholderId
+        - DocumentType
+        - UploadedOn
+        - ScanStatus
+        - OcrStatus
+        - StorageUrl
+
+  ai_builder:
+    - name: PortalDocumentOCR
+      display_name: Portal Document OCR
+      description: >
+        AI Builder OCR model for extracting structured data from police reports,
+        medical bills, and repair estimates submitted via the portal.
+      model_type: document_processing
+      use_cases:
+        - police_report_extraction
+        - medical_bill_extraction
+        - repair_estimate_extraction
+
+  agents:
+    - name: SelfServicePortal
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: policy-knowledge
+          type: sharepoint
+          url: "${DocumentStorageBaseUrl}"
+      authentication:
+        modes:
+          - type: azure_ad_b2c
+            audience: external_policyholders
+            allow_unauthenticated: false
+
+  power_automate_flows:
+    - name: GetClaimStatusForPortal
+      description: >
+        Retrieves claim status, adjuster details, next steps, and attached
+        document list for the authenticated policyholder.
+      trigger: copilot_studio_topic_action
+      connector: http
+      dependencies:
+        - ClaimsManagementApiBaseUrl
+        - CustomerProfile
+
+    - name: SendAdjusterMessage
+      description: >
+        Routes a policyholder message to the assigned adjuster's queue via the
+        claims management system.
+      trigger: copilot_studio_topic_action
+      connector: http
+      dependencies:
+        - ClaimsManagementApiBaseUrl
+
+    - name: UploadAndScanDocument
+      description: >
+        Accepts a document upload, runs malware scanning, stores to the document
+        repository, and logs the upload in the portal document audit log.
+      trigger: copilot_studio_topic_action
+      connector: http
+      dependencies:
+        - DocumentStorageBaseUrl
+        - PortalDocumentLog
+
+    - name: ExtractDocumentData
+      description: >
+        Runs OCR extraction on police reports, medical bills, and repair
+        estimates using AI Builder or Azure Document Intelligence and attaches
+        extracted fields to the claim record.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      dependencies:
+        - PortalDocumentOCR
+        - OcrApiEndpoint
+        - ClaimsManagementApiBaseUrl
+
+    - name: GetClaimPaymentDetails
+      description: >
+        Retrieves payment history, upcoming disbursement details, and masked
+        payment method on file for the authenticated policyholder.
+      trigger: copilot_studio_topic_action
+      connector: http
+      dependencies:
+        - PaymentGatewayApiBaseUrl
+
+    - name: GetPolicySummary
+      description: >
+        Retrieves policy terms, coverage limits, and deductibles from the
+        policy administration system for the authenticated policyholder.
+      trigger: copilot_studio_topic_action
+      connector: http
+      dependencies:
+        - PolicyAdminApiBaseUrl
+
+    - name: CoverageKnowledgeSearch
+      description: >
+        Performs a knowledge-grounded search against policy documentation to
+        answer specific coverage questions for the authenticated policyholder.
+      trigger: copilot_studio_topic_action
+      connector: sharepoint
+      dependencies:
+        - DocumentStorageBaseUrl
+
+    - name: GetCommunicationPreferences
+      description: >
+        Reads current notification preferences from the CustomerProfile
+        Dataverse table for the authenticated policyholder.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CustomerProfile
+
+    - name: UpdateCommunicationPreferences
+      description: >
+        Writes updated notification channel preferences to the CustomerProfile
+        Dataverse table and triggers a confirmation notification via Azure
+        Communication Services.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CustomerProfile
+        - AzureCommunicationServicesEndpoint
+
+    - name: BuildPortalSessionSummary
+      description: >
+        Compiles a structured session context summary for handoff to a live
+        claims handler, including claim reference, policyholder identity, and
+        conversation history.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CustomerProfile
+
+    - name: EscalateToHandler
+      description: >
+        Routes a portal escalation (including payment method update requests)
+        to the handler queue with full session context.
+      trigger: copilot_studio_topic_action
+      connector: office365_outlook
+      dependencies:
+        - HandlerEscalationQueueEmail
+
+connections:
+  - connector: http
+    display_name: HTTP (Claims, Payment, and Policy APIs)
+  - connector: dataverse
+    display_name: Microsoft Dataverse
+  - connector: sharepoint
+    display_name: SharePoint Document Storage
+  - connector: ai_builder
+    display_name: AI Builder OCR
+  - connector: office365_outlook
+    display_name: Office 365 Outlook
+  - connector: azure_communication_services
+    display_name: Azure Communication Services
+
+channels:
+  - type: custom_website
+    enabled: true
+    display_name: Policyholder Self-Service Portal
+    authentication: azure_ad_b2c
+    embed_type: webchat
+    allow_unauthenticated: false

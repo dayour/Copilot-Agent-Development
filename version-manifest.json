@@ -17,6 +17,11 @@
       "lastUpdated": "2026-03-02",
       "status": "production"
     },
+    "insurance/agents/self-service-portal": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-03",
+      "status": "production"
+    },
     "tech/agents/entra-security-ops": {
       "version": "1.0.0",
       "lastUpdated": "2026-03-02",

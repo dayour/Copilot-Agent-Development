@@ -1,0 +1,363 @@
+# Copilot Studio Agent Template — Self-Service Portal (Insurance Customer Portal)
+
+agent:
+  name: Self-Service Portal
+  description: >
+    Customer self-service portal for authenticated policyholders. Provides claim
+    status with document access and adjuster messaging, secure document upload
+    with OCR extraction, payment history and method on file, plain-language
+    policy summaries, and communication preference management.
+  language: en-US
+  orchestration: generative
+  fallback_message: >
+    I could not complete that request. Please try again or contact your claims
+    handler directly for assistance.
+
+global_variables:
+  - name: policyholder_id
+    type: string
+  - name: policy_number
+    type: string
+  - name: claim_reference
+    type: string
+  - name: preferred_channel
+    type: string
+  - name: conversation_summary
+    type: string
+
+topics:
+  - name: Greeting
+    description: >
+      Welcomes authenticated policyholders and routes them to claim status,
+      document upload, payment status, policy summary, communication preferences,
+      or live handler escalation.
+    trigger_phrases:
+      - Hello
+      - Hi
+      - I need help
+      - What can you do?
+    messages:
+      - text: >
+          Welcome to your insurance self-service portal. I can help you check your
+          claim status, upload documents, view payment information, review your
+          policy, or update your notification preferences.
+    quick_replies:
+      - Check claim status
+      - Upload documents
+      - View payment status
+      - View my policy summary
+      - Update notification preferences
+      - Connect me to a claims handler
+
+  - name: Claim Status Portal
+    description: >
+      Allows authenticated policyholders to check the current status of a claim,
+      view documents attached to the claim, and send a message to their assigned
+      adjuster without calling the contact center.
+    trigger_phrases:
+      - Check claim status
+      - Where is my claim?
+      - What is the status of my claim?
+      - I want to see my claim
+    steps:
+      - type: question
+        variable: claim_reference
+        prompt: Please enter your claim number.
+      - type: action
+        action: GetClaimStatusForPortal
+        input:
+          claim_reference: "{claim_reference}"
+          policyholder_id: "{User.Id}"
+        output:
+          claim_status: claim_status
+          claim_description: claim_description
+          adjuster_name: adjuster_name
+          adjuster_email: adjuster_email
+          next_steps: next_steps
+          document_list: document_list
+      - type: message
+        text: >
+          Claim {claim_reference}: {claim_status}.
+          Summary: {claim_description}.
+          Next steps: {next_steps}.
+          Assigned adjuster: {adjuster_name} ({adjuster_email}).
+          Documents on file: {document_list}.
+      - type: question
+        variable: send_adjuster_message
+        prompt: Would you like to send a message to your adjuster?
+        entity: choice
+        options: [yes, no]
+      - type: condition
+        expression: "{send_adjuster_message} = 'yes'"
+        then:
+          - type: question
+            variable: adjuster_message_text
+            prompt: Type your message to the adjuster.
+          - type: action
+            action: SendAdjusterMessage
+            input:
+              claim_reference: "{claim_reference}"
+              policyholder_id: "{User.Id}"
+              message_text: "{adjuster_message_text}"
+            output:
+              message_sent: message_sent
+          - type: message
+            text: Your message has been delivered to {adjuster_name}.
+
+  - name: Document Upload Portal
+    description: >
+      Accepts secure document uploads from authenticated policyholders. Runs
+      malware scanning before storage. Executes OCR extraction for police
+      reports, medical bills, and repair estimates using AI Builder or Azure
+      Document Intelligence. Attaches extracted data to the claim record.
+    trigger_phrases:
+      - Upload documents
+      - Submit a document
+      - Send my police report
+      - Upload medical bill
+      - Upload repair estimate
+    steps:
+      - type: question
+        variable: claim_reference
+        prompt: Please enter the claim number this document belongs to.
+      - type: question
+        variable: document_type
+        prompt: What type of document are you uploading?
+        entity: choice
+        options: [police_report, medical_bill, repair_estimate, other]
+      - type: message
+        text: >
+          Accepted file types: PDF, JPG, PNG. Maximum file size: 15 MB.
+          Please attach your file now.
+      - type: action
+        action: UploadAndScanDocument
+        input:
+          claim_reference: "{claim_reference}"
+          policyholder_id: "{User.Id}"
+          document_type: "{document_type}"
+        output:
+          document_id: document_id
+          scan_status: scan_status
+      - type: condition
+        expression: "{scan_status} = 'clean'"
+        then:
+          - type: condition
+            expression: "{document_type} = 'police_report' or {document_type} = 'medical_bill' or {document_type} = 'repair_estimate'"
+            then:
+              - type: action
+                action: ExtractDocumentData
+                input:
+                  document_id: "{document_id}"
+                  document_type: "{document_type}"
+                  claim_reference: "{claim_reference}"
+                output:
+                  extracted_summary: extracted_summary
+              - type: message
+                text: >
+                  Document uploaded and processed. Extracted summary:
+                  {extracted_summary}. The data has been attached to claim
+                  {claim_reference}.
+          - type: condition
+            expression: "{document_type} = 'other'"
+            then:
+              - type: message
+                text: >
+                  Document uploaded and attached to claim {claim_reference}.
+      - type: condition
+        expression: "{scan_status} <> 'clean'"
+        then:
+          - type: message
+            text: >
+              The file could not be accepted. Please verify the file and try
+              again, or contact your claims handler for assistance.
+
+  - name: Payment Status
+    description: >
+      Shows authenticated policyholders their claim payment history, upcoming
+      scheduled disbursements, and the payment method currently on file in
+      masked form.
+    trigger_phrases:
+      - View payment status
+      - When will I be paid?
+      - Show my payment history
+      - What is my payment method?
+    steps:
+      - type: question
+        variable: claim_reference
+        prompt: Please enter your claim number to view payment details.
+      - type: action
+        action: GetClaimPaymentDetails
+        input:
+          claim_reference: "{claim_reference}"
+          policyholder_id: "{User.Id}"
+        output:
+          payment_history: payment_history
+          upcoming_payment_amount: upcoming_payment_amount
+          upcoming_payment_date: upcoming_payment_date
+          payment_method_masked: payment_method_masked
+      - type: message
+        text: >
+          Payment history for claim {claim_reference}: {payment_history}.
+          Upcoming payment: {upcoming_payment_amount} expected on {upcoming_payment_date}.
+          Payment method on file: {payment_method_masked}.
+      - type: question
+        variable: update_payment_method
+        prompt: Would you like to update your payment method?
+        entity: choice
+        options: [yes, no]
+      - type: condition
+        expression: "{update_payment_method} = 'yes'"
+        then:
+          - type: message
+            text: >
+              Payment method changes require identity verification and are
+              handled by our payments team. I will connect you with a
+              claims handler who can assist securely.
+          - type: action
+            action: EscalateToHandler
+            input:
+              reason: payment_method_update
+              claim_reference: "{claim_reference}"
+              policyholder_id: "{User.Id}"
+
+  - name: Policy Summary
+    description: >
+      Provides authenticated policyholders with a plain-language summary of
+      their policy terms, coverage limits, and deductibles specific to their
+      policy number.
+    trigger_phrases:
+      - View my policy summary
+      - What does my policy cover?
+      - What is my deductible?
+      - Show my coverage limits
+    steps:
+      - type: question
+        variable: policy_number
+        prompt: Please enter your policy number to view your coverage summary.
+      - type: action
+        action: GetPolicySummary
+        input:
+          policy_number: "{policy_number}"
+          policyholder_id: "{User.Id}"
+        output:
+          policy_type: policy_type
+          effective_date: effective_date
+          expiration_date: expiration_date
+          coverage_summary: coverage_summary
+          deductible_summary: deductible_summary
+          coverage_limits_summary: coverage_limits_summary
+      - type: message
+        text: >
+          Policy {policy_number} ({policy_type}).
+          Effective: {effective_date} through {expiration_date}.
+          Coverage: {coverage_summary}.
+          Deductibles: {deductible_summary}.
+          Coverage limits: {coverage_limits_summary}.
+      - type: question
+        variable: coverage_question
+        prompt: Do you have a specific coverage question about this policy?
+        entity: choice
+        options: [yes, no]
+      - type: condition
+        expression: "{coverage_question} = 'yes'"
+        then:
+          - type: question
+            variable: coverage_question_text
+            prompt: Please ask your coverage question.
+          - type: action
+            action: CoverageKnowledgeSearch
+            input:
+              question: "{coverage_question_text}"
+              policy_number: "{policy_number}"
+              policy_type: "{policy_type}"
+            output:
+              coverage_answer: coverage_answer
+          - type: message
+            text: "{coverage_answer}"
+
+  - name: Communication Preferences
+    description: >
+      Allows authenticated policyholders to view and update their notification
+      preferences for email, SMS, and Microsoft Teams. Changes are written to
+      the customer profile in Dataverse.
+    trigger_phrases:
+      - Update notification preferences
+      - Change my notification settings
+      - I want email notifications
+      - Stop sending me SMS
+      - How do I get Teams notifications?
+    steps:
+      - type: action
+        action: GetCommunicationPreferences
+        input:
+          policyholder_id: "{User.Id}"
+        output:
+          current_email_enabled: current_email_enabled
+          current_sms_enabled: current_sms_enabled
+          current_teams_enabled: current_teams_enabled
+          current_email_address: current_email_address
+          current_phone_number: current_phone_number
+      - type: message
+        text: >
+          Your current notification settings:
+          Email: {current_email_enabled} ({current_email_address}).
+          SMS: {current_sms_enabled} ({current_phone_number}).
+          Teams: {current_teams_enabled}.
+      - type: question
+        variable: preferred_channel
+        prompt: >
+          Which notification channels would you like to enable?
+          You can choose one or more: email, SMS, Teams, or none.
+        entity: choice
+        options: [email, sms, teams, none]
+      - type: condition
+        expression: "{preferred_channel} = 'email' or {preferred_channel} = 'sms'"
+        then:
+          - type: question
+            variable: contact_value
+            prompt: >
+              Please confirm or provide the contact address or phone number
+              for your selected channel.
+      - type: action
+        action: UpdateCommunicationPreferences
+        input:
+          policyholder_id: "{User.Id}"
+          preferred_channel: "{preferred_channel}"
+          contact_value: "{contact_value}"
+        output:
+          preferences_updated: preferences_updated
+      - type: message
+        text: >
+          Your notification preferences have been updated. You will now receive
+          claim updates via {preferred_channel}.
+
+  - name: Escalation
+    description: >
+      Transfers the authenticated policyholder to a live claims handler with
+      full portal session context, including any active claim reference and
+      policyholder identity.
+    trigger_phrases:
+      - Connect me to a claims handler
+      - I need to speak with someone
+      - This needs escalation
+      - Transfer me to an agent
+    steps:
+      - type: action
+        action: BuildPortalSessionSummary
+        input:
+          conversation_id: "{System.Conversation.Id}"
+          policyholder_id: "{User.Id}"
+        output:
+          conversation_summary: conversation_summary
+      - type: message
+        text: >
+          I am connecting you to a claims handler now. They will have full
+          context from your portal session.
+      - type: action
+        action: handoff_to_agent
+        context:
+          policyholder_id: "{User.Id}"
+          policy_number: "{policy_number}"
+          claim_reference: "{claim_reference}"
+          preferred_channel: "{preferred_channel}"
+          conversation_summary: "{conversation_summary}"
