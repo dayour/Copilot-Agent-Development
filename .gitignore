@@ -1,7 +1,7 @@
-# Python
 __pycache__/
 *.py[cod]
 *.pyo
+# Python
 
 # Node.js
 node_modules/

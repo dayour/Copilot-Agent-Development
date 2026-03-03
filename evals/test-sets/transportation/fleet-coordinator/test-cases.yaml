@@ -1,0 +1,201 @@
+# Test cases for transportation/fleet-coordinator agent
+# Covers fleet health status, vehicle maintenance, and dispatch action verification.
+#
+# Tiers:
+#   critical    -- fleet health status queries that must always succeed
+#   functional  -- vehicle maintenance queries graded by LLM judge
+#   integration -- dispatch action verification (requires live connector)
+
+- id: trans-fc-crit-001
+  tier: critical
+  query: "What is the current health status of the fleet?"
+  expected_keywords:
+    - fleet
+    - status
+    - vehicles
+    - health
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fleet coordinator agent monitors real-time telemetry from all vehicles
+    in the fleet. Fleet health status includes total vehicle count, active
+    vehicles, vehicles in maintenance, and vehicles with active alerts.
+  description: >
+    Verifies that the agent returns a response covering overall fleet health
+    including vehicle status terminology.
+
+- id: trans-fc-crit-002
+  tier: critical
+  query: "How many vehicles are currently out of service?"
+  expected_keywords:
+    - vehicles
+    - out of service
+    - maintenance
+    - count
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fleet coordinator tracks vehicle availability. Out-of-service vehicles
+    are those flagged for maintenance, undergoing repair, or with safety
+    alerts that prevent operation.
+  description: >
+    Verifies that the agent provides a count or status of out-of-service vehicles.
+
+- id: trans-fc-crit-003
+  tier: critical
+  query: "Which vehicles have active engine alerts?"
+  expected_keywords:
+    - engine
+    - alert
+    - vehicle
+    - diagnostic
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fleet coordinator reads telematics diagnostic data. Engine alerts include
+    check engine light events, high temperature warnings, and oil pressure alerts
+    surfaced from OBD-II data via the telematics API.
+  description: >
+    Verifies that the agent returns a response referencing engine alerts and
+    diagnostic data from the telematics system.
+
+- id: trans-fc-crit-004
+  tier: critical
+  query: "What is the mileage on vehicle VH-1042?"
+  expected_keywords:
+    - mileage
+    - VH-1042
+    - odometer
+    - vehicle
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fleet coordinator can retrieve odometer readings from the telematics API
+    by vehicle ID. Vehicle IDs follow the format VH-XXXX.
+  description: >
+    Verifies that the agent handles a vehicle-specific mileage query with the
+    correct vehicle ID reference.
+
+- id: trans-fc-func-001
+  tier: functional
+  query: "Which vehicles are due for their next scheduled maintenance in the next 30 days?"
+  expected_keywords:
+    - maintenance
+    - scheduled
+    - due
+    - 30 days
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The fleet coordinator tracks maintenance schedules based on mileage intervals
+    and calendar-based service dates. Vehicles due within 30 days are flagged
+    for proactive scheduling.
+  description: >
+    Tests that the agent provides a clear, grounded response about upcoming
+    maintenance scheduling and how to access the relevant vehicle list.
+
+- id: trans-fc-func-002
+  tier: functional
+  query: "What type of service does vehicle VH-0887 need and when was it last serviced?"
+  expected_keywords:
+    - service
+    - VH-0887
+    - last
+    - maintenance
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The fleet coordinator can retrieve individual vehicle service history from
+    the telematics API. Service records include service type (oil change, tire
+    rotation, brake inspection), date, and next due interval.
+  description: >
+    Tests vehicle-specific service history lookup including last service date
+    and next scheduled service type.
+
+- id: trans-fc-func-003
+  tier: functional
+  query: "What is the average fleet utilization rate this week?"
+  expected_keywords:
+    - utilization
+    - fleet
+    - rate
+    - average
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The fleet coordinator calculates fleet utilization as the ratio of active
+    vehicles to total available vehicles. High utilization may indicate a need
+    for fleet expansion; low utilization may suggest over-provisioning.
+  description: >
+    Tests that the agent provides an accurate explanation of fleet utilization
+    and how to interpret the metric.
+
+- id: trans-fc-intg-001
+  tier: integration
+  query: "Dispatch vehicle VH-2201 to the downtown depot for a tire rotation."
+  expected_keywords:
+    - dispatch
+    - VH-2201
+    - depot
+    - confirmed
+  grader: keyword_match
+  pass_threshold: 0.8
+  context: >
+    The fleet coordinator can dispatch vehicles to maintenance locations via
+    the telematics API. A dispatch action requires a vehicle ID, destination,
+    and service type. The API returns a confirmation reference number.
+  description: >
+    Integration test verifying that a dispatch action is accepted by the
+    telematics connector and returns a confirmation reference.
+
+- id: trans-fc-intg-002
+  tier: integration
+  query: "Update the maintenance status of vehicle VH-0523 to in-service after completing its oil change."
+  expected_keywords:
+    - status
+    - updated
+    - in-service
+    - VH-0523
+  grader: keyword_match
+  pass_threshold: 0.8
+  context: >
+    The fleet coordinator can update vehicle status records via the telematics API.
+    Changing a vehicle from maintenance to in-service requires confirming the
+    service is complete and the vehicle has passed inspection.
+  description: >
+    Integration test verifying that a status update action is applied correctly
+    via the telematics connector.
+
+- id: trans-fc-intg-003
+  tier: integration
+  query: "Generate a maintenance work order for vehicle VH-1109 for brake inspection."
+  expected_keywords:
+    - work order
+    - VH-1109
+    - brake
+    - inspection
+  grader: keyword_match
+  pass_threshold: 0.8
+  context: >
+    The fleet coordinator generates maintenance work orders that are routed to
+    the service team. Work orders include the vehicle ID, service type, priority,
+    and estimated completion time.
+  description: >
+    Integration test verifying that a work order creation action is processed
+    and a work order reference is returned.
