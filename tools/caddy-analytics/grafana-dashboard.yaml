@@ -1,0 +1,506 @@
+# Grafana Dashboard Template  -  Copilot Studio Agent Conversation Analytics
+#
+# This template describes the dashboard structure, panels, and data source
+# configuration for visualising the Caddy access logs produced by the
+# analytics proxy (see Caddyfile and log-schema.yaml).
+#
+# Supported Grafana data sources:
+#   - Loki         (recommended)  -  tail log files shipped by Promtail or Alloy
+#   - Azure Monitor Logs          -  when logs are forwarded via Vector or AMA
+#   - Elasticsearch / OpenSearch  -  when logs are indexed by Filebeat or Logstash
+#
+# Import steps:
+#   1. Open Grafana and navigate to Dashboards > Import.
+#   2. Upload this file or paste its contents.
+#   3. Select the data source that matches your log ingestion pipeline.
+#   4. Adjust the logPath variable to match your environment.
+
+template:
+  name: AgentConversationAnalytics
+  displayName: "Agent Conversation Analytics"
+  description: >
+    Fleet-wide analytics for Copilot Studio agent conversations proxied through
+    Caddy.  Covers request volume, response latency, error rates, active
+    sessions, geographic distribution, and user-agent breakdown.
+  version: "1.0.0"
+  grafanaMinVersion: "10.0"
+  datasourceType: loki
+
+variables:
+  - name: datasource
+    type: datasource
+    plugin: loki
+    label: "Log Source"
+
+  - name: logPath
+    type: constant
+    label: "Log Path"
+    description: >
+      Loki stream label value for the Caddy access log.  Typically set via the
+      Promtail job label: {job="caddy-analytics"}.
+    default: "caddy-analytics"
+
+  - name: agent_domain
+    type: query
+    label: "Agent Domain"
+    description: Filter panels to a specific agent domain.
+    query: 'label_values({job=~"$logPath"}, host)'
+    multi: true
+    includeAll: true
+    default: All
+
+  - name: time_range
+    type: interval
+    label: "Interval"
+    options:
+      - 1m
+      - 5m
+      - 10m
+      - 30m
+      - 1h
+    default: 5m
+
+panels:
+
+  # -------------------------------------------------------------------------
+  # Row: Overview
+  # -------------------------------------------------------------------------
+  - type: row
+    title: "Overview"
+    collapsed: false
+
+  - type: stat
+    title: "Conversations Started (selected window)"
+    description: >
+      Count of POST requests to /v3/directline/conversations  -  each represents
+      a new Direct Line conversation.
+    datasource: "$datasource"
+    query: >
+      sum(count_over_time(
+        {job=~"$logPath", host=~"$agent_domain"}
+        | json
+        | request_method="POST"
+        | request_uri=~"^/v3/directline/conversations$"
+        [$__range]
+      ))
+    unit: short
+    thresholds:
+      - value: 0
+        color: blue
+
+  - type: stat
+    title: "Total Requests (selected window)"
+    description: Total proxied requests across all agent endpoints.
+    datasource: "$datasource"
+    query: >
+      sum(count_over_time(
+        {job=~"$logPath", host=~"$agent_domain"}
+        | json
+        [$__range]
+      ))
+    unit: short
+
+  - type: stat
+    title: "Error Rate (5xx)"
+    description: Percentage of requests that returned a server error from Direct Line.
+    datasource: "$datasource"
+    query: >
+      sum(count_over_time(
+        {job=~"$logPath", host=~"$agent_domain"}
+        | json
+        | status >= 500
+        [$__range]
+      ))
+      /
+      sum(count_over_time(
+        {job=~"$logPath", host=~"$agent_domain"}
+        | json
+        [$__range]
+      ))
+    unit: percentunit
+    thresholds:
+      - value: 0
+        color: green
+      - value: 0.05
+        color: yellow
+      - value: 0.10
+        color: red
+
+  - type: stat
+    title: "Active Sessions (distinct conversation IDs)"
+    description: >
+      Count of distinct Direct Line conversation IDs seen in the selected window.
+      Approximates concurrent or recently active conversations.
+    datasource: "$datasource"
+    query: >
+      count(
+        sum by (conversation_id) (
+          count_over_time(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json
+            | regexp "/v3/directline/conversations/(?P<conversation_id>[^/]+)" request_uri
+            [$__range]
+          )
+        )
+      )
+    unit: short
+
+  - type: stat
+    title: "Latency p95 (ms)"
+    description: 95th percentile end-to-end request latency.
+    datasource: "$datasource"
+    query: >
+      quantile_over_time(
+        0.95,
+        {job=~"$logPath", host=~"$agent_domain"}
+        | json
+        | unwrap duration
+        | __error__=""
+        [$__interval]
+      ) * 1000
+    unit: ms
+    thresholds:
+      - value: 0
+        color: green
+      - value: 2000
+        color: yellow
+      - value: 5000
+        color: red
+
+  # -------------------------------------------------------------------------
+  # Row: Request Volume
+  # -------------------------------------------------------------------------
+  - type: row
+    title: "Request Volume"
+    collapsed: false
+
+  - type: timeseries
+    title: "Requests per Minute by Endpoint"
+    description: >
+      Request rate broken down by normalised endpoint pattern.
+      Conversation ID segments are replaced with {conversationId} for grouping.
+    datasource: "$datasource"
+    query: >
+      sum by (endpoint) (
+        rate(
+          {job=~"$logPath", host=~"$agent_domain"}
+          | json
+          | label_format endpoint=request_uri
+          | replace "endpoint" "/v3/directline/conversations/[^/]+" "/v3/directline/conversations/{conversationId}"
+          | replace "endpoint" "/api/messages/[^/]+" "/api/messages/{conversationId}"
+          [$__interval]
+        )
+      )
+    unit: reqps
+    legend: right
+
+  - type: timeseries
+    title: "Conversations Started per Minute"
+    description: >
+      Rate of new Direct Line conversations (POST to the conversations endpoint
+      without a trailing conversation ID path segment).
+    datasource: "$datasource"
+    query: >
+      rate(
+        {job=~"$logPath", host=~"$agent_domain"}
+        | json
+        | request_method="POST"
+        | request_uri=~"^/v3/directline/conversations$"
+        [$__interval]
+      )
+    unit: reqps
+
+  # -------------------------------------------------------------------------
+  # Row: Latency
+  # -------------------------------------------------------------------------
+  - type: row
+    title: "Response Latency"
+    collapsed: false
+
+  - type: timeseries
+    title: "Latency Percentiles (p50 / p95 / p99)"
+    description: >
+      End-to-end request handling time.  For POST /v3/directline/conversations
+      requests this represents time to first bot acknowledgement.
+    datasource: "$datasource"
+    queries:
+      - label: p50
+        query: >
+          quantile_over_time(0.50,
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json | unwrap duration | __error__=""
+            [$__interval]
+          ) * 1000
+      - label: p95
+        query: >
+          quantile_over_time(0.95,
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json | unwrap duration | __error__=""
+            [$__interval]
+          ) * 1000
+      - label: p99
+        query: >
+          quantile_over_time(0.99,
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json | unwrap duration | __error__=""
+            [$__interval]
+          ) * 1000
+    unit: ms
+    referenceLines:
+      - value: 5000
+        label: "5s SLO threshold"
+        color: red
+
+  - type: heatmap
+    title: "Latency Distribution Heatmap"
+    description: Request latency distribution over time.
+    datasource: "$datasource"
+    query: >
+      sum by (le) (
+        rate(
+          {job=~"$logPath", host=~"$agent_domain"}
+          | json | unwrap duration | __error__=""
+          [$__interval]
+        )
+      )
+    unit: ms
+
+  # -------------------------------------------------------------------------
+  # Row: Errors
+  # -------------------------------------------------------------------------
+  - type: row
+    title: "Error Rate"
+    collapsed: false
+
+  - type: timeseries
+    title: "Error Rate Over Time (5xx)"
+    description: Percentage of requests returning server errors from Direct Line.
+    datasource: "$datasource"
+    queries:
+      - label: "Error Rate"
+        query: >
+          sum(rate(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json | status >= 500
+            [$__interval]
+          ))
+          /
+          sum(rate(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json
+            [$__interval]
+          ))
+    unit: percentunit
+    referenceLines:
+      - value: 0.10
+        label: "10% alert threshold"
+        color: red
+      - value: 0.05
+        label: "5% warning threshold"
+        color: yellow
+
+  - type: table
+    title: "Top Errors by Status Code (Last 1h)"
+    description: Request count grouped by HTTP status code for non-2xx responses.
+    datasource: "$datasource"
+    query: >
+      sum by (status) (
+        count_over_time(
+          {job=~"$logPath", host=~"$agent_domain"}
+          | json | status != 200
+          [1h]
+        )
+      )
+    columns:
+      - name: status
+        displayName: "Status Code"
+      - name: Value
+        displayName: "Request Count"
+    sortBy: Value
+    sortOrder: descending
+
+  # -------------------------------------------------------------------------
+  # Row: Sessions
+  # -------------------------------------------------------------------------
+  - type: row
+    title: "Active Sessions"
+    collapsed: false
+
+  - type: timeseries
+    title: "Active Conversations Over Time"
+    description: >
+      Count of distinct conversation IDs observed per interval.  Use a
+      time range matching the typical session duration (e.g. 1h) for an
+      accurate concurrent sessions estimate.
+    datasource: "$datasource"
+    query: >
+      count(
+        sum by (conversation_id) (
+          count_over_time(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json
+            | regexp "/v3/directline/conversations/(?P<conversation_id>[^/]+)" request_uri
+            [$__interval]
+          )
+        )
+      )
+    unit: short
+
+  # -------------------------------------------------------------------------
+  # Row: Geographic Distribution
+  # -------------------------------------------------------------------------
+  - type: row
+    title: "Geographic Distribution"
+    collapsed: false
+    note: >
+      Geographic panels require the MaxMind GeoIP Caddy module
+      (github.com/porech/caddy-maxmind-geolocation) and the client_region
+      field to be emitted by Caddy before the client IP is deleted.
+      See README.md for configuration steps.
+
+  - type: geomap
+    title: "Request Volume by Region"
+    description: >
+      World map showing request volume per geographic region derived from
+      GeoIP lookup performed at the proxy layer (before IP deletion).
+      Requires client_region log field.
+    datasource: "$datasource"
+    query: >
+      sum by (client_region) (
+        count_over_time(
+          {job=~"$logPath", host=~"$agent_domain"}
+          | json | client_region != ""
+          [$__range]
+        )
+      )
+    locationField: client_region
+    valueField: Value
+    unit: short
+
+  - type: bargauge
+    title: "Top 10 Regions by Request Volume"
+    datasource: "$datasource"
+    query: >
+      topk(10,
+        sum by (client_region) (
+          count_over_time(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json | client_region != ""
+            [$__range]
+          )
+        )
+      )
+    unit: short
+    orientation: horizontal
+
+  # -------------------------------------------------------------------------
+  # Row: User-Agent Distribution
+  # -------------------------------------------------------------------------
+  - type: row
+    title: "User-Agent Distribution"
+    collapsed: false
+
+  - type: piechart
+    title: "Channel Distribution"
+    description: >
+      Proportion of requests from each client channel.  Classification is
+      based on User-Agent pattern matching (see log-schema.yaml).
+    datasource: "$datasource"
+    queries:
+      - label: Teams
+        query: >
+          sum(count_over_time(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json
+            | request_headers_User_Agent =~ "(?i)teams"
+            [$__range]
+          ))
+      - label: Web
+        query: >
+          sum(count_over_time(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json
+            | request_headers_User_Agent =~ "(?i)mozilla|chrome|safari|firefox"
+            | request_headers_User_Agent !~ "(?i)teams"
+            [$__range]
+          ))
+      - label: Mobile
+        query: >
+          sum(count_over_time(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json
+            | request_headers_User_Agent =~ "(?i)okhttp|dalvik|cfnetwork|darwin"
+            [$__range]
+          ))
+      - label: Other
+        query: >
+          sum(count_over_time(
+            {job=~"$logPath", host=~"$agent_domain"}
+            | json
+            | request_headers_User_Agent !~ "(?i)teams|mozilla|chrome|safari|firefox|okhttp|dalvik|cfnetwork|darwin"
+            [$__range]
+          ))
+
+  - type: timeseries
+    title: "Channel Volume Over Time"
+    description: Request volume per channel over time.
+    datasource: "$datasource"
+    queries:
+      - label: Teams
+        query: >
+          rate({job=~"$logPath"} | json
+            | request_headers_User_Agent =~ "(?i)teams" [$__interval])
+      - label: Web
+        query: >
+          rate({job=~"$logPath"} | json
+            | request_headers_User_Agent =~ "(?i)mozilla|chrome|safari|firefox"
+            | request_headers_User_Agent !~ "(?i)teams" [$__interval])
+      - label: Mobile
+        query: >
+          rate({job=~"$logPath"} | json
+            | request_headers_User_Agent =~ "(?i)okhttp|dalvik|cfnetwork|darwin"
+            [$__interval])
+    unit: reqps
+
+theme:
+  colors:
+    primary: "#4472C4"
+    success: "#00B050"
+    warning: "#FFC000"
+    error: "#C00000"
+    neutral: "#808080"
+  font: "Inter, Segoe UI, sans-serif"
+  fontSize: 12
+
+alerts:
+  - name: HighErrorRate
+    description: >
+      Fires when the 5xx error rate exceeds 10% over any 5-minute window.
+    condition: >
+      error_rate > 0.10 for 5m
+    severity: critical
+    notificationChannels:
+      - type: teams_webhook
+        label: "Platform Engineering Teams"
+
+  - name: HighLatencyP95
+    description: >
+      Fires when the p95 response latency exceeds 5 seconds over any 5-minute window.
+    condition: >
+      response_latency_p95_ms > 5000 for 5m
+    severity: warning
+    notificationChannels:
+      - type: teams_webhook
+        label: "Platform Engineering Teams"
+
+  - name: NoConversationsStarted
+    description: >
+      Fires when zero conversations have been started in the past 30 minutes
+      during expected business hours (used to detect silent proxy failures).
+    condition: >
+      conversations_started == 0 for 30m
+    schedule: "weekdays 08:00-18:00 UTC"
+    severity: warning
+    notificationChannels:
+      - type: teams_webhook
+        label: "Platform Engineering Teams"
