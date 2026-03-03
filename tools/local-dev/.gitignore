@@ -1,0 +1,5 @@
+# Environment variables - never commit secrets
+.env
+
+# Node dependencies (token-server build context is inside the container)
+token-server/node_modules

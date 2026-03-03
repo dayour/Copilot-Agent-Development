@@ -28,6 +28,18 @@ global_variables:
     type: string
   - name: Analysis.ContextSummary
     type: string
+  - name: Alert.RuleId
+    type: string
+  - name: Alert.HistoryId
+    type: string
+  - name: SavedAnalysis.Id
+    type: string
+  - name: ScheduledReport.Id
+    type: string
+  - name: User.EntraId
+    type: string
+  - name: User.IsAdmin
+    type: boolean
 
 topics:
 
@@ -42,7 +54,8 @@ topics:
     messages:
       - text: >
           You are connected to Power Analysis. I can run decomposition analysis,
-          comparative benchmarking, trend detection, what-if simulation, and anomaly review.
+          comparative benchmarking, trend detection, what-if simulation, anomaly review,
+          alert management, saved analyses, and scheduled reports.
           Which analytical task should we run?
     quick_replies:
       - Sales performance analysis
@@ -51,6 +64,10 @@ topics:
       - Trend detection
       - What-if analysis
       - Anomaly alerts
+      - Manage alert rules
+      - Active alerts
+      - Save this analysis
+      - Schedule a report
 
   - name: Sales Performance
     description: >
@@ -439,3 +456,490 @@ topics:
               Status: All data feeds are healthy.
 
               {pipeline_health_summary_table}
+  - name: Create Alert Rule
+    description: >
+      Creates a new configurable alert rule so the agent notifies the user when
+      a metric breaches a defined threshold for a store, region, or category.
+      Supports compound AND/OR conditions.
+    trigger_phrases:
+      - create an alert rule
+      - notify me when sales drop below target
+      - set up an alert for {metric}
+      - add alert threshold for {store}
+      - alert me when {metric} falls below {threshold}
+    entities:
+      - name: rule_name
+        type: string
+        prompt: Provide a name for this alert rule.
+      - name: metric
+        type: string
+        prompt: >
+          Which metric should be monitored? Examples: daily sales, sell-through rate,
+          GMROI, weeks of cover, gross margin percentage.
+      - name: operator
+        type: choice
+        options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        prompt: Should the alert fire when the metric is less than, greater than, or equal to the threshold?
+      - name: threshold
+        type: number
+        prompt: Enter the threshold value.
+      - name: threshold_unit
+        type: string
+        prompt: Enter the unit for the threshold (for example %, currency, units). Leave blank if not applicable.
+      - name: scope
+        type: choice
+        options: [store, region, category, enterprise]
+        default: store
+        prompt: Should this alert apply to a specific store, region, category, or the whole enterprise?
+      - name: scope_value
+        type: string
+        prompt: Enter the specific store name, region, or category. Leave blank for enterprise scope.
+      - name: evaluation_frequency
+        type: choice
+        options: [real_time, hourly, daily, weekly]
+        default: daily
+        prompt: How frequently should the alert be evaluated?
+      - name: compound_logic
+        type: choice
+        options: [none, AND, OR]
+        default: none
+        prompt: >
+          Add a secondary condition? Select AND to require both conditions,
+          OR to fire on either, or none for a single condition.
+      - name: secondary_metric
+        type: string
+        prompt: Enter the secondary metric name, or leave blank if no compound condition.
+      - name: secondary_operator
+        type: choice
+        options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        prompt: Operator for the secondary condition.
+      - name: secondary_threshold
+        type: number
+        prompt: Threshold value for the secondary condition.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleCreate
+        input:
+          rule_name: "{rule_name}"
+          metric: "{metric}"
+          operator: "{operator}"
+          threshold: "{threshold}"
+          threshold_unit: "{threshold_unit}"
+          scope: "{scope}"
+          scope_value: "{scope_value}"
+          evaluation_frequency: "{evaluation_frequency}"
+          compound_logic: "{compound_logic}"
+          secondary_metric: "{secondary_metric}"
+          secondary_operator: "{secondary_operator}"
+          secondary_threshold: "{secondary_threshold}"
+          owner_entra_id: "{User.EntraId}"
+      - type: set_variable
+        variable: Alert.RuleId
+        value: "{created_rule_id}"
+      - type: message
+        text: >
+          Alert rule "{rule_name}" has been created.
+          It will evaluate {metric} {operator} {threshold}{threshold_unit}
+          at {evaluation_frequency} frequency for scope: {scope_value}.
+          Rule ID: {created_rule_id}
+
+  - name: List Alert Rules
+    description: >
+      Lists the user's active alert rules, showing metric, threshold, scope,
+      and evaluation frequency for each.
+    trigger_phrases:
+      - list my alert rules
+      - show my alerts
+      - what alerts do I have set up
+      - view alert rules
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleList
+        input:
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Your active alert rules:
+          {alert_rules_list}
+
+  - name: Modify Alert Rule
+    description: >
+      Updates an existing alert rule threshold, operator, scope, or evaluation
+      frequency. Only the rule owner or an admin can modify a rule.
+    trigger_phrases:
+      - update alert rule
+      - change alert threshold
+      - modify my alert for {metric}
+      - edit alert rule {rule_name}
+    entities:
+      - name: rule_name
+        type: string
+        prompt: Enter the name or ID of the alert rule you want to modify.
+      - name: field_to_update
+        type: choice
+        options: [threshold, operator, scope, scope_value, evaluation_frequency, is_active]
+        prompt: Which field do you want to update?
+      - name: new_value
+        type: string
+        prompt: Enter the new value.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleUpdate
+        input:
+          rule_name: "{rule_name}"
+          field_to_update: "{field_to_update}"
+          new_value: "{new_value}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Alert rule "{rule_name}" has been updated: {field_to_update} set to {new_value}.
+
+  - name: Delete Alert Rule
+    description: >
+      Deactivates an alert rule. The rule record is retained in Dataverse for
+      audit purposes but will no longer trigger alerts.
+    trigger_phrases:
+      - delete alert rule
+      - remove my alert for {metric}
+      - turn off alert rule {rule_name}
+      - deactivate alert {rule_name}
+    entities:
+      - name: rule_name
+        type: string
+        prompt: Enter the name or ID of the alert rule to deactivate.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleDelete
+        input:
+          rule_name: "{rule_name}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Alert rule "{rule_name}" has been deactivated. It will no longer trigger alerts.
+
+  - name: Active Alerts
+    description: >
+      Retrieves currently firing alerts with status new or acknowledged.
+      Answers questions such as "What alerts are firing right now?" or
+      "Show me unresolved alerts for the North region."
+    trigger_phrases:
+      - what alerts are firing right now
+      - show active alerts
+      - what alerts are unresolved
+      - list current alerts for {scope_value}
+      - are there any open alerts
+    entities:
+      - name: status_filter
+        type: choice
+        options: [new, acknowledged, all_open]
+        default: all_open
+        prompt: Show new alerts, acknowledged alerts, or all open alerts?
+      - name: scope_value
+        type: string
+        prompt: Filter by store, region, or category. Leave blank to see all.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertHistoryQuery
+        input:
+          status_filter: "{status_filter}"
+          scope_value: "{scope_value}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: condition
+        expression: "{alert_count} > 0"
+        true_actions:
+          - type: message
+            text: >
+              Active alerts ({alert_count} total):
+              {alert_history_list}
+        false_actions:
+          - type: message
+            text: >
+              No open alerts found for the specified criteria.
+
+  - name: Acknowledge Alert
+    description: >
+      Marks an alert as acknowledged to indicate the team is aware of the issue.
+      Records the acknowledging user and timestamp.
+    trigger_phrases:
+      - acknowledge the {scope_value} alert
+      - acknowledge alert {alert_id}
+      - mark alert as acknowledged
+      - we are aware of the {metric} alert
+    entities:
+      - name: alert_id
+        type: string
+        prompt: Enter the alert ID or describe the alert (for example "Store 42 sales alert").
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertAcknowledge
+        input:
+          alert_id: "{alert_id}"
+          owner_entra_id: "{User.EntraId}"
+      - type: set_variable
+        variable: Alert.HistoryId
+        value: "{alert_id}"
+      - type: message
+        text: >
+          Alert {alert_id} has been acknowledged. The team is aware of this issue.
+
+  - name: Resolve Alert
+    description: >
+      Marks an alert as resolved and optionally records resolution notes.
+      Closes the alert lifecycle.
+    trigger_phrases:
+      - resolve alert {alert_id}
+      - mark alert as resolved
+      - close the {scope_value} alert
+      - the {metric} issue has been fixed
+    entities:
+      - name: alert_id
+        type: string
+        prompt: Enter the alert ID or describe the alert to resolve.
+      - name: resolution_notes
+        type: string
+        prompt: Optional - add resolution notes to explain how the issue was addressed.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertResolve
+        input:
+          alert_id: "{alert_id}"
+          resolution_notes: "{resolution_notes}"
+          owner_entra_id: "{User.EntraId}"
+      - type: message
+        text: >
+          Alert {alert_id} has been resolved.
+          Notes: {resolution_notes}
+
+  - name: Save Analysis
+    description: >
+      Saves the current analysis context including query parameters, result snapshot,
+      and generated insights to Dataverse so it can be recalled or shared later.
+    trigger_phrases:
+      - save this analysis
+      - save the current analysis
+      - store this result for later
+      - bookmark this analysis
+    entities:
+      - name: analysis_name
+        type: string
+        prompt: Give this analysis a name so you can find it later.
+    actions:
+      - type: power_automate_flow
+        flow_name: SavedAnalysisCreate
+        input:
+          analysis_name: "{analysis_name}"
+          analysis_type: "{Analysis.Question}"
+          query_parameters: >
+            store={Analysis.Store};period={Analysis.Period};
+            category={Analysis.Category};brand={Analysis.Brand};
+            channel={Analysis.Channel}
+          result_snapshot: "{Analysis.ContextSummary}"
+          generated_insights: "{Analysis.ContextSummary}"
+          owner_entra_id: "{User.EntraId}"
+      - type: set_variable
+        variable: SavedAnalysis.Id
+        value: "{saved_analysis_id}"
+      - type: message
+        text: >
+          Analysis "{analysis_name}" has been saved.
+          Saved Analysis ID: {saved_analysis_id}
+          You can recall it with "Show me my saved analysis {analysis_name}".
+
+  - name: Recall Saved Analysis
+    description: >
+      Retrieves a previously saved analysis by name, date, or analysis type.
+      Answers requests such as "Show me the analysis I saved last Tuesday."
+    trigger_phrases:
+      - show me my saved analysis
+      - recall saved analysis {analysis_name}
+      - load the analysis I saved on {date}
+      - retrieve saved analysis {analysis_name}
+    entities:
+      - name: analysis_name
+        type: string
+        prompt: Enter the name of the saved analysis, or describe when it was saved.
+      - name: date_filter
+        type: string
+        prompt: Optional - enter a date or relative period such as last Tuesday or this week.
+    actions:
+      - type: power_automate_flow
+        flow_name: SavedAnalysisQuery
+        input:
+          analysis_name: "{analysis_name}"
+          date_filter: "{date_filter}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: condition
+        expression: "{saved_analysis_found}"
+        true_actions:
+          - type: message
+            text: >
+              Saved Analysis: {analysis_name}
+              Saved at: {saved_at}
+              Type: {analysis_type}
+              Query Parameters: {query_parameters}
+              Generated Insights: {generated_insights}
+        false_actions:
+          - type: message
+            text: >
+              No saved analysis found matching "{analysis_name}". Try listing your saved
+              analyses or check the name and date.
+
+  - name: Share Saved Analysis
+    description: >
+      Shares a saved analysis with specified users or teams by updating the
+      SharedWith field in Dataverse.
+    trigger_phrases:
+      - share my saved analysis with {recipient}
+      - share analysis {analysis_name} with the regional team
+      - give {recipient} access to my analysis
+      - share this analysis
+    entities:
+      - name: analysis_name
+        type: string
+        prompt: Enter the name of the saved analysis to share.
+      - name: recipient
+        type: string
+        prompt: Enter the name, email, or team to share the analysis with.
+    actions:
+      - type: power_automate_flow
+        flow_name: SavedAnalysisShare
+        input:
+          analysis_name: "{analysis_name}"
+          recipient: "{recipient}"
+          owner_entra_id: "{User.EntraId}"
+      - type: message
+        text: >
+          Analysis "{analysis_name}" has been shared with {recipient}.
+
+  - name: Schedule Report
+    description: >
+      Creates a scheduled report that runs the current query on a recurring basis
+      and delivers results to specified recipients via Teams, email, or PDF.
+    trigger_phrases:
+      - send me this report every Monday at 8am
+      - schedule a weekly report
+      - set up a recurring report for {scope}
+      - schedule this report for {recipient}
+    entities:
+      - name: report_name
+        type: string
+        prompt: Give this scheduled report a name.
+      - name: human_readable_schedule
+        type: string
+        prompt: >
+          How often should this report run? Examples: every Monday at 8am,
+          daily at 7am, every first of the month.
+      - name: recipients
+        type: string
+        prompt: Who should receive this report? Enter email addresses or Teams handles.
+      - name: output_format
+        type: choice
+        options: [teams, email, pdf]
+        default: email
+        prompt: How should the report be delivered - Teams message, email, or PDF attachment?
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportCreate
+        input:
+          report_name: "{report_name}"
+          human_readable_schedule: "{human_readable_schedule}"
+          query_definition: >
+            store={Analysis.Store};period={Analysis.Period};
+            category={Analysis.Category};brand={Analysis.Brand};
+            channel={Analysis.Channel}
+          recipients: "{recipients}"
+          output_format: "{output_format}"
+          owner_entra_id: "{User.EntraId}"
+          teams_channel_id: "${ScheduledReportsTeamsChannelId}"
+      - type: set_variable
+        variable: ScheduledReport.Id
+        value: "{scheduled_report_id}"
+      - type: message
+        text: >
+          Scheduled report "{report_name}" has been created.
+          Schedule: {human_readable_schedule}
+          Recipients: {recipients}
+          Format: {output_format}
+          Report ID: {scheduled_report_id}
+
+  - name: List Scheduled Reports
+    description: >
+      Lists the user's scheduled reports including schedule, recipients, output
+      format, and next run time.
+    trigger_phrases:
+      - list my scheduled reports
+      - show my recurring reports
+      - what reports do I have scheduled
+      - view scheduled reports
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportList
+        input:
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Your scheduled reports:
+          {scheduled_reports_list}
+
+  - name: Modify Scheduled Report
+    description: >
+      Updates the schedule, recipients, or output format of an existing scheduled
+      report. Modifies the backing Power Automate recurrence flow accordingly.
+    trigger_phrases:
+      - update scheduled report {report_name}
+      - change report schedule for {report_name}
+      - modify recipients for report {report_name}
+      - edit my scheduled report
+    entities:
+      - name: report_name
+        type: string
+        prompt: Enter the name or ID of the scheduled report to modify.
+      - name: field_to_update
+        type: choice
+        options: [schedule, recipients, output_format, is_active]
+        prompt: Which field do you want to update?
+      - name: new_value
+        type: string
+        prompt: Enter the new value.
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportUpdate
+        input:
+          report_name: "{report_name}"
+          field_to_update: "{field_to_update}"
+          new_value: "{new_value}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Scheduled report "{report_name}" has been updated: {field_to_update} set to {new_value}.
+
+  - name: Cancel Scheduled Report
+    description: >
+      Deactivates a scheduled report and disables its backing Power Automate
+      recurrence flow so it no longer runs or delivers output.
+    trigger_phrases:
+      - cancel scheduled report {report_name}
+      - stop sending report {report_name}
+      - delete scheduled report {report_name}
+      - turn off report {report_name}
+    entities:
+      - name: report_name
+        type: string
+        prompt: Enter the name or ID of the scheduled report to cancel.
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportCancel
+        input:
+          report_name: "{report_name}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Scheduled report "{report_name}" has been cancelled and will no longer run.

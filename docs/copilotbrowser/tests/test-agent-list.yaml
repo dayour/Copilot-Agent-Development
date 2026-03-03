@@ -1,0 +1,44 @@
+testName: Agent List Page
+description: >
+  Verify that the Copilot Studio agent list page exposes the expected interactive
+  selectors: agent cards, create button, and environment selector.
+page: agent-list
+agentScoped: false
+
+navigation:
+  - action: navigate
+    target: "${COPILOT_STUDIO_URL}/environments/${COPILOT_ENV_ID}/bots"
+  - action: wait
+    waitMs: 3000
+
+snapshot:
+  filter: interactive
+
+assertions:
+  - ref: "button[data-testid='create-bot-button'], button[aria-label*='Create'], button[aria-label*='New agent']"
+    description: Create new agent button
+    required: true
+
+  - ref: "[data-testid='bot-list-item'], [role='listitem'][aria-label*='bot'], .bot-card, [class*='botCard']"
+    description: Agent card in the agent list (at least one expected in test environment)
+    required: false
+
+  - ref: "[data-testid='environment-selector'], [aria-label*='environment'], [aria-label*='Environment'], select[name*='environment']"
+    description: Environment selector dropdown
+    required: true
+
+  - ref: "input[type='search'], input[placeholder*='Search'], input[aria-label*='Search']"
+    description: Agent search or filter input
+    required: false
+
+  - ref: "[data-testid='agent-list-container'], [role='list'][aria-label*='bots'], [role='list'][aria-label*='agents']"
+    description: Agent list container element
+    required: true
+
+  - ref: "button[aria-label*='Import'], button[data-testid*='import']"
+    description: Import solution or agent button
+    required: false
+
+  - ref: "[aria-label*='filter'], [data-testid*='filter'], button[aria-label*='Filter']"
+    description: Agent list filter controls
+    required: false

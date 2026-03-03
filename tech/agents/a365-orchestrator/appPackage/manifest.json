@@ -1,0 +1,88 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.20/MicrosoftTeams.schema.json",
+  "version": "1.0.0",
+  "manifestVersion": "1.20",
+  "id": "${{TEAMS_APP_ID}}",
+  "name": {
+    "short": "A365 Orchestrator",
+    "full": "A365 Orchestrator — M365 Agents SDK Reference"
+  },
+  "developer": {
+    "name": "Microsoft",
+    "mpnId": "",
+    "websiteUrl": "https://microsoft.com",
+    "privacyUrl": "https://privacy.microsoft.com/privacystatement",
+    "termsOfUseUrl": "https://www.microsoft.com/legal/terms-of-use"
+  },
+  "description": {
+    "short": "Routes Teams conversations to specialist Copilot Studio agents.",
+    "full": "A reference implementation of the M365 Agents SDK pattern. The A365 Orchestrator classifies each user message and forwards it to the appropriate specialist agent: IT Help Desk, Calendar Manager, or Knowledge Base — all powered by Copilot Studio."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#0078D4",
+  "staticTabs": [
+    {
+      "entityId": "conversations",
+      "scopes": ["personal"]
+    },
+    {
+      "entityId": "about",
+      "scopes": ["personal"]
+    }
+  ],
+  "bots": [
+    {
+      "botId": "${{BOT_ID}}",
+      "scopes": ["personal", "team", "groupChat"],
+      "isNotificationOnly": false,
+      "supportsCalling": false,
+      "supportsVideo": false,
+      "supportsFiles": false,
+      "commandLists": [
+        {
+          "scopes": ["personal", "team", "groupChat"],
+          "commands": [
+            {
+              "title": "help",
+              "description": "Show what the orchestrator can do."
+            },
+            {
+              "title": "reset password",
+              "description": "Start a password reset with IT Help Desk."
+            },
+            {
+              "title": "schedule meeting",
+              "description": "Schedule a meeting with the Calendar Manager."
+            },
+            {
+              "title": "search",
+              "description": "Search the Knowledge Base for guides and policies."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "copilotAgents": {
+    "customEngineAgents": [
+      {
+        "id": "${{BOT_ID}}",
+        "type": "bot",
+        "disclaimer": {
+          "text": "This is a custom AI agent and may not always be accurate."
+        }
+      }
+    ]
+  },
+  "validDomains": [
+    "${{BOT_DOMAIN}}",
+    "*.botframework.com"
+  ],
+  "webApplicationInfo": {
+    "id": "${{BOT_ID}}",
+    "resource": "api://botid-${{BOT_ID}}"
+  }
+}

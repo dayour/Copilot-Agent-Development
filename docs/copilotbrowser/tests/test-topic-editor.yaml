@@ -1,0 +1,53 @@
+testName: Topic Editor
+description: >
+  Verify that the topic editor page exposes the code editor toggle, YAML input
+  area, save button, and cancel button so that YAML-based topic authoring
+  runbooks can function correctly.
+page: topic-editor
+agentScoped: true
+
+navigation:
+  - action: navigate
+    target: "${COPILOT_STUDIO_URL}/environments/${COPILOT_ENV_ID}/bots/${COPILOT_TEST_AGENT_ID}/topics"
+  - action: wait
+    waitMs: 3000
+
+snapshot:
+  filter: interactive
+
+assertions:
+  - ref: "[data-testid='topic-list-item'], [role='listitem'][aria-label*='topic'], [class*='topicRow'], [class*='topic-row']"
+    description: Topic list item (at least one topic expected in test agent)
+    required: false
+
+  - ref: "button[aria-label*='Add topic'], button[data-testid*='create-topic'], button[aria-label*='New topic']"
+    description: Add or create new topic button
+    required: true
+
+  - ref: "button[aria-label*='Edit'], button[data-testid*='edit-topic']"
+    description: Edit topic button
+    required: false
+
+  - ref: "button[aria-label*='code editor'], button[aria-label*='Code editor'], [data-testid='code-editor-toggle'], button[title*='code']"
+    description: Code editor toggle to switch to YAML authoring view
+    required: true
+
+  - ref: "textarea[aria-label*='YAML'], .monaco-editor textarea, [data-testid='yaml-editor'], [role='textbox'][aria-label*='yaml']"
+    description: YAML input area in the code editor
+    required: true
+
+  - ref: "button[aria-label*='Save'], button[data-testid*='save'], button[type='submit'][aria-label*='Save']"
+    description: Save button for topic changes
+    required: true
+
+  - ref: "button[aria-label*='Cancel'], button[data-testid*='cancel'], button[aria-label*='Discard']"
+    description: Cancel or discard changes button
+    required: true
+
+  - ref: "button[aria-label*='Delete topic'], button[aria-label*='delete'], [data-testid*='delete-topic']"
+    description: Delete topic button
+    required: false
+
+  - ref: "[aria-label*='trigger phrase'], [data-testid*='trigger-phrase'], input[placeholder*='trigger']"
+    description: Trigger phrase input field
+    required: false

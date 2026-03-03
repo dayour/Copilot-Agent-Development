@@ -29,6 +29,10 @@ The agent uses Dataverse as the central model synchronized from POS, ERP, and al
 | **TransferOrders** | Inter-store and DC-to-store transfers | TransferOrderId, ProductId, FromStoreId, ToStoreId, TransferQuantity, TransferStatus |
 | **KpiCache** | Pre-calculated KPIs refreshed every 4 hours | KpiCacheId, CacheTimestamp, GrainType, DimensionKey, PeriodKey, SellThroughRatePct, GmroiValue |
 | **PipelineHealth** | Pipeline run health and data quality results | PipelineHealthId, PipelineName, RunStatus, RecordsProcessed, RecordsFailed, DataQualityChecksPassed |
+| **AlertRules** | Configurable alert threshold definitions | AlertRuleId, RuleName, Metric, Operator, Threshold, Scope, ScopeValue, CompoundLogic, EvaluationFrequency, Owner, IsActive |
+| **AlertHistory** | Log of triggered alert events | AlertHistoryId, AlertRuleId, TriggeredAt, MetricValue, ThresholdValue, Status (new/acknowledged/resolved), AcknowledgedBy, ResolvedAt, ResolutionNotes |
+| **SavedAnalyses** | Persisted analysis snapshots | SavedAnalysisId, AnalysisName, QueryParameters, ResultSnapshot, GeneratedInsights, AnalysisType, SavedAt, Owner, SharedWith, IsShared |
+| **ScheduledReports** | Recurring report delivery definitions | ScheduledReportId, ReportName, CronSchedule, HumanReadableSchedule, QueryDefinition, Recipients, OutputFormat, FlowRunId, Owner, IsActive, NextRunAt |
 
 ## Analytical Reasoning Patterns
 
@@ -36,6 +40,51 @@ The agent uses Dataverse as the central model synchronized from POS, ERP, and al
 - **Comparative reasoning**: Performs store-to-store, period-over-period, and peer-cluster comparisons.
 - **Predictive reasoning**: Runs what-if scenarios and projected impact calculations using adjustable assumptions.
 - **Anomaly detection reasoning**: Identifies unusual KPI shifts and attributes likely contributors.
+
+## Reporting and Alerting
+
+The agent provides a full natural-language interface for managing alerts, saving analyses, and scheduling reports backed by Dataverse.
+
+### Alert Management
+
+| Capability | Example Phrase |
+|-----------|---------------|
+| Create alert rule | "Notify me when any store's daily sales drop below 80% of target" |
+| List alert rules | "What alerts do I have set up?" |
+| Modify alert rule | "Change the threshold on my North region margin alert to 25%" |
+| Delete alert rule | "Remove the Store 42 alert rule" |
+| View active alerts | "What alerts are firing right now?" |
+| Acknowledge alert | "Acknowledge the Store 42 alert, we are aware of the issue" |
+| Resolve alert | "Resolve the North region inventory alert, stock has been replenished" |
+
+Alert rules support:
+- Single-condition thresholds on any metric
+- Compound rules with AND/OR logic across two metrics
+- Scope at store, region, category, or enterprise level
+- Evaluation frequency from real-time through weekly
+
+Alert lifecycle: **new -> acknowledged -> resolved**
+
+### Saved Analyses
+
+| Capability | Example Phrase |
+|-----------|---------------|
+| Save analysis | "Save this analysis" |
+| Recall analysis | "Show me the analysis I saved last Tuesday" |
+| Share analysis | "Share my saved analysis with the regional team" |
+
+Saved analyses capture the full query parameter set, results snapshot, and generated insights for recall or sharing at any time.
+
+### Scheduled Reports
+
+| Capability | Example Phrase |
+|-----------|---------------|
+| Create report | "Send me this report every Monday at 8am" |
+| List reports | "What reports do I have scheduled?" |
+| Modify report | "Change my weekly report to also include the South region" |
+| Cancel report | "Stop sending the Monday inventory report" |
+
+Scheduled reports provision a Power Automate recurrence flow per report and support Teams message, email, and PDF delivery formats.
 
 ## Core KPI Framework
 

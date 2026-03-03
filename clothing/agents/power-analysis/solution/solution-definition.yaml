@@ -122,6 +122,18 @@ environment_variables:
     description: Microsoft Teams channel ID for automated KPI alert notifications.
     default_value: ""
 
+  - name: ScheduledReportsTeamsChannelId
+    display_name: Scheduled Reports Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for delivery of scheduled report outputs.
+    default_value: ""
+
+  - name: ReportDefaultRecipients
+    display_name: Report Default Recipients
+    type: string
+    description: Comma-separated list of default email recipients for scheduled reports.
+    default_value: ""
+
   - name: BiGlossaryLibraryUrl
     display_name: BI Glossary SharePoint URL
     type: string
@@ -448,6 +460,164 @@ components:
         - name: CorrelationId
           type: string
           description: Power Automate flow run correlation ID for end-to-end trace.
+    - name: AlertRules
+      display_name: Alert Rules
+      description: >
+        Configurable alert threshold definitions that the agent evaluates to detect
+        metric breaches across stores, regions, and categories.
+      primary_key: AlertRuleId
+      columns:
+        - name: AlertRuleId
+          type: string
+        - name: RuleName
+          type: string
+        - name: Metric
+          type: string
+        - name: Operator
+          type: choice
+          options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        - name: Threshold
+          type: decimal
+        - name: ThresholdUnit
+          type: string
+        - name: Scope
+          type: choice
+          options: [store, region, category, enterprise]
+        - name: ScopeValue
+          type: string
+        - name: CompoundLogic
+          type: choice
+          options: [none, AND, OR]
+          default: none
+        - name: SecondaryMetric
+          type: string
+        - name: SecondaryOperator
+          type: choice
+          options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        - name: SecondaryThreshold
+          type: decimal
+        - name: EvaluationFrequency
+          type: choice
+          options: [real_time, hourly, daily, weekly]
+          default: daily
+        - name: Owner
+          type: string
+        - name: OwnerEntraId
+          type: string
+        - name: IsActive
+          type: boolean
+          default: true
+        - name: CreatedOn
+          type: datetime
+        - name: ModifiedOn
+          type: datetime
+
+    - name: AlertHistory
+      display_name: Alert History
+      description: >
+        Log of all triggered alert events with lifecycle status tracking from
+        new through acknowledged to resolved.
+      primary_key: AlertHistoryId
+      columns:
+        - name: AlertHistoryId
+          type: string
+        - name: AlertRuleId
+          type: lookup
+          references: AlertRules
+        - name: TriggeredAt
+          type: datetime
+        - name: MetricValue
+          type: decimal
+        - name: ThresholdValue
+          type: decimal
+        - name: Scope
+          type: string
+        - name: ScopeValue
+          type: string
+        - name: Status
+          type: choice
+          options: [new, acknowledged, resolved]
+          default: new
+        - name: AcknowledgedBy
+          type: string
+        - name: AcknowledgedAt
+          type: datetime
+        - name: ResolvedAt
+          type: datetime
+        - name: ResolutionNotes
+          type: string
+
+    - name: SavedAnalyses
+      display_name: Saved Analyses
+      description: >
+        Persisted analysis snapshots including query parameters, result data,
+        generated insights, and sharing metadata.
+      primary_key: SavedAnalysisId
+      columns:
+        - name: SavedAnalysisId
+          type: string
+        - name: AnalysisName
+          type: string
+        - name: QueryParameters
+          type: string
+        - name: ResultSnapshot
+          type: string
+        - name: GeneratedInsights
+          type: string
+        - name: AnalysisType
+          type: choice
+          options: [sales_performance, root_cause, inventory, trend, what_if, anomaly]
+        - name: SavedAt
+          type: datetime
+        - name: Owner
+          type: string
+        - name: OwnerEntraId
+          type: string
+        - name: SharedWith
+          type: string
+        - name: IsShared
+          type: boolean
+          default: false
+
+    - name: ScheduledReports
+      display_name: Scheduled Reports
+      description: >
+        Definitions for scheduled report delivery, including cron schedule, query
+        parameters, recipients, and output format. Each active record corresponds
+        to a live Power Automate recurrence flow.
+      primary_key: ScheduledReportId
+      columns:
+        - name: ScheduledReportId
+          type: string
+        - name: ReportName
+          type: string
+        - name: CronSchedule
+          type: string
+        - name: HumanReadableSchedule
+          type: string
+        - name: QueryDefinition
+          type: string
+        - name: Recipients
+          type: string
+        - name: OutputFormat
+          type: choice
+          options: [teams, email, pdf]
+          default: email
+        - name: FlowRunId
+          type: string
+        - name: Owner
+          type: string
+        - name: OwnerEntraId
+          type: string
+        - name: IsActive
+          type: boolean
+          default: true
+        - name: CreatedOn
+          type: datetime
+        - name: LastRunAt
+          type: datetime
+        - name: NextRunAt
+          type: datetime
 
   relationships:
     - from_table: SalesTransactions
@@ -519,6 +689,10 @@ components:
       from_column: ToStoreId
       to_table: StoreMaster
       to_column: StoreId
+    - from_table: AlertHistory
+      from_column: AlertRuleId
+      to_table: AlertRules
+      to_column: AlertRuleId
       cardinality: many_to_one
 
   agents:
@@ -867,9 +1041,135 @@ components:
         - RetryAttempt
         - DataQualityFailureDetails
 
+    - name: AlertRuleCreate
+      description: >
+        Creates a new alert rule record in the AlertRules Dataverse table.
+        Validates metric name, operator, and threshold before writing.
+        Called from the agent when a user defines a new alert via conversation.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleUpdate
+      description: >
+        Updates threshold, operator, frequency, or active flag on an existing
+        AlertRules record. Enforces owner-or-admin authorization check before write.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleDelete
+      description: >
+        Soft-deletes an alert rule by setting IsActive to false.
+        Enforces owner-or-admin authorization check.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleList
+      description: >
+        Retrieves active alert rules scoped to the requesting user or all rules
+        for admin users. Returns rule name, metric, threshold, scope, and status.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertHistoryQuery
+      description: >
+        Queries AlertHistory for triggered alerts filtered by status, date range,
+        scope, or rule. Supports natural language requests such as
+        "What alerts are firing right now?" or "Show resolved alerts this week."
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertAcknowledge
+      description: >
+        Sets the status of an AlertHistory record to acknowledged and records
+        the acknowledging user and timestamp.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertResolve
+      description: >
+        Sets the status of an AlertHistory record to resolved, records resolved
+        timestamp, and persists optional resolution notes.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleEvaluator
+      description: >
+        Evaluates all active AlertRules against the latest metric values from the
+        semantic model and writes new AlertHistory records for any threshold breaches.
+        Supports compound AND/OR rules.
+      trigger: scheduled_recurrence
+      schedule: hourly
+      connector: dataverse
+
+    - name: SavedAnalysisCreate
+      description: >
+        Persists the current analysis context (query parameters, result snapshot,
+        generated insights) as a new SavedAnalyses record in Dataverse.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: SavedAnalysisQuery
+      description: >
+        Retrieves saved analyses for the requesting user filtered by name, date,
+        or analysis type. Supports recall requests such as
+        "Show me the analysis I saved last Tuesday."
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: SavedAnalysisShare
+      description: >
+        Updates the SharedWith field and IsShared flag on a SavedAnalyses record
+        to grant read access to specified users or Entra groups.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: SavedAnalysisDelete
+      description: >
+        Deletes a SavedAnalyses record. Enforces owner-or-admin authorization.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportCreate
+      description: >
+        Creates a new ScheduledReports record and provisions a corresponding
+        Power Automate recurrence flow to execute and deliver the report on schedule.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportList
+      description: >
+        Lists scheduled reports for the requesting user, including schedule,
+        recipients, output format, and next run time.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportUpdate
+      description: >
+        Modifies schedule, recipients, or output format for an existing scheduled
+        report and updates the backing Power Automate recurrence flow accordingly.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportCancel
+      description: >
+        Deactivates a ScheduledReports record and disables the backing
+        Power Automate recurrence flow.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportDelivery
+      description: >
+        Executes the query definition for a scheduled report, formats output
+        per the specified format (Teams/email/PDF), and delivers to recipients.
+        Triggered by each report's individual recurrence flow.
+      trigger: flow_called_from_scheduled_report
+      connector: microsoft_teams
+
 connections:
   - connector: power_bi
     display_name: Power BI
+  - connector: dataverse
+    display_name: Dataverse
   - connector: microsoft_teams
     display_name: Microsoft Teams
   - connector: custom_pos_connector

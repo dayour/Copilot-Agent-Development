@@ -1,0 +1,53 @@
+testName: Settings Page
+description: >
+  Verify that the agent settings page exposes the AI model selector, generative
+  orchestration toggle, and authentication configuration controls so that
+  runbooks can configure agents programmatically.
+page: settings
+agentScoped: true
+
+navigation:
+  - action: navigate
+    target: "${COPILOT_STUDIO_URL}/environments/${COPILOT_ENV_ID}/bots/${COPILOT_TEST_AGENT_ID}/settings"
+  - action: wait
+    waitMs: 3000
+
+snapshot:
+  filter: interactive
+
+assertions:
+  - ref: "select[aria-label*='model'], [data-testid='model-selector'], [aria-label*='AI model'], [aria-label*='Language model']"
+    description: AI language model selector dropdown
+    required: true
+
+  - ref: "[role='switch'][aria-label*='generative'], input[type='checkbox'][aria-label*='generative'], [data-testid*='generative-toggle'], [aria-label*='Generative orchestration']"
+    description: Generative orchestration toggle
+    required: true
+
+  - ref: "[data-testid='auth-settings'], [aria-label*='authentication'], [aria-label*='Authentication'], section[aria-label*='auth']"
+    description: Authentication settings section
+    required: true
+
+  - ref: "select[aria-label*='auth'], [role='combobox'][aria-label*='auth'], [data-testid*='auth-type']"
+    description: Authentication type selector (No auth, Azure AD, etc.)
+    required: true
+
+  - ref: "button[aria-label*='Save'], button[data-testid*='save-settings'], button[type='submit']"
+    description: Save settings button
+    required: true
+
+  - ref: "[aria-label*='instructions'], textarea[aria-label*='Instructions'], [data-testid*='system-prompt'], textarea[aria-label*='prompt']"
+    description: Agent instructions or system prompt text area
+    required: false
+
+  - ref: "[role='switch'][aria-label*='Content moderation'], [data-testid*='content-moderation'], [aria-label*='content safety']"
+    description: Content moderation or safety toggle
+    required: false
+
+  - ref: "input[aria-label*='Agent name'], input[data-testid*='agent-name'], input[aria-label*='Bot name']"
+    description: Agent display name input field
+    required: false
+
+  - ref: "[aria-label*='Error message'], textarea[data-testid*='fallback'], input[aria-label*='Fallback']"
+    description: Fallback or error message configuration field
+    required: false
