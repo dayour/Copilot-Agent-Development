@@ -1,0 +1,164 @@
+# Copilot Studio Agent Template — Knowledge Base (Tech)
+# Import this template as a starting point for the Knowledge Base specialist agent.
+# Customise SharePoint URLs and escalation email addresses before deploying.
+
+agentName: Knowledge Base
+description: >
+  A specialist agent that answers employee questions using semantic search over
+  internal SharePoint documentation, policies, how-to guides, and FAQs.
+  Routes to the appropriate document library based on query intent and escalates
+  unanswered questions to the relevant subject-matter expert.
+language: en-US
+fallback_message: >
+  I could not find an answer in the knowledge base. Would you like me to escalate
+  your question to the appropriate team?
+
+topics:
+
+  - name: Greeting
+    description: >
+      Welcome the user and describe available knowledge domains when they
+      start a conversation or ask for help.
+    trigger_phrases:
+      - Hello
+      - Hi
+      - Help
+      - What can you help with
+      - What do you know about
+    messages:
+      - text: >
+          Hello! I am the Knowledge Base assistant. I can search internal
+          documentation, policies, and guides to answer your questions.
+    quick_replies:
+      - IT policies
+      - How-to guides
+      - HR policies
+      - FAQ
+      - Search for something
+
+  - name: IT Policy Search
+    description: >
+      Search IT-related policies such as acceptable use, data handling, security
+      standards, and software licensing when the user asks about IT rules or compliance.
+    trigger_phrases:
+      - IT policy
+      - Acceptable use policy
+      - Data handling rules
+      - Security standard
+      - Software licence policy
+      - What is the policy for
+    entities:
+      - name: policy_query
+        type: string
+        prompt: What policy are you looking for?
+    actions:
+      - type: knowledge_search
+        query: "{policy_query}"
+        source: it-policies-sharepoint
+    fallback_message: >
+      I could not find that policy. Let me escalate your question to the IT team.
+
+  - name: How-To Guide Search
+    description: >
+      Find step-by-step how-to guides for common tasks such as VPN setup, MFA
+      configuration, expense submission, and software installation.
+    trigger_phrases:
+      - How do I
+      - How to
+      - Steps to
+      - Guide for
+      - Instructions for
+      - Walk me through
+      - Tutorial on
+      - Set up
+    entities:
+      - name: task_query
+        type: string
+        prompt: What task do you need a guide for?
+    actions:
+      - type: knowledge_search
+        query: "{task_query} how to guide steps"
+        source: howto-guides-sharepoint
+    fallback_message: >
+      I could not find a guide for that task. Would you like me to escalate
+      your request to the IT help desk?
+
+  - name: HR Policy Search
+    description: >
+      Search HR policies including leave, benefits, performance review,
+      remote work, and onboarding documentation.
+    trigger_phrases:
+      - HR policy
+      - Leave policy
+      - Benefits information
+      - Performance review process
+      - Remote work policy
+      - Onboarding documentation
+      - Holiday entitlement
+    entities:
+      - name: hr_query
+        type: string
+        prompt: What HR topic are you looking for?
+    actions:
+      - type: knowledge_search
+        query: "{hr_query}"
+        source: hr-policies-sharepoint
+
+  - name: FAQ
+    description: >
+      Answer frequently asked questions about common topics such as password
+      expiry, VPN usage, expense limits, and IT equipment.
+    trigger_phrases:
+      - FAQ
+      - Frequently asked questions
+      - Common questions
+      - Quick answer
+      - What is the rule on
+      - Is it allowed to
+    actions:
+      - type: knowledge_search
+        query: "FAQ {activity.text}"
+        source: faq-sharepoint
+
+  - name: General Knowledge Search
+    description: >
+      Perform a free-text semantic search across all knowledge sources when
+      the user's intent does not match a specific topic.
+    trigger_phrases:
+      - Search for
+      - Find information about
+      - Look up
+      - Tell me about
+      - Where can I find
+      - Documentation on
+      - Article about
+    entities:
+      - name: search_query
+        type: string
+        prompt: What would you like to search for?
+    actions:
+      - type: knowledge_search
+        query: "{search_query}"
+        source: all-knowledge-sharepoint
+
+  - name: Escalate Unanswered Question
+    description: >
+      Escalate the question by email to the appropriate subject-matter expert
+      when the knowledge base does not contain a relevant answer.
+    trigger_phrases:
+      - Escalate my question
+      - I need a human
+      - Contact the team
+      - Send my question to an expert
+    entities:
+      - name: question
+        type: string
+        prompt: Please describe your question so I can forward it to the right team.
+    actions:
+      - type: power_automate_flow
+        flow_name: EscalateKnowledgeQuestion
+        input:
+          question: "{question}"
+        output_message: >
+          Your question has been forwarded to the knowledge team. You will receive
+          a reply by email within one business day.

@@ -1,0 +1,129 @@
+# Copilot Studio Agent Template — A365 Orchestrator (Tech)
+# This template defines the top-level routing agent for the A365 Orchestrator.
+# It is deployed in Copilot Studio alongside the specialist agents and serves
+# as the single entry point visible to end users. The orchestrator classifies
+# intent and hands off to the appropriate specialist agent using the
+# generative orchestration feature.
+
+agentName: A365 Orchestrator
+description: >
+  An enterprise-wide routing agent that classifies user intent and delegates
+  each request to the most appropriate specialist agent: IT Help Desk for
+  support tickets and technical issues, Calendar Manager for scheduling and
+  availability queries, and Knowledge Base for information and how-to searches.
+  Uses M365 Agents SDK and connects to Copilot Studio backends.
+language: en-US
+fallback_message: >
+  I did not understand your request. Please try rephrasing, or type "help" to
+  see what I can do.
+
+topics:
+
+  - name: Greeting
+    description: >
+      Welcome the user and display a menu of available capabilities when they
+      start a conversation or say hello.
+    trigger_phrases:
+      - Hello
+      - Hi
+      - Hey
+      - Get started
+      - What can you do
+      - Help
+      - I need assistance
+    messages:
+      - text: >
+          Hello! I am your A365 assistant. I can connect you with the right
+          specialist for your request.
+    adaptive_card:
+      title: A365 Orchestrator
+      body:
+        - type: TextBlock
+          text: What would you like help with today?
+          weight: Bolder
+          size: Medium
+        - type: ActionSet
+          actions:
+            - type: Action.Submit
+              title: IT Support
+              data:
+                intent: it_help_desk
+            - type: Action.Submit
+              title: Schedule a Meeting
+              data:
+                intent: calendar_manager
+            - type: Action.Submit
+              title: Search Knowledge Base
+              data:
+                intent: knowledge_base
+
+  - name: Route to IT Help Desk
+    description: >
+      Route to the IT Help Desk specialist agent when the user mentions
+      passwords, account lockouts, software errors, hardware faults, support
+      tickets, or any IT-related issue.
+    trigger_phrases:
+      - Reset my password
+      - I cannot log in
+      - Software is not working
+      - I need a new laptop
+      - Raise a support ticket
+      - IT issue
+      - Help desk
+      - My computer is broken
+    actions:
+      - type: agent_handoff
+        target_agent: IT Help Desk
+        preserve_context: true
+
+  - name: Route to Calendar Manager
+    description: >
+      Route to the Calendar Manager specialist agent when the user wants to
+      schedule, cancel, or reschedule meetings, check availability, or manage
+      their calendar.
+    trigger_phrases:
+      - Schedule a meeting
+      - Book a call
+      - What is my schedule today
+      - Am I free tomorrow
+      - Cancel my meeting
+      - Reschedule appointment
+      - When is everyone available
+    actions:
+      - type: agent_handoff
+        target_agent: Calendar Manager
+        preserve_context: true
+
+  - name: Route to Knowledge Base
+    description: >
+      Route to the Knowledge Base specialist agent when the user asks a
+      how-to question, requests documentation, or wants to search internal
+      articles, FAQs, and policies.
+    trigger_phrases:
+      - How do I
+      - What is the process for
+      - Where can I find
+      - Search for
+      - Policy for
+      - Documentation on
+      - FAQ about
+      - Guide to
+    actions:
+      - type: agent_handoff
+        target_agent: Knowledge Base
+        preserve_context: true
+
+  - name: End Conversation
+    description: >
+      Gracefully close the conversation when the user says goodbye or
+      indicates they are done.
+    trigger_phrases:
+      - Goodbye
+      - Bye
+      - That is all
+      - Thank you
+      - Done
+    messages:
+      - text: >
+          Happy to help! Feel free to reach out any time you need assistance.
+          Have a great day.

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Copilot Studio Agent - Local Dev</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f4; }
+    header {
+      background: #0078d4;
+      color: #ffffff;
+      padding: 1rem 2rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+    #webchat { height: calc(100vh - 56px); width: 100%; }
+    #status {
+      padding: 2rem;
+      color: #605e5c;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <header>Copilot Studio Agent - Local Development</header>
+  <div id="webchat">
+    <p id="status">Connecting to agent...</p>
+  </div>
+
+  <script src="https://cdn.botframework.com/botframework-webchat/4.15.9/webchat.js"></script>
+  <script>
+    (async function () {
+      var statusEl = document.getElementById('status');
+      try {
+        var response = await fetch('/token', { method: 'POST' });
+        if (!response.ok) {
+          statusEl.textContent = 'Failed to obtain token. Check that the token server is running and DIRECT_LINE_SECRET is set.';
+          return;
+        }
+        var data = await response.json();
+        statusEl.remove();
+        window.WebChat.renderWebChat(
+          {
+            directLine: window.WebChat.createDirectLine({ token: data.token }),
+            userID: 'local-dev-user',
+            username: 'Developer',
+            locale: 'en-US',
+          },
+          document.getElementById('webchat')
+        );
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+      }
+    })();
+  </script>
+</body>
+</html>

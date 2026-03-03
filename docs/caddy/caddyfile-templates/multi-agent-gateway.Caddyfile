@@ -1,0 +1,171 @@
+# Multi-Agent Gateway Caddyfile Template
+#
+# Deployment pattern: one domain routes to multiple Copilot Studio agents based on URL path.
+#
+# URL routing map:
+#   /sales/*    -> Sales agent Copilot Studio endpoint
+#   /support/*  -> Support agent Copilot Studio endpoint
+#   /hr/*       -> HR agent Copilot Studio endpoint
+#   /api/token  -> Direct Line token proxy (secret hidden from client)
+#   /healthz    -> Health check
+#
+# Required environment variables:
+#   GATEWAY_DOMAIN          - Public domain (e.g. gateway.contoso.com)
+#   SALES_UPSTREAM          - Sales agent Copilot Studio endpoint URL
+#   SUPPORT_UPSTREAM        - Support agent Copilot Studio endpoint URL
+#   HR_UPSTREAM             - HR agent Copilot Studio endpoint URL
+#   DIRECTLINE_SECRET       - Azure Bot Service Direct Line channel secret
+#   ALLOWED_ORIGINS         - Approved CORS origin
+#   RATE_LIMIT_REQUESTS     - Requests per window per IP
+#   RATE_LIMIT_WINDOW       - Time window (e.g. 10s)
+#   LOG_FILE                - Absolute path for access log
+#   TLS_EMAIL               - Email for Let's Encrypt
+
+{
+  email {$TLS_EMAIL}
+}
+
+{$GATEWAY_DOMAIN} {
+
+  # -------------------------------------------------------------------------
+  # TLS
+  # -------------------------------------------------------------------------
+  tls {$TLS_EMAIL}
+
+  # -------------------------------------------------------------------------
+  # Access logging
+  # -------------------------------------------------------------------------
+  log {
+    output file {$LOG_FILE} {
+      roll_size 100MiB
+      roll_keep 10
+      roll_keep_for 720h
+    }
+    format json
+    level INFO
+  }
+
+  # -------------------------------------------------------------------------
+  # Health check
+  # -------------------------------------------------------------------------
+  handle /healthz {
+    respond "OK" 200
+  }
+
+  # -------------------------------------------------------------------------
+  # Direct Line token proxy (shared across all agents on this gateway)
+  # The client passes ?agentPath=/sales to indicate which agent to mint a token for.
+  # Alternatively, deploy per-agent token endpoints at /sales/token, /support/token, etc.
+  # -------------------------------------------------------------------------
+  handle /api/token {
+    uri strip_prefix /api/token
+    reverse_proxy https://directline.botframework.com/v3/directline/tokens/generate {
+      header_up Authorization "Bearer {$DIRECTLINE_SECRET}"
+      header_up Content-Type "application/json"
+      header_down -Server
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Route /sales to the Sales agent
+  # -------------------------------------------------------------------------
+  handle_path /sales/* {
+    reverse_proxy {$SALES_UPSTREAM} {
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Agent-Path "/sales"
+      header_down -Server
+      header_down -X-Powered-By
+      transport http {
+        dial_timeout 10s
+        response_header_timeout 30s
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Route /support to the Support agent
+  # -------------------------------------------------------------------------
+  handle_path /support/* {
+    reverse_proxy {$SUPPORT_UPSTREAM} {
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Agent-Path "/support"
+      header_down -Server
+      header_down -X-Powered-By
+      transport http {
+        dial_timeout 10s
+        response_header_timeout 30s
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Route /hr to the HR agent
+  # -------------------------------------------------------------------------
+  handle_path /hr/* {
+    reverse_proxy {$HR_UPSTREAM} {
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Agent-Path "/hr"
+      header_down -Server
+      header_down -X-Powered-By
+      transport http {
+        dial_timeout 10s
+        response_header_timeout 30s
+      }
+    }
+  }
+
+  # -------------------------------------------------------------------------
+  # Default: 404 for unmatched paths
+  # -------------------------------------------------------------------------
+  handle {
+    respond "Not Found" 404
+  }
+
+  # -------------------------------------------------------------------------
+  # Security response headers (applied to all responses)
+  # -------------------------------------------------------------------------
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.botframework.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://directline.botframework.com wss://directline.botframework.com; frame-ancestors {$ALLOWED_ORIGINS};"
+    X-Frame-Options "SAMEORIGIN"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    -Server
+  }
+
+  # -------------------------------------------------------------------------
+  # CORS preflight
+  # -------------------------------------------------------------------------
+  @cors_preflight {
+    method OPTIONS
+  }
+  handle @cors_preflight {
+    header Access-Control-Allow-Origin "{$ALLOWED_ORIGINS}"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization"
+    header Access-Control-Max-Age "3600"
+    respond "" 204
+  }
+
+  # -------------------------------------------------------------------------
+  # Rate limiting
+  # Requires caddy-ratelimit module.
+  # -------------------------------------------------------------------------
+  rate_limit {
+    zone per_ip {
+      key {remote_host}
+      events {$RATE_LIMIT_REQUESTS}
+      window {$RATE_LIMIT_WINDOW}
+    }
+  }
+}

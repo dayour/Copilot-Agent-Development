@@ -51,3 +51,14 @@ Cross-cutting guides covering shared concerns across all verticals:
 | [Agent Lifecycle](./docs/agent-lifecycle.md) | Development, testing, staging, production, monitoring, updates, retirement |
 | [Agent Configuration Guide](./docs/agent-config-guide.md) | End-to-end Copilot Studio agent creation: architecture layers, instructions design, knowledge sources, publishing, ALM lifecycle |
 
+### CoE Strategy
+
+Governance and strategy documents for managing the agent fleet at scale:
+
+| Guide | Description |
+|-------|-------------|
+| [CoE Governance Patterns](./docs/strategy/coe-governance.md) | Center of Excellence governance framework: inventory management, quality standards, operational excellence, CoE toolkit integration |
+| [Agent Registry Template](./docs/strategy/agent-registry-template.md) | Central registry schema, current agent inventory, PAC CLI refresh script, orphan classification rules |
+| [SLA Definitions](./docs/strategy/sla-definitions.md) | Agent tier definitions (P0/P1/P2), availability targets, incident response requirements, maintenance windows |
+| [Security and Compliance Checklist](./docs/strategy/security-compliance-checklist.md) | Pre-production security controls: DLP compliance, authentication enforcement, connector certification, data residency, audit log retention |
+

@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0",
+  "lastUpdated": "2026-03-02",
+  "agents": {
+    "clothing/agents/power-analysis": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "coffee/agents/virtual-coach": {
+      "version": "1.1.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "insurance/agents/claims-assistant": {
+      "version": "2.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "tech/agents/entra-security-ops": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "development"
+    },
+    "tech/agents/it-help-desk": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "tech/agents/kusto-analytics": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "development"
+    },
+    "tech/agents/mad-scheduler": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "development"
+    },
+    "tech/agents/policy-advisor": {
+      "version": "1.0.1",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "tech/agents/power-platform-advisor": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "tech/agents/seller-prospect": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "tech/agents/support-bot": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "transportation/agents/fleet-coordinator": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "transportation/agents/fuel-tracking": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    },
+    "transportation/agents/route-optimizer": {
+      "version": "1.0.0",
+      "lastUpdated": "2026-03-02",
+      "status": "production"
+    }
+  }
+}

@@ -21,6 +21,7 @@ Cross-agent validation confirms that data shared between agents is consistent, t
 | 1 | Fleet Coordinator maintenance alert excludes vehicle from Route Optimizer | Fleet Coordinator → Route Optimizer | Vehicle with a critical maintenance flag raised in Fleet Coordinator is not included in Route Optimizer driver assignment or stop sequencing |
 | 2 | Fuel-route correlation recommends fuel stops on optimized route | Fuel Tracking → Route Optimizer | When tank level is low and cheaper fuel options exist along the active route, Route Optimizer includes recommended fuel stops sourced from Fuel Tracking's Fuel Price Finder |
 | 3 | Unified dashboard returns data from all three agents | Fleet Coordinator + Fuel Tracking + Route Optimizer | A single adaptive card surface shows Fleet Coordinator vehicle health status, Fuel Tracking weekly spend and anomaly count, and Route Optimizer on-time delivery rate |
+| 4 | Cross-agent escalation on breakdown triggers re-routing and fuel card check | Fleet Coordinator → Route Optimizer + Fuel Tracking | A breakdown incident reported to Fleet Coordinator automatically notifies Route Optimizer to re-route affected deliveries and prompts Fuel Tracking to assess fuel card suspension for the stranded vehicle |
 
 ## Test Case Details
 
@@ -97,7 +98,40 @@ Cross-agent validation confirms that data shared between agents is consistent, t
 - [ ] Dashboard loads within an acceptable response time (< 5 seconds under normal load).
 - [ ] Fleet manager receives actionable summary without needing to query each agent separately.
 
-## Validation Process
+---
+
+### Test 4 — Cross-Agent Escalation on Breakdown
+
+**Preconditions:**
+- Vehicle `T-404` is registered in the fleet and assigned to active route `R-3001` (status: in_progress).
+- A second route `R-3002` (status: planned) is scheduled for `T-404` later in the day.
+- `T-404` has an active fuel card ending `7890`.
+
+**Steps:**
+1. In Fleet Coordinator, use the Incident Escalation topic to report a breakdown for `T-404` at mile marker 142 on I-40.
+2. Confirm the `TriggerCrossAgentEscalation` flow creates an IncidentReport record and sets VehicleMaster `maintenance_status` to `out_of_service`.
+3. Confirm a Teams adaptive card is sent to the dispatcher with Proceed and Override options.
+4. Select Proceed and verify that Route Optimizer's `HandleFleetIncidentEscalation` flow is called with vehicle `T-404`.
+5. Verify that routes `R-3001` and `R-3002` are identified as affected and re-routing is initiated.
+6. Verify that Fuel Tracking's `CheckFuelCardOnBreakdown` flow is called and the dispatcher receives a card suspension prompt for card ending `7890`.
+7. Confirm the dispatcher can independently choose to suspend or leave the card active.
+
+**Expected Result:**
+- IncidentReport record created with reference ID returned to the agent user.
+- VehicleMaster `maintenance_status` updated to `out_of_service` for `T-404`.
+- Route Optimizer identifies both affected routes and initiates re-routing for active deliveries.
+- Fuel Tracking presents the dispatcher with a confirmation step before suspending card `7890`.
+- If the Override option is selected at step 3, no automated calls are made and the dispatcher handles re-routing and card action manually.
+
+**Pass Criteria:**
+- [ ] IncidentReport record created in Dataverse with correct vehicle ID, type, and location.
+- [ ] VehicleMaster record for `T-404` reflects `out_of_service` maintenance status.
+- [ ] Route Optimizer `HandleFleetIncidentEscalation` HTTP-triggered flow responds with affected route count and re-routing status.
+- [ ] Fuel Tracking `CheckFuelCardOnBreakdown` HTTP-triggered flow presents card suspension option to dispatcher.
+- [ ] Manual override path suppresses automated calls and notifies dispatcher to handle manually.
+- [ ] End-to-end escalation completes within an acceptable response time (< 10 seconds under normal load).
+
+---
 
 1. Deploy all three agents to the shared test environment.
 2. Load test data into all required Dataverse tables (`IncidentReports`, `FuelTransactions`, `Routes`, `RouteStops`, `DriverAssignments`, `HosRecords`).
@@ -111,5 +145,6 @@ Cross-agent validation confirms that data shared between agents is consistent, t
 - [ ] Test 1 (Maintenance flag exclusion) passed and screenshot captured
 - [ ] Test 2 (Fuel-route correlation) passed and screenshot captured
 - [ ] Test 3 (Unified dashboard) passed and screenshot captured
+- [ ] Test 4 (Cross-agent escalation) passed and screenshot captured
 - [ ] Deviations documented and resolved
 - [ ] Fleet operations stakeholder sign-off obtained

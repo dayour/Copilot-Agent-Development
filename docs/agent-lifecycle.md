@@ -1,22 +1,65 @@
 # Agent Lifecycle Management
 
 ## Overview
-This guide covers the complete lifecycle of a Copilot Studio agent from initial development through production operation, updates, and eventual retirement.
+This guide covers the complete lifecycle of a Copilot Studio agent from inception through production operation, updates, and eventual retirement. It applies uniformly across all verticals in this repository: coffee, clothing, insurance, tech, and transportation.
 
-## Lifecycle Stages
+## Lifecycle Phases
 
 ```
-Development > Testing > Staging > Production > Monitoring > Updates > Retirement
+Inception > Development > Testing > Staging > Production > Operations > Updates > Retirement
 ```
 
-## Stage 1: Development
+Use the templates in `docs/templates/` to track each agent through its lifecycle:
+- `lifecycle-checklist.md`: per-agent phase gate tracking
+- `requirements-template.md`: Inception phase requirements capture
+- `retirement-plan.md`: Retirement phase planning and execution
+
+## Phase 1: Inception
+
+### Requirements Gathering
+- Complete `docs/templates/requirements-template.md` for the new agent before any development begins.
+- Define the business problem, target user personas, success criteria, and out-of-scope boundaries.
+- Identify all external systems the agent must integrate with and confirm API/connector availability.
+- Estimate conversation volume and peak load to inform licensing and capacity planning.
+
+### Architecture Decision: Single vs Multi-Agent
+Score the following criteria to determine whether a single agent or a multi-agent swarm is appropriate:
+
+| Criterion | Single Agent | Multi-Agent |
+| --- | --- | --- |
+| Domain breadth | One focused domain | Multiple distinct domains |
+| Topic count | Fewer than 15 topics | 15 or more topics |
+| Team ownership | Single team owns all topics | Multiple teams own separate domains |
+| Orchestration complexity | Linear flows | Cross-agent handoffs required |
+| Independent deployability | Not required | Each agent must deploy independently |
+
+If 3 or more criteria favor multi-agent, proceed with a swarm architecture (see `docs/swarm-architecture.md`). Note that team ownership and orchestration complexity carry the most architectural weight: if either of these two criteria strongly favors multi-agent, treat that as a deciding signal regardless of the total score.
+
+### Stakeholder Sign-off Checklist
+- [ ] Business Owner has approved the problem statement and success criteria
+- [ ] IT Admin has confirmed environment availability and licensing
+- [ ] Security has reviewed data classification and DLP requirements
+- [ ] Compliance has confirmed data retention and residency requirements
+- [ ] Content Owner has been identified for knowledge source maintenance
+
+### Resource and License Requirements
+- Identify the target Power Platform environment (dev, staging, production).
+- Confirm Microsoft Copilot Studio license allocation (per-agent or per-session billing).
+- Identify required connectors and confirm premium connector licensing if needed.
+- Confirm Dataverse capacity for any new tables or storage requirements.
+- Record all requirements in the completed `requirements-template.md` before proceeding.
+
+## Phase 2: Development
 
 ### Scaffold Creation
+- Branch strategy: `feature/<vertical>-<agent-name>` (e.g., `feature/coffee-order-assistant`).
 - Use this repository's standard 4-file scaffold:
   - README.md: agent identity, topics, users, channels
   - runbook.md: prerequisites, deployment steps, validation, operations
   - templates/agent-template.yaml: topic definitions, trigger phrases, entities, actions
   - solution/solution-definition.yaml: environment variables, components, connectors, channels
+- PR review requirements before merging: YAML syntax validation, doc completeness check (all 4 files present), peer review by a second engineer.
+- Provision the development environment before coding begins: confirm solution publisher, environment variables skeleton, and connection references are in place.
 
 ### Topic Design Principles
 - Start with 5-8 core topics that cover 80% of user needs
@@ -44,11 +87,47 @@ Development > Testing > Staging > Production > Monitoring > Updates > Retirement
 - Test flow integration: do Power Automate flows return expected results?
 - Test error paths: what happens when a flow fails or returns unexpected data?
 
-## Stage 2: Testing
+## Phase 3: Testing
+
+### Eval Test Set Creation
+Create a three-tier test set before testing begins:
+
+| Tier | Description | Minimum Cases |
+| --- | --- | --- |
+| Critical | Core happy-path flows that must work for the agent to deliver value | 10 per topic |
+| Functional | Edge cases, missing entities, ambiguous inputs, multi-turn flows | 5 per topic |
+| Integration | End-to-end flows exercising real connectors, flows, and knowledge sources | 3 per integration |
+
+Store test sets in the agent's repository folder under `tests/eval-test-set.md`.
+
+### Ground Truth Evaluation
+- Run all Critical and Functional test cases against the test environment before UAT begins.
+- Record expected vs actual response for each case.
+- Acceptance threshold: 100% of Critical cases pass; 90%+ of Functional cases pass.
+- Document all failures and triage before advancing to UAT.
+
+### User Acceptance Testing (UAT)
+- Recruit 3-5 business users per vertical (actual baristas for Coffee, actual sales reps for Tech, etc.)
+- Provide test scenarios but also allow freeform exploration.
+- Collect feedback: accuracy, helpfulness, naturalness, missing capabilities.
+- Track: resolution rate, escalation rate, user satisfaction (1-5 scale).
+- UAT exit criteria: 80%+ resolution rate, less than 20% escalation rate, 4.0+ satisfaction.
+
+### Manual QA Validation Checklist
+- [ ] All Critical eval test cases pass
+- [ ] All Functional eval test cases pass at or above threshold
+- [ ] UAT feedback reviewed and critical issues resolved
+- [ ] Fallback topic triggered correctly for all out-of-scope inputs
+- [ ] Entity extraction verified for all slot-filling topics
+- [ ] Error paths tested: flow failures, knowledge source misses, auth failures
+
+### Performance Baseline
+- Record baseline KPIs from the test environment: resolution rate, escalation rate, average conversation length.
+- Store baselines in the agent runbook as the reference for post-launch monitoring.
 
 ### Conversation Testing
-- Copilot Studio provides a built-in conversation testing framework
-- Create test conversations: scripted user inputs with expected agent responses
+- Copilot Studio provides a built-in conversation testing framework.
+- Create test conversations: scripted user inputs with expected agent responses.
 - Test scenarios:
   - Happy path: standard user flow for each topic
   - Edge cases: missing entities, ambiguous input, out-of-scope questions
@@ -56,37 +135,52 @@ Development > Testing > Staging > Production > Monitoring > Updates > Retirement
   - Context retention: verify context variables persist correctly across turns
   - Fallback: verify unrecognized input triggers fallback topic gracefully
 
-### User Acceptance Testing (UAT)
-- Recruit 3-5 business users per vertical (actual baristas for Coffee, actual sales reps for Tech, etc.)
-- Provide test scenarios but also allow freeform exploration
-- Collect feedback: accuracy, helpfulness, naturalness, missing capabilities
-- Track: resolution rate, escalation rate, user satisfaction (1-5 scale)
-- UAT exit criteria: 80%+ resolution rate, less than 20% escalation rate, 4.0+ satisfaction
-
 ### Integration Testing
-- Verify all Power Automate flows work with real (test environment) data
-- Verify authentication flows work for each channel
-- Verify knowledge sources return relevant content
-- Verify Dataverse tables are populated correctly by flows
-- Verify cross-system data consistency (e.g., Salesforce lead created matches agent input)
+- Verify all Power Automate flows work with real (test environment) data.
+- Verify authentication flows work for each channel.
+- Verify knowledge sources return relevant content.
+- Verify Dataverse tables are populated correctly by flows.
+- Verify cross-system data consistency (e.g., Salesforce lead created matches agent input).
 
-## Stage 3: Staging
+## Phase 4: Staging
 
-### Solution Promotion
-- Export the solution from the development environment as a managed solution
-- Import into the staging (pre-production) environment
-- Map environment variables to staging values
-- Verify all components show Healthy after import
-- Run the full test suite against the staging environment
+### Solution Export from Development
+- Export the solution from the development environment as a managed solution using Power Platform CLI: `pac solution export --name <SolutionName> --path ./export --managed`.
+- Commit the exported solution zip to source control under a version tag.
 
-### Pre-Production Validation
-- Validate with production-like data volumes
-- Test under concurrent user load (if applicable)
-- Verify DLP policies are applied and enforced
-- Verify audit logging is capturing events
-- Security review: authentication, authorization, data access scope
+### Import to Staging/UAT Environment
+- Import into the staging (pre-production) environment.
+- Map environment variables to staging values.
+- Verify all components show Healthy after import.
+- Run the full test suite against the staging environment.
 
-## Stage 4: Production
+### Stakeholder Acceptance Testing
+- Present the staged agent to the Business Owner and key stakeholders.
+- Demonstrate all critical user flows using the Critical eval test cases.
+- Obtain written sign-off from the Business Owner before proceeding to production.
+
+### Security Review and DLP Compliance
+- Validate with production-like data volumes.
+- Test under concurrent user load (if applicable).
+- Verify DLP policies are applied and enforced.
+- Verify audit logging is capturing events.
+- Security review: authentication, authorization, data access scope.
+- Confirm no sensitive data is exposed in conversation transcripts or flow outputs.
+
+## Phase 5: Production
+
+### Production Deployment via Managed Solution
+Import the managed solution into the production environment using Power Platform CLI: `pac solution import --path ./export/<SolutionName>_managed.zip`. Map all environment variables to production values immediately after import. Verify all solution components show Healthy before proceeding to channel enablement.
+
+### Channel Enablement
+- Channels enabled: Teams published, web chat embed deployed.
+- Confirm channel-specific authentication (Teams SSO, web chat token endpoint) is functioning.
+- Verify mobile accessibility if applicable.
+
+### Monitoring Dashboard Activation
+- Configure Copilot Studio Analytics dashboard for the production environment.
+- Set up Power BI report connected to Dataverse audit and conversation tables if required.
+- Confirm all KPI widgets are populating correctly within 24 hours of go-live.
 
 ### Go-Live Checklist
 - [ ] Solution imported as managed solution in production environment
@@ -94,19 +188,43 @@ Development > Testing > Staging > Production > Monitoring > Updates > Retirement
 - [ ] All Power Automate flows activated and tested with production connections
 - [ ] Knowledge sources connected and synced
 - [ ] Authentication configured and tested for all channels
-- [ ] Channels enabled: Teams published, web chat embed deployed
+- [ ] Channels enabled and verified
 - [ ] DLP policies applied
-- [ ] Monitoring dashboards configured
+- [ ] Monitoring dashboards active and populated
 - [ ] Rollback plan documented and tested
 - [ ] User communication sent (announcement, training materials, FAQ)
 - [ ] Support channel established (who do users contact for agent issues?)
 
-### Launch Communication
-- Announce via Teams/email to target user group
-- Include: what the agent does, how to access it, example questions to try, who to contact for issues
-- Schedule follow-up communication at 1 week and 1 month post-launch
+### Communication Plan Execution
+- Announce via Teams/email to target user group.
+- Include: what the agent does, how to access it, example questions to try, who to contact for issues.
+- Schedule follow-up communication at 1 week and 1 month post-launch.
 
-## Stage 5: Monitoring
+## Phase 6: Operations
+
+### Weekly: Unrecognized Input Review
+- Export the unrecognized inputs report from Copilot Studio Analytics.
+- Triage inputs: categorize as new topic candidates, trigger phrase gaps, or noise.
+- Add trigger phrases or create new topics for any recurrent unrecognized pattern.
+- Target: reduce unrecognized input rate below 15% and keep it there.
+
+### Monthly: Knowledge Source Refresh
+- Audit all connected knowledge sources for stale or outdated content.
+- Coordinate with Content Owner to update or remove outdated documents.
+- Trigger a knowledge source sync after updates and verify new content surfaces correctly.
+- Log the refresh date and any changes in the agent runbook.
+
+### Quarterly: Regression Evaluation
+- Re-run the full eval test set (Critical, Functional, Integration tiers) against production.
+- Compare results to the performance baseline established in Phase 3.
+- If any Critical test cases fail, raise an incident immediately.
+- Review and refresh the test set to add cases covering new user patterns observed since launch.
+
+### Incident Response Procedures
+- **Severity 1 (agent fully down)**: IT Admin notified within 15 minutes; rollback initiated if resolution > 30 minutes.
+- **Severity 2 (major topic failure)**: Agent Owner notified within 1 hour; hotfix deployed within 4 hours.
+- **Severity 3 (degraded accuracy)**: Tracked in backlog; addressed in next update cycle.
+- Incident post-mortem required for all Severity 1 and Severity 2 incidents; findings fed back into test set and monitoring alerts.
 
 ### Key Performance Indicators (KPIs)
 | KPI | Target | Measurement Source |
@@ -119,70 +237,65 @@ Development > Testing > Staging > Production > Monitoring > Updates > Retirement
 | Knowledge Source Freshness | < 7 days stale | Manual audit |
 | Unrecognized Input Rate | < 15% | Copilot Studio Analytics |
 
-### Monitoring Cadence
-| Frequency | Activity | Owner |
-| --- | --- | --- |
-| Daily | Check flow failure alerts | IT Admin |
-| Weekly | Review conversation analytics dashboard | Agent Owner |
-| Bi-weekly | Review unrecognized inputs, add to topics | Copilot Studio Admin |
-| Monthly | Knowledge source freshness audit | Content Owner |
-| Quarterly | Full agent health review (KPIs, user feedback, roadmap) | Agent Owner + IT |
-
 ### Alerting
-- Flow failure > 3 consecutive: alert IT Admin
-- Resolution rate drops below 70%: alert Agent Owner
-- Unrecognized input rate spikes above 25%: alert Copilot Studio Admin
-- Implement via Power Automate scheduled flows writing to monitoring table + Teams notification
+- Flow failure > 3 consecutive: alert IT Admin.
+- Resolution rate drops below 70%: alert Agent Owner.
+- Unrecognized input rate spikes above 25%: alert Copilot Studio Admin.
+- Implement via Power Automate scheduled flows writing to monitoring table and Teams notification.
 
-## Stage 6: Updates
+## Phase 7: Updates
 
-### Topic Updates (Low Risk)
-- Edit trigger phrases, messages, or conditions in Copilot Studio
-- Click Publish -- changes are live immediately
-- No solution re-import needed
-- Test in test canvas before publishing
+### Version Management: Patches vs Upgrades
+- **Patch** (x.y.Z): trigger phrase, message text, or knowledge content only. No solution re-export required.
+- **Minor upgrade** (x.Y.0): new topics, flow logic changes, or new knowledge sources. Full dev > test > stage > prod cycle.
+- **Major upgrade** (X.0.0): new connectors, schema changes, architectural redesign. Full lifecycle with security review.
 
-### Knowledge Source Updates (Low Risk)
-- Update documents in SharePoint or upload new files
-- Trigger a knowledge source refresh/sync
-- Verify new content appears in agent responses
+### Regression Testing Before Promotion
+- Re-run the Critical eval test set before promoting any minor or major upgrade to production.
+- For major upgrades, re-run the full eval test set (all tiers).
+- A failing Critical test case blocks promotion until resolved.
 
-### Flow Updates (Medium Risk)
-- Edit Power Automate flows in the development environment
-- Test thoroughly with test data
-- Export updated solution and import to production
-- Verify flow connections are maintained after import
+### Rollback Procedures
+- Maintain the previous managed solution zip in source control under a version tag.
+- To rollback: import the previous version as a managed solution with the upgrade option.
+- Verify rollback in staging before applying to production.
+- Document the rollback in the agent runbook with the reason and date.
 
-### Major Updates (High Risk)
-- New topics, new integrations, schema changes
-- Full development > testing > staging > production cycle
-- Schedule maintenance window, notify users
-- Have rollback plan ready
+### Change Communication
+- Notify users of significant changes (new capabilities, removed topics, channel changes) at least 3 business days in advance.
+- Update the agent README.md with the new version and a changelog entry.
+- Tag the release in source control aligned with the solution version number.
 
-### Versioning
-- Use Power Platform solution versioning: major.minor.patch (e.g., 1.2.0)
-- Increment patch for topic/knowledge updates
-- Increment minor for new topics or flow changes
-- Increment major for architectural changes (new integrations, schema changes)
-- Tag in source control (git tag) aligned with solution version
+## Phase 8: Retirement
 
-## Stage 7: Retirement
+### Deprecation Notice Period
+- Issue a deprecation notice to all users at least 30 days before the retirement date.
+- Include the retirement date, the reason, and what users should do instead.
+- Send reminder notices at 14 days and 3 days before retirement.
 
-### When to Retire an Agent
-- Business process it supports has been eliminated
-- Replaced by a new agent with broader capabilities
-- User adoption has dropped to near-zero despite promotion efforts
+### User Migration to Replacement Agent
+- Identify the replacement agent or alternative process for each user task the retiring agent handled.
+- Update the retiring agent's greeting topic to direct users to the replacement immediately after notice is issued.
+- Confirm all users have been onboarded to the replacement before executing retirement.
 
-### Retirement Process
-1. Announce retirement date to users (minimum 30 days notice)
-2. Provide alternative: replacement agent, human contact, self-service portal
-3. On retirement date: unpublish from all channels
-4. Export final conversation analytics and transcripts for archival
-5. Deactivate all Power Automate flows associated with the agent
-6. Archive the solution in source control with a retirement tag
-7. Retain Dataverse data per retention policy (do not delete immediately)
-8. After retention period: delete Dataverse tables, remove solution from environment
-9. Update documentation: mark agent as retired in repository README
+### Data Retention Compliance
+- Identify all Dataverse tables and SharePoint data associated with the agent.
+- Confirm the applicable data retention period with the Compliance Owner.
+- Do not delete Dataverse data until the retention period has elapsed.
+- Archive conversation transcripts and analytics exports per the retention policy.
+
+### Solution Removal and Cleanup
+Complete `docs/templates/retirement-plan.md` for the agent before beginning removal steps.
+
+1. Announce retirement date to users (minimum 30 days notice already issued).
+2. On retirement date: unpublish from all channels.
+3. Export final conversation analytics and transcripts for archival.
+4. Deactivate all Power Automate flows associated with the agent.
+5. Archive the solution in source control with a retirement tag (e.g., `retired/v1.2.0`).
+6. Retain Dataverse data per retention policy (do not delete immediately).
+7. After retention period elapses: delete Dataverse tables, remove solution from environment.
+8. Update the vertical README.md: mark agent as retired with the retirement date.
+9. Remove the agent entry from any cross-agent orchestration or swarm configuration files.
 
 ## Solution Layering and ALM
 
@@ -210,18 +323,21 @@ Development > Testing > Staging > Production > Monitoring > Updates > Retirement
   7. Import to production
 - Tools: Power Platform CLI, Power Platform Build Tools, GitHub Actions
 
-## Operational Templates
+## Operational Reference
 
-### Stage Exit Checklist
-| Stage | Exit Criteria | Owner | Sign-off Required |
+### Phase Exit Checklist
+Use `docs/templates/lifecycle-checklist.md` to track each agent through the full lifecycle. The table below summarizes exit criteria per phase.
+
+| Phase | Exit Criteria | Owner | Sign-off Required |
 | --- | --- | --- | --- |
+| Inception | Requirements captured, architecture decision made, stakeholder sign-off obtained | Agent Owner | Business Owner + IT Admin |
 | Development | Core topics implemented, flows unit-tested, content quality reviewed | Copilot Studio Admin | Agent Owner |
-| Testing | UAT criteria met, integration tests pass, defects triaged | QA Lead | Business Owner |
-| Staging | Managed solution imported, pre-production validation complete | IT Admin | Security + Agent Owner |
-| Production | Go-live checklist complete and rollback validated | Release Manager | Product Sponsor |
-| Monitoring | KPI dashboard and alerting active | Operations | Agent Owner |
-| Updates | Change plan executed with version bump | Release Manager | Agent Owner |
-| Retirement | Retirement steps complete and archives stored | Operations | Compliance Owner |
+| Testing | All Critical eval cases pass, UAT criteria met, integration tests pass, defects triaged | QA Lead | Business Owner |
+| Staging | Managed solution imported, stakeholder acceptance obtained, DLP and security review complete | IT Admin | Security + Agent Owner |
+| Production | Go-live checklist complete, channels active, monitoring live, rollback validated | Release Manager | Product Sponsor |
+| Operations | Ongoing: weekly/monthly/quarterly reviews on schedule, KPIs within targets | Operations | Agent Owner |
+| Updates | Change plan executed with version bump and regression tests passed | Release Manager | Agent Owner |
+| Retirement | Retirement plan complete, users migrated, archives stored, data retained per policy | Operations | Compliance Owner |
 
 ### Risk Classification Matrix
 | Change Type | Risk Level | Required Environment Path | Approval |

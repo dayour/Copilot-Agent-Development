@@ -1,0 +1,889 @@
+# Agent Analytics Dashboard - Power BI Template
+#
+# This file defines the Power BI report template for the agent analytics KPI
+# dashboard. Import this template into Power BI Desktop and configure the
+# Dataverse environment URL and Copilot Studio environment ID to connect to
+# the analytics data sources described in docs/analytics/kpi-framework.md.
+#
+# Because .pbit files are binary, this YAML definition is the source of
+# record for the template structure, data model, DAX measures, and page
+# layouts. Use it to recreate or update the Power BI template in Power BI
+# Desktop.
+
+template:
+  name: AgentAnalyticsDashboard
+  displayName: "Agent Analytics KPI Dashboard"
+  description: >
+    Cross-vertical agent performance dashboard covering Engagement, Quality,
+    Satisfaction, Performance, and Cost KPIs for all agents in the
+    Copilot Agent Development repository.
+  version: "1.0.0"
+  targetDataSources:
+    - dataverse
+    - copilotStudioAnalyticsApi
+
+parameters:
+  - name: DataverseEnvironmentUrl
+    label: "Dataverse Environment URL"
+    description: >
+      Base URL of the Power Platform Dataverse environment,
+      e.g. https://yourorg.crm.dynamics.com
+    type: string
+    required: true
+
+  - name: CopilotStudioEnvironmentId
+    label: "Copilot Studio Environment ID"
+    description: >
+      Power Platform environment GUID used to scope Copilot Studio
+      analytics API queries.
+    type: string
+    required: true
+
+  - name: ReportingCurrency
+    label: "Reporting Currency"
+    description: "ISO 4217 currency code for cost metrics, e.g. USD, GBP, EUR."
+    type: string
+    defaultValue: "USD"
+    required: false
+
+dataSources:
+  - name: DataverseConversationTranscripts
+    type: dataverse
+    parameterRef: DataverseEnvironmentUrl
+    tables:
+      - logicalName: conversationtranscript
+        displayName: Conversation Transcript
+        columns:
+          - conversationtranscriptid
+          - name
+          - createdon
+          - modifiedon
+          - content
+          - schematype
+          - bot_conversationtranscriptid
+          - regarding
+        description: >
+          Standard Copilot Studio conversation transcript table.
+          Provides turn-level detail for length, repeat contact,
+          and implied resolution calculations.
+
+      - logicalName: cr_agentanalyticsmetrics
+        displayName: Agent Analytics Metrics
+        description: >
+          Custom daily aggregation table populated by the
+          AgentAnalyticsAggregationScheduled Power Automate flow.
+          One row per agent per day. See table schema below.
+        columns:
+          - cr_agentanalyticsmetricsid
+          - cr_date
+          - cr_vertical
+          - cr_agentname
+          - cr_channel
+          - cr_totalconversations
+          - cr_uniqueusers
+          - cr_avgturnsperconversation
+          - cr_containedconversations
+          - cr_escalatedconversations
+          - cr_fallbackconversations
+          - cr_resolvedfirstsession
+          - cr_naturallyendedconversations
+          - cr_csatresponsesreceived
+          - cr_csatscoresum
+          - cr_repeatcontacts
+          - cr_avglatencyms
+          - cr_p95latencyms
+          - cr_knowledgequeries
+          - cr_knowledgeresults
+          - cr_flowruns
+          - cr_flowrunsucceeded
+          - cr_systemerrors
+          - cr_messagesconsumed
+
+  - name: CopilotStudioAnalyticsApi
+    type: web
+    baseUrl: "https://api.powerplatform.com/analytics/copilot/v1.0"
+    authentication: servicePrincipal
+    description: >
+      Copilot Studio analytics REST API. Provides session counts,
+      topic outcomes, CSAT scores, and message consumption.
+      Requires Power Platform Admin role on the service principal.
+    endpoints:
+      - path: "/environments/${CopilotStudioEnvironmentId}/sessions"
+        queryName: Sessions
+      - path: "/environments/${CopilotStudioEnvironmentId}/topics"
+        queryName: TopicOutcomes
+      - path: "/environments/${CopilotStudioEnvironmentId}/csat"
+        queryName: CSATSurveys
+      - path: "/environments/${CopilotStudioEnvironmentId}/messages"
+        queryName: MessageConsumption
+
+dataverseTableSchema:
+  # Schema for the cr_AgentAnalyticsMetrics custom Dataverse table.
+  # This table is populated by the AgentAnalyticsAggregationScheduled flow
+  # and is the primary source for all DAX measures in this template.
+  table:
+    logicalName: cr_agentanalyticsmetrics
+    displayName: Agent Analytics Metrics
+    description: >
+      Daily per-agent KPI aggregations. One row per agent per channel per day.
+      Populated by the AgentAnalyticsAggregationScheduled Power Automate flow.
+
+    columns:
+      - logicalName: cr_agentanalyticsmetricsid
+        displayName: Agent Analytics Metrics ID
+        type: uniqueidentifier
+        isPrimaryKey: true
+
+      - logicalName: cr_date
+        displayName: Date
+        type: date
+        description: >
+          The calendar date this row represents, stored as ISO 8601 (YYYY-MM-DD)
+          UTC date with no time component. Example: 2026-03-01.
+
+      - logicalName: cr_vertical
+        displayName: Vertical
+        type: string
+        maxLength: 50
+        description: "Vertical name: coffee, clothing, insurance, tech, or transportation."
+
+      - logicalName: cr_agentname
+        displayName: Agent Name
+        type: string
+        maxLength: 100
+        description: "Logical name of the Copilot Studio agent."
+
+      - logicalName: cr_channel
+        displayName: Channel
+        type: string
+        maxLength: 50
+        description: "Delivery channel: teams, webchat, mobile, or other."
+
+      - logicalName: cr_totalconversations
+        displayName: Total Conversations
+        type: integer
+        description: "Count of distinct conversation sessions started on this date."
+
+      - logicalName: cr_uniqueusers
+        displayName: Unique Users
+        type: integer
+        description: "Count of distinct authenticated user identities on this date."
+
+      - logicalName: cr_avgturnsperconversation
+        displayName: Avg Turns per Conversation
+        type: decimal
+        precision: 18
+        scale: 2
+        description: "Mean number of user+agent message pairs per session."
+
+      - logicalName: cr_containedconversations
+        displayName: Contained Conversations
+        type: integer
+        description: "Count of sessions resolved without human handoff."
+
+      - logicalName: cr_escalatedconversations
+        displayName: Escalated Conversations
+        type: integer
+        description: "Count of sessions transferred to a human agent."
+
+      - logicalName: cr_fallbackconversations
+        displayName: Fallback Conversations
+        type: integer
+        description: "Count of sessions that triggered the Fallback system topic."
+
+      - logicalName: cr_resolvedfirstsession
+        displayName: Resolved First Session
+        type: integer
+        description: "Count of sessions where the user need was resolved in one session."
+
+      - logicalName: cr_naturallyendedconversations
+        displayName: Naturally Ended Conversations
+        type: integer
+        description: "Count of sessions that ended with an agent message and no escalation."
+
+      - logicalName: cr_csatresponsesreceived
+        displayName: CSAT Responses Received
+        type: integer
+        description: "Count of sessions where the user submitted a CSAT survey score."
+
+      - logicalName: cr_csatscoresum
+        displayName: CSAT Score Sum
+        type: decimal
+        precision: 18
+        scale: 2
+        description: "Sum of all CSAT scores for the day. Divide by cr_CSATResponsesReceived for mean."
+
+      - logicalName: cr_repeatcontacts
+        displayName: Repeat Contacts
+        type: integer
+        description: "Count of sessions where the same user contacted the same agent for the same topic within 24 hours."
+
+      - logicalName: cr_avglatencyms
+        displayName: Avg Response Latency (ms)
+        type: integer
+        description: "Mean time from user message to first agent token in milliseconds."
+
+      - logicalName: cr_p95latencyms
+        displayName: p95 Response Latency (ms)
+        type: integer
+        description: "95th percentile response latency in milliseconds."
+
+      - logicalName: cr_knowledgequeries
+        displayName: Knowledge Queries
+        type: integer
+        description: "Total knowledge source queries attempted by the agent."
+
+      - logicalName: cr_knowledgeresults
+        displayName: Knowledge Results
+        type: integer
+        description: "Count of knowledge queries that returned at least one result."
+
+      - logicalName: cr_flowruns
+        displayName: Flow Runs
+        type: integer
+        description: "Total Power Automate flow invocations by the agent."
+
+      - logicalName: cr_flowrunsucceeded
+        displayName: Flow Runs Succeeded
+        type: integer
+        description: "Count of flow invocations that completed with status Succeeded."
+
+      - logicalName: cr_systemerrors
+        displayName: System Errors
+        type: integer
+        description: "Count of sessions containing at least one system-level error."
+
+      - logicalName: cr_messagesconsumed
+        displayName: Messages Consumed
+        type: integer
+        description: "Copilot Studio messages billed for this agent on this date."
+
+    indexes:
+      - columns: [cr_date, cr_vertical, cr_agentname]
+        description: "Primary analytics index for date + vertical + agent time-series queries."
+      - columns: [cr_date, cr_agentname, cr_channel]
+        description: "Index for per-agent per-channel aggregation."
+
+    retentionPolicy:
+      days: 365
+      purgeAction: hard_delete
+      implementation: >
+        Configure a Dataverse bulk delete job to remove rows where cr_Date
+        is older than 365 days. Run monthly. Source transcripts retained
+        per the policies in docs/admin-governance.md.
+
+measures:
+  # --- Engagement ---
+  - name: TotalConversations
+    displayName: "Total Conversations"
+    description: "Sum of total conversation sessions for the selected period."
+    dax: |
+      SUM(cr_agentanalyticsmetrics[cr_totalconversations])
+    formatString: "#,0"
+
+  - name: UniqueUsers
+    displayName: "Unique Users"
+    description: "Sum of unique user counts for the selected period."
+    dax: |
+      SUM(cr_agentanalyticsmetrics[cr_uniqueusers])
+    formatString: "#,0"
+
+  - name: AvgConversationLength
+    displayName: "Avg Conversation Length (turns)"
+    description: "Weighted mean turns per conversation across the selected period."
+    dax: |
+      DIVIDE(
+          SUMX(
+              cr_agentanalyticsmetrics,
+              cr_agentanalyticsmetrics[cr_avgturnsperconversation]
+              * cr_agentanalyticsmetrics[cr_totalconversations]
+          ),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0"
+
+  - name: MessagesConsumed
+    displayName: "Messages Consumed"
+    description: "Total Copilot Studio messages billed for the selected period."
+    dax: |
+      SUM(cr_agentanalyticsmetrics[cr_messagesconsumed])
+    formatString: "#,0"
+
+  # --- Quality ---
+  - name: ContainmentRate
+    displayName: "Containment Rate"
+    description: "Percentage of sessions resolved without human handoff."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_containedconversations]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: EscalationRate
+    displayName: "Escalation Rate"
+    description: "Percentage of sessions transferred to a human agent."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_escalatedconversations]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: FallbackRate
+    displayName: "Fallback Rate"
+    description: "Percentage of sessions that triggered the Fallback system topic."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_fallbackconversations]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: TopicCoverageRate
+    displayName: "Topic Coverage Rate"
+    description: "Percentage of sessions matched to a defined topic (not fallback)."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations])
+          - SUM(cr_agentanalyticsmetrics[cr_fallbackconversations]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: FirstContactResolutionRate
+    displayName: "First Contact Resolution Rate"
+    description: "Percentage of sessions where the user need was resolved in one session."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_resolvedfirstsession]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  # --- Satisfaction ---
+  - name: CSATScore
+    displayName: "CSAT Score (mean)"
+    description: >
+      Mean end-of-conversation survey score (1 to 5 scale).
+      Returns BLANK when no CSAT responses exist in the selection, which
+      prevents a misleading 0 score from appearing on visuals and downstream
+      calculations. Use ISINSCOPE or ISBLANK guards in dependent measures.
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_csatscoresum]),
+          SUM(cr_agentanalyticsmetrics[cr_csatresponsesreceived]),
+          BLANK()
+      )
+    formatString: "0.00"
+
+  - name: CSATResponseRate
+    displayName: "CSAT Response Rate"
+    description: "Percentage of sessions where a CSAT survey response was submitted."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_csatresponsesreceived]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: ImpliedResolutionRate
+    displayName: "Implied Resolution Rate"
+    description: "Percentage of sessions that ended naturally without escalation."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_naturallyendedconversations]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: RepeatContactRate
+    displayName: "Repeat Contact Rate"
+    description: "Percentage of sessions from users who re-contacted about the same topic within 24 hours."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_repeatcontacts]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  # --- Performance ---
+  - name: AvgResponseLatency
+    displayName: "Avg Response Latency (ms)"
+    description: "Weighted mean response latency across the selected period."
+    dax: |
+      DIVIDE(
+          SUMX(
+              cr_agentanalyticsmetrics,
+              cr_agentanalyticsmetrics[cr_avglatencyms]
+              * cr_agentanalyticsmetrics[cr_totalconversations]
+          ),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "#,0"
+
+  - name: LatencyP95
+    displayName: "Response Latency p95 (ms)"
+    description: "Maximum p95 latency recorded across agent/day rows in the selection."
+    dax: |
+      MAX(cr_agentanalyticsmetrics[cr_p95latencyms])
+    formatString: "#,0"
+
+  - name: KnowledgeRetrievalSuccessRate
+    displayName: "Knowledge Retrieval Success Rate"
+    description: "Percentage of knowledge queries that returned at least one result."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_knowledgeresults]),
+          SUM(cr_agentanalyticsmetrics[cr_knowledgequeries]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: ActionInvocationSuccessRate
+    displayName: "Action Invocation Success Rate"
+    description: "Percentage of Power Automate flow invocations that succeeded."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_flowrunsucceeded]),
+          SUM(cr_agentanalyticsmetrics[cr_flowruns]),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: SystemErrorRate
+    displayName: "System Error Rate"
+    description: "Percentage of sessions containing at least one system error."
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_systemerrors]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.0%"
+
+  # --- Cost ---
+  - name: CostPerConversation
+    displayName: "Cost per Conversation"
+    description: >
+      Messages consumed per conversation, used as a cost proxy for
+      relative comparisons between agents. This is a simplified proxy
+      metric: messages consumed is the primary billable unit in Copilot Studio
+      and a reliable cost signal before a cost allocation table is available.
+      To replace the proxy with actual currency cost, add a cost rate table
+      to the data model and multiply MessagesConsumed by the per-message rate.
+    dax: |
+      DIVIDE(
+          SUM(cr_agentanalyticsmetrics[cr_messagesconsumed]),
+          SUM(cr_agentanalyticsmetrics[cr_totalconversations]),
+          0
+      )
+    formatString: "0.00"
+
+  - name: CostPerResolution
+    displayName: "Cost per Resolution"
+    description: "Cost per conversation divided by the containment rate."
+    dax: |
+      DIVIDE(
+          [CostPerConversation],
+          [ContainmentRate],
+          BLANK()
+      )
+    formatString: "0.00"
+
+pages:
+  - name: ExecutiveSummary
+    displayName: "Executive Summary"
+    description: >
+      Single-pane view of the most important KPIs across all agents.
+      Designed for weekly stakeholder reviews.
+    visuals:
+      - type: card
+        title: "Total Conversations (Period)"
+        measure: TotalConversations
+      - type: card
+        title: "Unique Users (Period)"
+        measure: UniqueUsers
+      - type: card
+        title: "CSAT Score"
+        measure: CSATScore
+        conditionalFormatting:
+          - condition: "value < 3.5"
+            backgroundColor: "#FF6B6B"
+          - condition: "value >= 3.5 AND value < 4.0"
+            backgroundColor: "#FFD93D"
+          - condition: "value >= 4.0"
+            backgroundColor: "#6BCB77"
+      - type: card
+        title: "Containment Rate"
+        measure: ContainmentRate
+        conditionalFormatting:
+          - condition: "value < 0.65"
+            backgroundColor: "#FF6B6B"
+          - condition: "value >= 0.65 AND value < 0.75"
+            backgroundColor: "#FFD93D"
+          - condition: "value >= 0.75"
+            backgroundColor: "#6BCB77"
+      - type: card
+        title: "Fallback Rate"
+        measure: FallbackRate
+        conditionalFormatting:
+          - condition: "value > 0.20"
+            backgroundColor: "#FF6B6B"
+          - condition: "value > 0.10 AND value <= 0.20"
+            backgroundColor: "#FFD93D"
+          - condition: "value <= 0.10"
+            backgroundColor: "#6BCB77"
+      - type: card
+        title: "Escalation Rate"
+        measure: EscalationRate
+        conditionalFormatting:
+          - condition: "value > 0.15"
+            backgroundColor: "#FF6B6B"
+          - condition: "value > 0.08 AND value <= 0.15"
+            backgroundColor: "#FFD93D"
+          - condition: "value <= 0.08"
+            backgroundColor: "#6BCB77"
+      - type: lineChart
+        title: "Total Conversations by Day"
+        xAxis: cr_date
+        yAxis: TotalConversations
+        legend: cr_agentname
+      - type: barChart
+        title: "CSAT Score by Agent"
+        xAxis: cr_agentname
+        yAxis: CSATScore
+        referenceLine:
+          value: 3.5
+          label: "Minimum Target"
+
+  - name: EngagementMetrics
+    displayName: "Engagement"
+    description: >
+      Volume and usage shape metrics. Includes trend lines,
+      peak usage, and channel distribution.
+    visuals:
+      - type: lineChart
+        title: "Total Conversations Trend (Daily)"
+        xAxis: cr_date
+        yAxis: TotalConversations
+        legend: cr_vertical
+      - type: lineChart
+        title: "Unique Users Trend (Daily)"
+        xAxis: cr_date
+        yAxis: UniqueUsers
+        legend: cr_vertical
+      - type: barChart
+        title: "Channel Distribution"
+        xAxis: cr_channel
+        yAxis: TotalConversations
+        legend: cr_agentname
+      - type: lineChart
+        title: "Avg Conversation Length (Turns)"
+        xAxis: cr_date
+        yAxis: AvgConversationLength
+        legend: cr_agentname
+      - type: table
+        title: "Engagement Summary by Agent"
+        columns:
+          - cr_vertical
+          - cr_agentname
+          - TotalConversations
+          - UniqueUsers
+          - AvgConversationLength
+          - MessagesConsumed
+
+  - name: QualityMetrics
+    displayName: "Quality"
+    description: >
+      Containment, fallback, escalation, topic coverage, and
+      first-contact resolution rates with trend lines.
+    visuals:
+      - type: lineChart
+        title: "Containment Rate Trend"
+        xAxis: cr_date
+        yAxis: ContainmentRate
+        legend: cr_agentname
+        referenceLine:
+          value: 0.75
+          label: "Target (75%)"
+      - type: lineChart
+        title: "Fallback Rate Trend"
+        xAxis: cr_date
+        yAxis: FallbackRate
+        legend: cr_agentname
+        referenceLine:
+          value: 0.20
+          label: "Alert Threshold (20%)"
+      - type: lineChart
+        title: "Escalation Rate Trend"
+        xAxis: cr_date
+        yAxis: EscalationRate
+        legend: cr_agentname
+        referenceLine:
+          value: 0.15
+          label: "Alert Threshold (15%)"
+      - type: barChart
+        title: "Topic Coverage Rate by Agent"
+        xAxis: cr_agentname
+        yAxis: TopicCoverageRate
+      - type: table
+        title: "Quality Summary by Agent"
+        columns:
+          - cr_vertical
+          - cr_agentname
+          - ContainmentRate
+          - EscalationRate
+          - FallbackRate
+          - TopicCoverageRate
+          - FirstContactResolutionRate
+
+  - name: SatisfactionMetrics
+    displayName: "Satisfaction"
+    description: >
+      CSAT scores, response rates, implied resolution, and
+      repeat contact rates.
+    visuals:
+      - type: lineChart
+        title: "CSAT Score Trend"
+        xAxis: cr_date
+        yAxis: CSATScore
+        legend: cr_agentname
+        referenceLine:
+          value: 3.5
+          label: "Alert Threshold (3.5)"
+      - type: barChart
+        title: "CSAT Response Rate by Agent"
+        xAxis: cr_agentname
+        yAxis: CSATResponseRate
+      - type: lineChart
+        title: "Implied Resolution Rate Trend"
+        xAxis: cr_date
+        yAxis: ImpliedResolutionRate
+        legend: cr_agentname
+      - type: lineChart
+        title: "Repeat Contact Rate Trend"
+        xAxis: cr_date
+        yAxis: RepeatContactRate
+        legend: cr_agentname
+      - type: table
+        title: "Satisfaction Summary by Agent"
+        columns:
+          - cr_vertical
+          - cr_agentname
+          - CSATScore
+          - CSATResponseRate
+          - ImpliedResolutionRate
+          - RepeatContactRate
+
+  - name: PerformanceMetrics
+    displayName: "Performance"
+    description: >
+      Response latency, knowledge retrieval, flow success, and
+      system error rates.
+    visuals:
+      - type: lineChart
+        title: "Avg Response Latency Trend (ms)"
+        xAxis: cr_date
+        yAxis: AvgResponseLatency
+        legend: cr_agentname
+        referenceLine:
+          value: 2000
+          label: "Target (2000 ms)"
+      - type: lineChart
+        title: "p95 Response Latency Trend (ms)"
+        xAxis: cr_date
+        yAxis: LatencyP95
+        legend: cr_agentname
+        referenceLine:
+          value: 5000
+          label: "Alert Threshold (5000 ms)"
+      - type: barChart
+        title: "Knowledge Retrieval Success Rate by Agent"
+        xAxis: cr_agentname
+        yAxis: KnowledgeRetrievalSuccessRate
+      - type: barChart
+        title: "Action Invocation Success Rate by Agent"
+        xAxis: cr_agentname
+        yAxis: ActionInvocationSuccessRate
+      - type: lineChart
+        title: "System Error Rate Trend"
+        xAxis: cr_date
+        yAxis: SystemErrorRate
+        legend: cr_agentname
+      - type: table
+        title: "Performance Summary by Agent"
+        columns:
+          - cr_vertical
+          - cr_agentname
+          - AvgResponseLatency
+          - LatencyP95
+          - KnowledgeRetrievalSuccessRate
+          - ActionInvocationSuccessRate
+          - SystemErrorRate
+
+  - name: CostMetrics
+    displayName: "Cost"
+    description: >
+      License utilization, cost per conversation, cost per
+      resolution, and messages consumed trends.
+    visuals:
+      - type: lineChart
+        title: "Messages Consumed Trend (Daily)"
+        xAxis: cr_date
+        yAxis: MessagesConsumed
+        legend: cr_agentname
+      - type: barChart
+        title: "Cost per Conversation by Agent"
+        xAxis: cr_agentname
+        yAxis: CostPerConversation
+      - type: barChart
+        title: "Cost per Resolution by Agent"
+        xAxis: cr_agentname
+        yAxis: CostPerResolution
+      - type: table
+        title: "Cost Summary by Agent"
+        columns:
+          - cr_vertical
+          - cr_agentname
+          - MessagesConsumed
+          - TotalConversations
+          - CostPerConversation
+          - ContainmentRate
+          - CostPerResolution
+
+  - name: CrossVerticalComparison
+    displayName: "Cross-Vertical Comparison"
+    description: >
+      Side-by-side comparison of all KPIs across verticals to
+      identify performance gaps and best practices.
+    visuals:
+      - type: barChart
+        title: "Containment Rate by Vertical"
+        xAxis: cr_vertical
+        yAxis: ContainmentRate
+      - type: barChart
+        title: "CSAT Score by Vertical"
+        xAxis: cr_vertical
+        yAxis: CSATScore
+      - type: barChart
+        title: "Fallback Rate by Vertical"
+        xAxis: cr_vertical
+        yAxis: FallbackRate
+      - type: barChart
+        title: "Escalation Rate by Vertical"
+        xAxis: cr_vertical
+        yAxis: EscalationRate
+      - type: barChart
+        title: "Avg Response Latency by Vertical"
+        xAxis: cr_vertical
+        yAxis: AvgResponseLatency
+      - type: table
+        title: "All KPIs by Vertical"
+        columns:
+          - cr_vertical
+          - TotalConversations
+          - ContainmentRate
+          - EscalationRate
+          - FallbackRate
+          - CSATScore
+          - AvgResponseLatency
+          - CostPerResolution
+
+  - name: AgentDrillDown
+    displayName: "Agent Drill-Down"
+    description: >
+      Single-agent detail view. Select an agent using the
+      cr_agentname slicer to view all KPIs and trend lines.
+    slicers:
+      - field: cr_vertical
+      - field: cr_agentname
+      - field: cr_channel
+    visuals:
+      - type: lineChart
+        title: "Daily Conversations"
+        xAxis: cr_date
+        yAxis: TotalConversations
+      - type: lineChart
+        title: "Fallback Rate (30-day trend)"
+        xAxis: cr_date
+        yAxis: FallbackRate
+      - type: lineChart
+        title: "CSAT Score (30-day trend)"
+        xAxis: cr_date
+        yAxis: CSATScore
+      - type: lineChart
+        title: "Response Latency p95 (30-day trend)"
+        xAxis: cr_date
+        yAxis: LatencyP95
+      - type: table
+        title: "Daily KPI Detail"
+        columns:
+          - cr_date
+          - cr_channel
+          - TotalConversations
+          - UniqueUsers
+          - ContainmentRate
+          - FallbackRate
+          - EscalationRate
+          - CSATScore
+          - AvgResponseLatency
+          - SystemErrorRate
+
+powerAutomateAggregationFlow:
+  # This section defines the AgentAnalyticsAggregationScheduled flow that
+  # populates the cr_AgentAnalyticsMetrics Dataverse table each day.
+  name: AgentAnalyticsAggregationScheduled
+  description: >
+    Scheduled daily flow that queries the Copilot Studio analytics API and
+    the conversationtranscript Dataverse table, aggregates KPIs by agent and
+    channel, and upserts rows into cr_AgentAnalyticsMetrics.
+  trigger:
+    type: recurrence
+    interval: 1
+    frequency: day
+    startTime: "01:00:00"
+    timeZone: "UTC"
+
+  steps:
+    - name: SetAggregationDate
+      type: compose
+      value: "@addDays(utcNow(), -1)"
+      description: "Aggregate the previous calendar day (UTC)."
+
+    - name: QueryCopilotStudioSessionsApi
+      type: http
+      method: GET
+      uri: "https://api.powerplatform.com/analytics/copilot/v1.0/environments/${CopilotStudioEnvironmentId}/sessions"
+      queryParameters:
+        date: "@outputs('SetAggregationDate')"
+      authentication: managedIdentity
+
+    - name: QueryConversationTranscripts
+      type: dataverse_list_rows
+      table: conversationtranscript
+      filter: "createdon ge @{outputs('SetAggregationDate')} and createdon lt @{addDays(outputs('SetAggregationDate'), 1)}"
+
+    - name: AggregateKPIsPerAgentPerChannel
+      type: apply_to_each
+      description: >
+        Group sessions by agentname and channel. Compute all KPI
+        aggregations and upsert into cr_AgentAnalyticsMetrics.
+
+    - name: UpsertAnalyticsMetricsRow
+      type: dataverse_upsert_row
+      table: cr_agentanalyticsmetrics
+      matchColumns:
+        - cr_date
+        - cr_agentname
+        - cr_channel
