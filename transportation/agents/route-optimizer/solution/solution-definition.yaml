@@ -60,6 +60,15 @@ environment_variables:
     type: string
     required: true
     default_value: ""
+  - schema_name: OrderManagementApiUrl
+    display_name: Order Management API URL
+    type: string
+    required: true
+    default_value: ""
+  - schema_name: OrderManagementApiKey
+    display_name: Order Management API Key
+    type: secret
+    required: true
 
 dataverse:
   tables:
@@ -190,6 +199,17 @@ dataverse:
           display_name: estimated_arrival
           type: datetime
           behavior: user_local
+        - name: crd_service_time_minutes
+          display_name: service_time_minutes
+          type: whole_number
+          required: false
+        - name: crd_priority
+          display_name: priority
+          type: choice
+          options:
+            - standard
+            - high
+            - urgent
 
     - logical_name: crd_driverassignments
       display_name: DriverAssignments
@@ -319,19 +339,31 @@ connectors:
     configuration:
       base_url_env_var: FuelTrackingFlowBaseUrl
       authentication: managed_identity
+  - name: OrderManagementApiHttp
+    type: http
+    description: HTTP connector for retrieving unscheduled orders from the order management system.
+    configuration:
+      base_url_env_var: OrderManagementApiUrl
+      authentication: api_key
+      api_key_env_var: OrderManagementApiKey
+      api_key_header: x-api-key
 
 flows:
   - name: OptimizeRoute
     trigger: instant_from_agent
-    description: Calls mapping API to compute optimized stop sequence respecting time windows, then persists result to Routes table.
+    description: Calls mapping API to compute optimized stop sequence respecting time windows, service times, and vehicle and driver constraints, then persists result to Routes table.
     inputs:
       - routeId
       - stops
+      - vehicleConstraints
+      - driverConstraints
     outputs:
       - optimizedSequence
       - totalTravelTime
+      - totalDistanceMiles
       - timeWindowsRespected
       - timeSavingsMinutes
+      - perStopEtas
     steps:
       - action: list_rows
         connector: Dataverse
@@ -345,6 +377,83 @@ flows:
         connector: Dataverse
         table: Routes
         key: crd_route_id
+      - action: respond_to_agent
+
+  - name: FetchUnscheduledOrders
+    trigger: instant_from_agent
+    description: Retrieves unscheduled delivery orders from the order management system for a given driver and date and converts them to a list of route stops with addresses, time windows, service times, and priorities.
+    inputs:
+      - driverId
+      - deliveryDate
+    outputs:
+      - unscheduledStops
+      - stopCount
+    steps:
+      - action: http_get
+        connector: OrderManagementApiHttp
+        path: /orders/unscheduled
+        query:
+          driver_id: "{driverId}"
+          delivery_date: "{deliveryDate}"
+      - action: parse_json
+      - action: respond_to_agent
+
+  - name: WhatIfRouteAnalysis
+    trigger: instant_from_agent
+    description: Re-optimizes a route with a proposed additional stop and returns the impact on total travel time and per-stop ETAs without committing the change to the database.
+    inputs:
+      - routeId
+      - proposedStopAddress
+      - proposedStopTimeWindowStart
+      - proposedStopTimeWindowEnd
+      - proposedStopServiceTimeMinutes
+    outputs:
+      - newTotalTravelTime
+      - timeDeltaMinutes
+      - affectedStopEtaChanges
+      - proposedStopSequencePosition
+      - allStopsCanMeetTimeWindows
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: http_post
+        connector: MappingApiHttp
+        path: /optimize
+        body:
+          include_proposed_stop: true
+          proposed_stop_address: "{proposedStopAddress}"
+          proposed_stop_time_window_start: "{proposedStopTimeWindowStart}"
+          proposed_stop_time_window_end: "{proposedStopTimeWindowEnd}"
+          proposed_stop_service_time_minutes: "{proposedStopServiceTimeMinutes}"
+      - action: parse_json
+      - action: respond_to_agent
+
+  - name: CompareRoutes
+    trigger: instant_from_agent
+    description: Retrieves metrics for two routes and returns a side-by-side comparison including total distance, total time, stop count, estimated fuel cost, and on-time delivery probability.
+    inputs:
+      - routeIdA
+      - routeIdB
+    outputs:
+      - routeAMetrics
+      - routeBMetrics
+      - comparisonSummary
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+        filter: crd_route_id eq routeIdA
+      - action: get_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+        filter: crd_route_id eq routeIdB
+      - action: http_post
+        connector: MappingApiHttp
+        path: /route/metrics
       - action: respond_to_agent
 
   - name: CalculateRealTimeEta

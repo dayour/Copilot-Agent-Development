@@ -73,6 +73,12 @@ topics:
       - name: stops
         type: string
         required: false
+      - name: vehicle_constraints
+        type: string
+        required: false
+      - name: driver_constraints
+        type: string
+        required: false
     nodes:
       - type: question
         id: askRouteId
@@ -85,18 +91,93 @@ topics:
         input_mapping:
           routeId: =Topic.route_id
           stops: =Topic.stops
+          vehicleConstraints: =Topic.vehicle_constraints
+          driverConstraints: =Topic.driver_constraints
       - type: message
         text: |-
           Optimized route for {Topic.route_id}:
           - Stop sequence: {Topic.OptimizedSequence}
           - Estimated total travel time: {Topic.TotalTravelTime}
+          - Total distance: {Topic.TotalDistanceMiles} miles
           - Time windows respected: {Topic.TimeWindowsRespected}
           - Optimization savings vs original: {Topic.TimeSavingsMinutes} minutes
       - type: adaptive_card
         title: Route Optimization Result
         body:
           - text: "Stop-by-stop breakdown: {Topic.StopBreakdownTable}"
+          - text: "Per-stop ETAs: {Topic.PerStopEtas}"
           - text: "All time windows satisfied: {Topic.TimeWindowsRespected}"
+
+  - name: Order-Based Delivery Optimization
+    description: Fetches unscheduled delivery orders for a named driver and date from the order management system, applies vehicle and driver constraints, and returns an optimized route with a stop sequence, map link, and estimated schedule.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - optimize tomorrow's deliveries for driver
+        - schedule deliveries for driver
+        - build route for driver from orders
+        - assign deliveries to driver for today
+        - optimize unscheduled orders for driver
+    inputs:
+      - name: driver_id
+        type: string
+        required: false
+      - name: delivery_date
+        type: string
+        required: false
+      - name: vehicle_constraints
+        type: string
+        required: false
+      - name: driver_constraints
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askDriverId
+        prompt: "Which driver should I build the optimized delivery route for?"
+        variable: Topic.driver_id
+        entity: Text
+      - type: question
+        id: askDeliveryDate
+        prompt: "Which date should I optimize deliveries for? (e.g., tomorrow, 2026-03-04)"
+        variable: Topic.delivery_date
+        entity: Text
+      - type: tool
+        id: fetchOrders
+        tool_name: FetchUnscheduledOrders
+        input_mapping:
+          driverId: =Topic.driver_id
+          deliveryDate: =Topic.delivery_date
+      - type: condition
+        id: ordersCheck
+        branches:
+          - condition: =Topic.StopCount = 0
+            actions:
+              - type: message
+                text: "No unscheduled orders found for driver {Topic.driver_id} on {Topic.delivery_date}."
+        else_actions:
+          - type: tool
+            id: optimizeDeliveryRoute
+            tool_name: OptimizeRoute
+            input_mapping:
+              stops: =Topic.UnscheduledStops
+              vehicleConstraints: =Topic.vehicle_constraints
+              driverConstraints: =Topic.driver_constraints
+          - type: message
+            text: |-
+              Optimized delivery route for driver {Topic.driver_id} on {Topic.delivery_date}:
+              - Stops to visit: {Topic.StopCount}
+              - Estimated total travel time: {Topic.TotalTravelTime}
+              - Total distance: {Topic.TotalDistanceMiles} miles
+              - Time windows respected: {Topic.TimeWindowsRespected}
+          - type: adaptive_card
+            title: Delivery Route for {Topic.driver_id}
+            body:
+              - text: "Date: {Topic.delivery_date}"
+              - text: "Stop sequence: {Topic.OptimizedSequence}"
+              - text: "Per-stop ETAs: {Topic.PerStopEtas}"
+              - text: "Map link: {Topic.MapLink}"
+              - text: "Estimated schedule: {Topic.StopBreakdownTable}"
 
   - name: ETA Calculation
     description: Returns a real-time estimated time of arrival for a vehicle based on current GPS position and live traffic data.
@@ -277,6 +358,148 @@ topics:
             else_actions:
               - type: message
                 text: "No eligible driver found for route {Topic.route_id}. Reason: {Topic.AssignmentBlockedReason}. Please review driver availability and certification records."
+
+  - name: What-If Route Analysis
+    description: Re-optimizes a route with a proposed additional stop and shows the impact on total time and per-stop ETAs, allowing the dispatcher to accept or reject the change.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - what if I add a stop to this route
+        - how does adding a stop affect the route
+        - impact of adding stop at address
+        - recalculate route with extra stop
+        - what happens if I insert a stop
+    inputs:
+      - name: route_id
+        type: string
+        required: false
+      - name: proposed_stop_address
+        type: string
+        required: false
+      - name: proposed_stop_time_window_start
+        type: string
+        required: false
+      - name: proposed_stop_time_window_end
+        type: string
+        required: false
+      - name: proposed_stop_service_time_minutes
+        type: number
+        required: false
+    nodes:
+      - type: question
+        id: askRouteIdWhatIf
+        prompt: "Which route ID should I analyze for the what-if scenario?"
+        variable: Topic.route_id
+        entity: Text
+      - type: question
+        id: askProposedStop
+        prompt: "What is the address of the proposed additional stop?"
+        variable: Topic.proposed_stop_address
+        entity: Text
+      - type: tool
+        id: whatIfAnalysis
+        tool_name: WhatIfRouteAnalysis
+        input_mapping:
+          routeId: =Topic.route_id
+          proposedStopAddress: =Topic.proposed_stop_address
+          proposedStopTimeWindowStart: =Topic.proposed_stop_time_window_start
+          proposedStopTimeWindowEnd: =Topic.proposed_stop_time_window_end
+          proposedStopServiceTimeMinutes: =Topic.proposed_stop_service_time_minutes
+      - type: message
+        text: |-
+          What-if analysis for adding {Topic.proposed_stop_address} to route {Topic.route_id}:
+          - Proposed sequence position: {Topic.ProposedStopSequencePosition}
+          - New total travel time: {Topic.NewTotalTravelTime}
+          - Time impact: +{Topic.TimeDeltaMinutes} minutes
+          - All stops can meet time windows: {Topic.AllStopsCanMeetTimeWindows}
+          - Affected stop ETA changes: {Topic.AffectedStopEtaChanges}
+      - type: question
+        id: askAcceptChange
+        prompt: "Do you want to accept this change and add the stop to route {Topic.route_id}? (Yes / No)"
+        variable: Topic.accept_change
+        entity: Boolean
+      - type: condition
+        id: acceptDecision
+        branches:
+          - condition: =Topic.accept_change = true
+            actions:
+              - type: tool
+                id: applyChange
+                tool_name: OptimizeRoute
+                input_mapping:
+                  routeId: =Topic.route_id
+                  stops: =Topic.UpdatedStopList
+              - type: message
+                text: "Stop added and route {Topic.route_id} has been updated with the new optimized sequence."
+        else_actions:
+          - type: message
+            text: "No changes made. Route {Topic.route_id} remains unchanged."
+
+  - name: Route Comparison
+    description: Compares two routes side by side across total distance, total time, number of stops, fuel cost estimate, and on-time delivery probability.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - compare route A vs route B
+        - side by side route comparison
+        - which route is better
+        - compare two routes
+        - route metrics comparison
+    inputs:
+      - name: route_id_a
+        type: string
+        required: false
+      - name: route_id_b
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askRouteIdA
+        prompt: "What is the first route ID to compare?"
+        variable: Topic.route_id_a
+        entity: Text
+      - type: question
+        id: askRouteIdB
+        prompt: "What is the second route ID to compare?"
+        variable: Topic.route_id_b
+        entity: Text
+      - type: tool
+        id: compareRoutes
+        tool_name: CompareRoutes
+        input_mapping:
+          routeIdA: =Topic.route_id_a
+          routeIdB: =Topic.route_id_b
+      - type: message
+        text: |-
+          Route comparison: {Topic.route_id_a} vs {Topic.route_id_b}
+          {Topic.ComparisonSummary}
+      - type: adaptive_card
+        title: Route Comparison
+        body:
+          - text: "Route A ({Topic.route_id_a}): {Topic.RouteAMetrics}"
+          - text: "Route B ({Topic.route_id_b}): {Topic.RouteBMetrics}"
+          - columns:
+              - header: Metric
+                values:
+                  - Total distance
+                  - Total time
+                  - Number of stops
+                  - Fuel cost estimate
+                  - On-time delivery probability
+              - header: "{Topic.route_id_a}"
+                values:
+                  - "{Topic.RouteAMetrics.totalDistanceMiles} miles"
+                  - "{Topic.RouteAMetrics.totalTravelTime}"
+                  - "{Topic.RouteAMetrics.stopCount}"
+                  - "{Topic.RouteAMetrics.estimatedFuelCost}"
+                  - "{Topic.RouteAMetrics.onTimeDeliveryProbability}"
+              - header: "{Topic.route_id_b}"
+                values:
+                  - "{Topic.RouteBMetrics.totalDistanceMiles} miles"
+                  - "{Topic.RouteBMetrics.totalTravelTime}"
+                  - "{Topic.RouteBMetrics.stopCount}"
+                  - "{Topic.RouteBMetrics.estimatedFuelCost}"
+                  - "{Topic.RouteBMetrics.onTimeDeliveryProbability}"
 
   - name: Fuel Route Correlation
     description: Inserts cost-effective fuel stops into an active route when the vehicle's tank level is low, using price data from the Fuel Tracking agent.

@@ -19,6 +19,9 @@ Route Optimization Scheduler is a Copilot Studio agent that automates multi-stop
 ## Core Topics
 
 - **Route Optimization**: Multi-stop route sequencing that respects time windows and minimizes travel time
+- **Order-Based Delivery Optimization**: Fetches unscheduled orders for a driver from the order management system, applies vehicle and driver constraints, and presents an optimized route with adaptive card showing stop sequence, map link, and estimated schedule
+- **What-If Route Analysis**: Re-optimizes a route with a proposed additional stop, shows impact on total time and per-stop ETAs, and lets the dispatcher accept or reject the change
+- **Route Comparison**: Side-by-side comparison of two routes across total distance, total time, stop count, fuel cost estimate, and on-time delivery probability
 - **ETA Calculation**: Real-time arrival estimates using current vehicle position and live traffic data
 - **Re-routing Alert**: Proactive notification when a traffic delay exceeds the configured threshold
 - **HOS Compliance Check**: Validates driver hours before assigning additional routes to prevent over-hours scheduling
@@ -41,6 +44,6 @@ transportation/
 ## Solution Components
 
 - Copilot Studio agent definition and topic scaffold
-- Dataverse schema for routes, stops, driver assignments, and HOS records
-- Power Automate flow contracts for optimization, ETA, re-routing, and driver matching
-- Environment variable model for mapping API, traffic API, HOS threshold, and re-routing delay threshold
+- Dataverse schema for routes, stops (with service time and priority), driver assignments, and HOS records
+- Power Automate flow contracts for optimization, order fetching, what-if analysis, route comparison, ETA, re-routing, and driver matching
+- Environment variable model for mapping API, traffic API, telematics API, HOS system, order management system, and operational thresholds

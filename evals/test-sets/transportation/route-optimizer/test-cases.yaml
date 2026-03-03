@@ -167,3 +167,105 @@
   description: >
     Tests that the agent provides a grounded analysis of route delays and their
     contributing factors with actionable improvement suggestions.
+
+- id: trans-ro-crit-005
+  tier: critical
+  query: "Optimize tomorrow's deliveries for driver Smith"
+  expected_keywords:
+    - driver
+    - Smith
+    - optimize
+    - deliveries
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The route optimizer agent can fetch unscheduled orders for a specific driver
+    from the order management system, apply vehicle and driver constraints, and
+    return an optimized stop sequence with a map link and estimated schedule.
+  description: >
+    Verifies that the agent handles a driver-specific order-based delivery
+    optimization request and references the driver name and optimization context.
+
+- id: trans-ro-crit-006
+  tier: critical
+  query: "What if I add a stop at 123 Main St to route RT-055?"
+  expected_keywords:
+    - stop
+    - 123 Main St
+    - route
+    - RT-055
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The route optimizer agent supports what-if analysis: it can recalculate an
+    optimized route with a proposed additional stop and show the impact on total
+    time and per-stop ETAs without committing the change. The dispatcher can then
+    accept or reject the modification.
+  description: >
+    Verifies that the agent acknowledges the proposed stop address and route ID
+    for a what-if analysis scenario.
+
+- id: trans-ro-func-005
+  tier: functional
+  query: "What if I add a stop at 450 Oak Avenue to route RT-030? Show me the time impact and let me decide."
+  expected_keywords:
+    - stop
+    - Oak Avenue
+    - time
+    - impact
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The what-if route analysis topic recalculates an optimized route with a
+    proposed additional stop without persisting the change. It presents the
+    impact on total travel time and affected stop ETAs and asks the dispatcher
+    to accept or reject the modification.
+  description: >
+    Tests that the agent describes the what-if analysis process, mentions time
+    impact, and offers the dispatcher a choice to accept or reject the change.
+
+- id: trans-ro-crit-007
+  tier: critical
+  query: "Compare route RT-010 vs route RT-011"
+  expected_keywords:
+    - compare
+    - RT-010
+    - RT-011
+    - route
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The route comparison topic produces a side-by-side metrics comparison of two
+    routes including total distance, total time, number of stops, fuel cost
+    estimate, and on-time delivery probability.
+  description: >
+    Verifies that the agent identifies both route IDs and the comparison intent.
+
+- id: trans-ro-func-006
+  tier: functional
+  query: "Compare route RT-021 and RT-022. Which one has a lower fuel cost and better on-time probability?"
+  expected_keywords:
+    - compare
+    - fuel cost
+    - on-time
+    - route
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The route comparison topic retrieves metrics for two routes and returns a
+    structured side-by-side view with total distance, total time, stop count,
+    estimated fuel cost, and on-time delivery probability. The agent should
+    highlight which route performs better on the requested dimensions.
+  description: >
+    Tests that the agent can compare two routes on fuel cost and on-time delivery
+    probability and provide a recommendation based on the metrics.

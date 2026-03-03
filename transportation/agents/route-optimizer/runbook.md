@@ -55,6 +55,8 @@ This runbook defines deployment, validation, monitoring, and rollback for the Ro
 | HosApiKey | HOS system API key or token reference | `kv://hos/api-key` |
 | RerouteDelayThresholdMinutes | Delay in minutes that triggers a re-routing alert | `30` |
 | DispatchAlertEmail | Dispatch team distribution list for re-routing alerts | `fleet-dispatch@contoso.com` |
+| OrderManagementApiUrl | Order management system REST base URL | `https://api.ordermanagement.com/v1` |
+| OrderManagementApiKey | Order management API key or token reference | `kv://orders/api-key` |
 
 ## 4. Dataverse Table Provisioning
 
@@ -70,8 +72,11 @@ Provision and validate the following tables before enabling production traffic:
 1. Confirm tables are present in solution.
 2. Confirm primary keys and required columns exist.
 3. Validate data types for coordinates, timestamps, and duration fields.
-4. Validate indexes for high-read queries (`route_id`, `driver_id`, `planned_departure`).
-5. Seed test routes with multiple stops and confirm optimization flow executes correctly.
+4. Validate `service_time_minutes` and `priority` columns on the `RouteStops` table.
+5. Validate indexes for high-read queries (`route_id`, `driver_id`, `planned_departure`).
+6. Seed test routes with multiple stops and confirm optimization flow executes correctly.
+7. Verify the what-if analysis flow returns expected ETA delta without committing to the database.
+8. Verify the route comparison flow returns side-by-side metrics for two seeded routes.
 
 ## 5. Knowledge Source Configuration
 
@@ -116,6 +121,10 @@ Knowledge source recommendation:
 ### Functional Tests
 
 - [ ] Multi-stop optimization returns valid sequence — all stops visited, time windows respected, sequence is optimized
+- [ ] Order-based delivery optimization fetches unscheduled orders and returns optimized route with adaptive card
+- [ ] What-if analysis shows time delta and ETA impact for proposed stop without modifying the route
+- [ ] What-if acceptance commits the new stop and re-optimizes the route
+- [ ] Route comparison returns side-by-side metrics for total distance, total time, stop count, fuel cost, and on-time probability
 - [ ] Real-time ETA calculation matches expected arrival — ETA within acceptable tolerance based on current position and traffic
 - [ ] Re-routing triggers on traffic delay — proactive notification sent when delay exceeds threshold (e.g., 30 min)
 - [ ] Constraint engine prevents over-hours scheduling — driver exceeding HOS limits is not assigned additional routes
@@ -123,7 +132,10 @@ Knowledge source recommendation:
 
 ### Integration Tests
 
-- [ ] Optimization flow queries mapping API and returns a valid sequenced stop list
+- [ ] Optimization flow queries mapping API and returns a valid sequenced stop list with per-stop ETAs
+- [ ] Order fetch flow retrieves unscheduled orders from order management API for a given driver and date
+- [ ] What-if flow calls mapping API with proposed stop and returns time delta and ETA changes without a Dataverse write
+- [ ] Route comparison flow returns metrics from mapping API and Dataverse for both routes
 - [ ] ETA calculation flow reads vehicle GPS position from telematics API and applies live traffic data
 - [ ] Re-routing alert flow fires within configured threshold and posts to dispatch channel
 - [ ] HOS compliance check flow reads from HOS system and blocks assignment when limit is reached
