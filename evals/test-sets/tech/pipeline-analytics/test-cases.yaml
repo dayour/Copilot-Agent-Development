@@ -1,0 +1,285 @@
+# Test cases for tech/pipeline-analytics agent
+# Covers pipeline summary, deal health check, deal coaching, forecast roll-up,
+# and win/loss analysis topics.
+#
+# Tiers:
+#   critical      -- pipeline and forecast queries that must always succeed
+#   functional    -- deal health, coaching, and win/loss graded by LLM judge
+#   conversational -- multi-turn deal coaching scenarios
+
+- id: tech-pa-crit-001
+  tier: critical
+  query: "Show me my pipeline."
+  expected_keywords:
+    - pipeline
+    - stage
+    - weighted
+    - forecast
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The pipeline analytics agent retrieves the calling user's Salesforce pipeline.
+    A pipeline summary must include total pipeline value, breakdown by stage,
+    weighted forecast applying stage probability, and deals closing this month.
+  description: >
+    Verifies that the agent returns a pipeline response referencing stage breakdown
+    and weighted forecast.
+
+- id: tech-pa-crit-002
+  tier: critical
+  query: "How is the Contoso deal going?"
+  expected_keywords:
+    - Contoso
+    - stage
+    - activity
+    - risk
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The pipeline analytics agent assesses deal health for a named Salesforce
+    opportunity. A deal health response must include the stage, recent activity
+    recency, and a risk level of High, Medium, or Low.
+  description: >
+    Verifies that the agent returns a deal health response referencing the
+    opportunity name, activity recency, and risk level.
+
+- id: tech-pa-crit-003
+  tier: critical
+  query: "What is the team forecast for Q3?"
+  expected_keywords:
+    - forecast
+    - Q3
+    - weighted
+    - rep
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The pipeline analytics agent produces a forecast roll-up for the requested
+    quarter. The response must include a weighted forecast total and a per-rep
+    or team-level breakdown.
+  description: >
+    Verifies that the agent returns a forecast roll-up that references the
+    requested quarter and includes weighted forecast data.
+
+- id: tech-pa-crit-004
+  tier: critical
+  query: "Why did we lose deals last quarter?"
+  expected_keywords:
+    - loss
+    - reasons
+    - competitor
+    - deals
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The pipeline analytics agent queries Salesforce Closed Lost opportunities for
+    the specified period and returns aggregated loss reasons and competitor win
+    counts. The response must reference loss reasons and competitor patterns.
+  description: >
+    Verifies that the agent returns a win/loss analysis referencing loss reasons
+    and competitor patterns.
+
+- id: tech-pa-func-001
+  tier: functional
+  query: "Give me my pipeline snapshot including deals closing this month."
+  expected_keywords:
+    - pipeline
+    - closing
+    - month
+    - stage
+    - weighted
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The pipeline analytics agent retrieves pipeline data from Salesforce for the
+    calling user. A complete pipeline snapshot includes total pipeline value,
+    stage breakdown with deal counts and amounts, weighted forecast using stage
+    probability, and deals with close dates in the current calendar month.
+  description: >
+    Tests that the agent returns a complete pipeline snapshot that addresses
+    all requested dimensions including stage breakdown and closing-this-month deals.
+
+- id: tech-pa-func-002
+  tier: functional
+  query: "Check the health of the Fabrikam renewal deal and tell me if I should be worried."
+  expected_keywords:
+    - Fabrikam
+    - activity
+    - stakeholder
+    - risk
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The pipeline analytics agent assesses deal health for named Salesforce
+    opportunities. Health signals include activity recency in days since last
+    logged task or event, stakeholder engagement score based on contact activity,
+    competitor mentions from notes and tasks, and a computed risk level.
+    High risk is triggered when last activity exceeds 14 days, stakeholder score
+    is low, or competitor threats are present.
+  description: >
+    Tests that the agent returns a deal health assessment for a named opportunity
+    with actionable risk context and relevant health signals.
+
+- id: tech-pa-func-003
+  tier: functional
+  query: "Coach me on the Northwind deal. I haven't touched it in a while."
+  expected_keywords:
+    - Northwind
+    - activity
+    - coaching
+    - close rate
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The pipeline analytics agent provides deal coaching based on activity patterns
+    and historical close-rate data. When a rep has not logged activity in 14 or
+    more days, the agent should surface the inactivity duration, its estimated
+    impact on close rate, and specific recommended next actions such as scheduling
+    a check-in call or adding a stakeholder touchpoint.
+  description: >
+    Tests that the agent delivers a data-driven coaching message that references
+    activity recency and recommended actions for the named deal.
+
+- id: tech-pa-func-004
+  tier: functional
+  query: "Roll up the team forecast for Q4 by rep. I need weighted and best-case numbers."
+  expected_keywords:
+    - Q4
+    - weighted
+    - best-case
+    - rep
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The pipeline analytics agent aggregates team pipeline by rep for the specified
+    quarter. Historical stage-conversion rates are applied from Dataverse to
+    compute weighted forecast. Best-case forecast includes all open pipeline at
+    100 percent. The response should present both totals and a rep-level breakdown.
+  description: >
+    Tests that the agent returns a forecast roll-up with both weighted and
+    best-case values broken down by rep for the requested quarter.
+
+- id: tech-pa-func-005
+  tier: functional
+  query: "Analyze our losses from last quarter and tell me which competitors are beating us."
+  expected_keywords:
+    - loss
+    - competitor
+    - quarter
+    - reasons
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The pipeline analytics agent queries Salesforce Closed Lost opportunities
+    for the requested quarter. It aggregates loss reason codes from the opportunity
+    record, counts wins by competitor name from the competitor field, and
+    identifies patterns such as deal size, industry, or sales cycle length
+    that appear frequently in lost deals.
+  description: >
+    Tests that the agent returns a meaningful win/loss analysis surfacing specific
+    competitor names and loss reason patterns from the requested period.
+
+- id: tech-pa-conv-001
+  tier: conversational
+  query: "I'm worried about my Q3 number. Can you help me figure out where I stand?"
+  expected_keywords:
+    - pipeline
+    - forecast
+    - Q3
+    - stage
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    First turn of a multi-turn pipeline review conversation. The rep is expressing
+    concern about their quarterly number. The agent should offer to pull a pipeline
+    summary and forecast roll-up and prompt for any additional context such as
+    specific deals of concern.
+  description: >
+    First turn of a multi-turn pipeline conversation. Tests that the agent
+    proactively offers pipeline and forecast data and invites further exploration.
+
+- id: tech-pa-conv-002
+  tier: conversational
+  query: "The Tailwind Traders deal is my biggest risk. What does the data say?"
+  expected_keywords:
+    - Tailwind Traders
+    - activity
+    - risk
+    - stakeholder
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Second turn of the pipeline review conversation. The rep has identified a
+    specific at-risk deal. The agent should retrieve and present deal health
+    signals for Tailwind Traders including activity recency, stakeholder engagement,
+    competitor mentions, and risk level.
+  description: >
+    Second turn of the pipeline conversation. Tests context retention and
+    ability to pivot to a deal-level health assessment.
+
+- id: tech-pa-conv-003
+  tier: conversational
+  query: "What should I do to get this deal back on track?"
+  expected_keywords:
+    - coaching
+    - activity
+    - recommend
+    - actions
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Third turn of the pipeline review conversation. Following the deal health
+    assessment, the rep is asking for coaching recommendations. The agent should
+    deliver data-driven coaching referencing the activity gap and suggest specific
+    next actions such as scheduling a call, adding a new stakeholder, or requesting
+    a competitive battlecard.
+  description: >
+    Third turn of the pipeline conversation. Tests that the agent delivers
+    actionable coaching recommendations building on the previous deal health context.

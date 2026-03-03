@@ -1,0 +1,276 @@
+schemaVersion: 1.0
+agent:
+  name: Pipeline Analytics and Deal Coaching
+  vertical: Tech
+  orchestrationMode: generative
+  description: >
+    Internal sales intelligence agent for pipeline visibility, deal health assessment,
+    data-driven coaching, forecast roll-up, and win/loss analysis via Salesforce CRM.
+  defaultLanguage: en-US
+  channels:
+    internal:
+      name: teams
+      audience: sales-managers-and-reps
+
+variables:
+  global:
+    - name: Global.SalesforceUserId
+      type: string
+      description: Salesforce user ID of the authenticated caller, used to scope pipeline and forecast queries.
+    - name: Global.UserDisplayName
+      type: string
+      description: Display name of the authenticated user, used in response messages.
+  topic:
+    - name: Topic.DealName
+      type: string
+    - name: Topic.QuarterLabel
+      type: string
+    - name: Topic.RiskLevel
+      type: string
+    - name: Topic.LastActivityDays
+      type: number
+    - name: Topic.StakeholderEngagementScore
+      type: number
+    - name: Topic.CompetitorMentions
+      type: string
+    - name: Topic.CoachingMessage
+      type: string
+    - name: Topic.LossQuarter
+      type: string
+
+tools:
+  - name: GetPipelineSummary
+    type: flow
+    description: >
+      Retrieves Salesforce pipeline for the calling user. Returns total pipeline value,
+      deal count by stage, weighted forecast, and deals closing in the current month.
+  - name: GetDealHealthData
+    type: flow
+    description: >
+      Returns health signals for a named Salesforce opportunity including activity
+      recency in days, stakeholder engagement score, competitor mentions, and
+      computed risk level.
+  - name: GetDealCoachingContext
+    type: flow
+    description: >
+      Retrieves deal-specific coaching context by comparing current deal behavior
+      against historical close-rate patterns stored in Dataverse.
+  - name: GetForecastRollUp
+    type: flow
+    description: >
+      Aggregates team pipeline by rep for the specified quarter, applies historical
+      stage-conversion rates from Dataverse, and returns weighted and best-case
+      forecast values per rep and in total.
+  - name: GetWinLossAnalysis
+    type: flow
+    description: >
+      Queries Salesforce Closed Lost opportunities for the specified quarter and
+      returns aggregated loss reasons, competitor win frequency, and common
+      deal characteristics of lost opportunities.
+
+topics:
+  - name: Pipeline Summary
+    description: >
+      Returns total pipeline value, deal count by stage, weighted forecast, and
+      deals closing this month for the calling seller. Use when the user asks
+      about their pipeline, pipeline snapshot, or pipeline by stage.
+    triggerPhrases:
+      - show me my pipeline
+      - pipeline summary
+      - what is my pipeline
+      - pipeline by stage
+      - how much pipeline do I have
+    flow:
+      - kind: InvokeTool
+        id: fetchPipeline
+        tool: GetPipelineSummary
+        inputs:
+          sellerId: =User.Id
+        outputs:
+          - name: totalPipelineValue
+            variable: Topic.TotalPipelineValue
+          - name: stageBreakdown
+            variable: Topic.StageBreakdown
+          - name: weightedForecast
+            variable: Topic.WeightedForecast
+          - name: closingThisMonth
+            variable: Topic.ClosingThisMonth
+      - kind: SendMessage
+        message: >
+          Pipeline snapshot for {Global.UserDisplayName}:
+
+          Total pipeline value: {Topic.TotalPipelineValue}
+          Weighted forecast: {Topic.WeightedForecast}
+          Deals closing this month: {Topic.ClosingThisMonth}
+
+          Stage breakdown: {Topic.StageBreakdown}
+
+  - name: Deal Health Check
+    description: >
+      Assesses the health of a named Salesforce opportunity by evaluating activity
+      recency, stakeholder engagement score, competitor mentions, and risk level.
+      Use when the user asks how a specific deal is going or wants a deal status.
+    triggerPhrases:
+      - how is the contoso deal going
+      - check deal health
+      - deal status for
+      - how is my deal with
+      - health check on the deal
+    flow:
+      - kind: Question
+        id: askDealName
+        variable: Topic.DealName
+        prompt: Which deal should I assess? Please give me the opportunity name.
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        id: fetchDealHealth
+        tool: GetDealHealthData
+        inputs:
+          opportunityName: =Topic.DealName
+        outputs:
+          - name: activityRecencyDays
+            variable: Topic.LastActivityDays
+          - name: stakeholderEngagementScore
+            variable: Topic.StakeholderEngagementScore
+          - name: competitorMentions
+            variable: Topic.CompetitorMentions
+          - name: riskLevel
+            variable: Topic.RiskLevel
+          - name: stage
+            variable: Topic.DealStage
+          - name: amount
+            variable: Topic.DealAmount
+          - name: closeDate
+            variable: Topic.DealCloseDate
+      - kind: SendMessage
+        message: >
+          Deal health for {Topic.DealName}:
+
+          Stage: {Topic.DealStage} | Amount: {Topic.DealAmount} | Close date: {Topic.DealCloseDate}
+          Last activity: {Topic.LastActivityDays} days ago
+          Stakeholder engagement score: {Topic.StakeholderEngagementScore}
+          Competitor mentions: {Topic.CompetitorMentions}
+          Risk level: {Topic.RiskLevel}
+
+  - name: Deal Coaching
+    description: >
+      Provides data-driven coaching for a named deal by identifying activity gaps,
+      stakeholder coverage risks, and correlating current deal behaviors with
+      historical close-rate outcomes. Use when the user asks for coaching,
+      recommendations, or next steps on a specific deal.
+    triggerPhrases:
+      - coach me on this deal
+      - what should I do with this deal
+      - give me coaching on
+      - deal recommendations for
+      - how can I improve my chances on
+    flow:
+      - kind: Question
+        id: askDealForCoaching
+        variable: Topic.DealName
+        prompt: Which deal would you like coaching on?
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        id: fetchCoachingContext
+        tool: GetDealCoachingContext
+        inputs:
+          opportunityName: =Topic.DealName
+          sellerId: =User.Id
+        outputs:
+          - name: coachingMessage
+            variable: Topic.CoachingMessage
+          - name: activityGapDays
+            variable: Topic.LastActivityDays
+          - name: closeRateImpactPct
+            variable: Topic.CloseRateImpact
+          - name: recommendedActions
+            variable: Topic.RecommendedActions
+      - kind: SendMessage
+        message: >
+          Deal coaching for {Topic.DealName}:
+
+          {Topic.CoachingMessage}
+
+          Recommended next actions: {Topic.RecommendedActions}
+
+  - name: Forecast Roll-Up
+    description: >
+      Aggregates the team pipeline by sales rep for a specified quarter, applies
+      historical stage-conversion rates, and returns weighted and best-case forecast
+      values. Use when the user asks about team forecast, quarterly forecast, or
+      rep-level pipeline rollup.
+    triggerPhrases:
+      - what is the team forecast for q3
+      - forecast roll-up
+      - team forecast
+      - quarterly forecast by rep
+      - forecast for this quarter
+    flow:
+      - kind: Question
+        id: askQuarter
+        variable: Topic.QuarterLabel
+        prompt: Which quarter should I pull the forecast for? For example, Q3 FY2026.
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        id: fetchForecast
+        tool: GetForecastRollUp
+        inputs:
+          quarter: =Topic.QuarterLabel
+          managerId: =User.Id
+        outputs:
+          - name: repForecasts
+            variable: Topic.RepForecasts
+          - name: totalWeightedForecast
+            variable: Topic.TotalWeightedForecast
+          - name: totalBestCaseForecast
+            variable: Topic.TotalBestCaseForecast
+      - kind: SendMessage
+        message: >
+          Forecast roll-up for {Topic.QuarterLabel}:
+
+          Total weighted forecast: {Topic.TotalWeightedForecast}
+          Total best-case forecast: {Topic.TotalBestCaseForecast}
+
+          Rep breakdown: {Topic.RepForecasts}
+
+  - name: Win/Loss Analysis
+    description: >
+      Queries Salesforce Closed Lost opportunities for a specified period and
+      surfaces the most common loss reasons, competitors that won, and patterns
+      shared across lost deals. Use when the user asks why deals were lost,
+      loss analysis, or competitive loss patterns.
+    triggerPhrases:
+      - why did we lose deals last quarter
+      - win loss analysis
+      - what are our top loss reasons
+      - why are we losing to competitors
+      - loss analysis for last quarter
+    flow:
+      - kind: Question
+        id: askLossQuarter
+        variable: Topic.LossQuarter
+        prompt: Which quarter should I analyze for losses? For example, Q2 FY2026.
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        id: fetchWinLoss
+        tool: GetWinLossAnalysis
+        inputs:
+          quarter: =Topic.LossQuarter
+          managerId: =User.Id
+        outputs:
+          - name: topLossReasons
+            variable: Topic.TopLossReasons
+          - name: competitorWinCounts
+            variable: Topic.CompetitorWinCounts
+          - name: totalDealsLost
+            variable: Topic.TotalDealsLost
+          - name: commonDealCharacteristics
+            variable: Topic.CommonLossCharacteristics
+      - kind: SendMessage
+        message: >
+          Win/loss analysis for {Topic.LossQuarter}:
+
+          Total deals lost: {Topic.TotalDealsLost}
+          Top loss reasons: {Topic.TopLossReasons}
+          Competitor wins: {Topic.CompetitorWinCounts}
+          Common characteristics: {Topic.CommonLossCharacteristics}

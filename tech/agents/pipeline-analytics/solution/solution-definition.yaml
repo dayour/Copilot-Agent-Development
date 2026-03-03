@@ -1,0 +1,201 @@
+schemaVersion: 1.0
+solution:
+  name: TechPipelineAnalytics
+  display_name: "Tech - Pipeline Analytics and Deal Coaching"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Copilot Studio solution for internal sales pipeline visibility, deal health
+    assessment, data-driven deal coaching, forecast roll-up, and win/loss analysis
+    via Salesforce CRM integration.
+
+environment_variables:
+  - name: SalesforceClientId
+    display_name: Salesforce Client ID
+    type: string
+    description: Salesforce Connected App client ID (Consumer Key).
+    default_value: ""
+
+  - name: SalesforceClientSecret
+    display_name: Salesforce Client Secret
+    type: secret
+    description: Salesforce Connected App client secret (Consumer Secret).
+    default_value: ""
+
+  - name: SalesforceInstanceUrl
+    display_name: Salesforce Instance URL
+    type: string
+    description: Salesforce instance base URL, for example https://company.my.salesforce.com.
+    default_value: ""
+
+  - name: ForecastHistoryTableName
+    display_name: Forecast History Table Name
+    type: string
+    description: Dataverse table logical name storing historical stage-conversion rates for weighted forecast.
+    default_value: "crf_StageConversionRates"
+
+  - name: CoachingThresholdDays
+    display_name: Coaching Inactivity Threshold (Days)
+    type: string
+    description: Number of days without a logged activity before a coaching nudge is triggered.
+    default_value: "14"
+
+components:
+  agents:
+    - name: PipelineAnalyticsDealCoaching
+      template_file: ../templates/agent-template.yaml
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: GetPipelineSummary
+      description: >
+        Queries Salesforce for the calling user's open opportunities. Returns total
+        pipeline value, deal count by stage, weighted forecast applying stage
+        probability, and deals with close dates in the current calendar month.
+      trigger: copilot_studio_topic_action
+      connector: salesforce
+      inputs:
+        - sellerId
+      outputs:
+        - totalPipelineValue
+        - stageBreakdown
+        - weightedForecast
+        - closingThisMonth
+
+    - name: GetDealHealthData
+      description: >
+        Returns health signals for a named Salesforce opportunity: activity recency
+        in days since last logged Task or Event, stakeholder engagement score based
+        on Contact activity, competitor mentions parsed from opportunity notes and
+        tasks, and a computed risk level of High, Medium, or Low.
+      trigger: copilot_studio_topic_action
+      connector: salesforce
+      inputs:
+        - opportunityName
+      outputs:
+        - stage
+        - amount
+        - closeDate
+        - activityRecencyDays
+        - stakeholderEngagementScore
+        - competitorMentions
+        - riskLevel
+
+    - name: GetDealCoachingContext
+      description: >
+        Compares current deal behavior against historical patterns in Dataverse.
+        Returns a coaching message, activity gap in days, estimated close-rate
+        impact percentage, and recommended next actions.
+      trigger: copilot_studio_topic_action
+      connectors:
+        - salesforce
+        - dataverse
+      inputs:
+        - opportunityName
+        - sellerId
+      outputs:
+        - coachingMessage
+        - activityGapDays
+        - closeRateImpactPct
+        - recommendedActions
+
+    - name: GetForecastRollUp
+      description: >
+        Aggregates open opportunities by owner for the specified quarter. Applies
+        historical stage-conversion rates from Dataverse to compute weighted
+        forecast per rep. Returns total weighted forecast, total best-case
+        forecast, and a per-rep breakdown.
+      trigger: copilot_studio_topic_action
+      connectors:
+        - salesforce
+        - dataverse
+      inputs:
+        - quarter
+        - managerId
+      outputs:
+        - repForecasts
+        - totalWeightedForecast
+        - totalBestCaseForecast
+
+    - name: GetWinLossAnalysis
+      description: >
+        Queries Salesforce Closed Lost opportunities for the specified quarter.
+        Aggregates loss reason codes, counts competitor wins by competitor name,
+        and identifies common characteristics across lost deals.
+      trigger: copilot_studio_topic_action
+      connector: salesforce
+      inputs:
+        - quarter
+        - managerId
+      outputs:
+        - topLossReasons
+        - competitorWinCounts
+        - totalDealsLost
+        - commonDealCharacteristics
+
+dataverse:
+  tables:
+    - logicalName: crf_StageConversionRates
+      displayName: Stage Conversion Rates
+      description: >
+        Historical stage-to-close conversion rates used by the forecast roll-up
+        flow to produce weighted and best-case forecast values.
+      columns:
+        - name: crf_conversionid
+          type: guid
+          required: true
+        - name: crf_stagename
+          type: string
+          maxLength: 100
+        - name: crf_conversionratepct
+          type: decimal
+        - name: crf_sampleperiod
+          type: string
+          maxLength: 50
+        - name: crf_lastupdated
+          type: datetime
+
+    - logicalName: crf_DealCoachingPatterns
+      displayName: Deal Coaching Patterns
+      description: >
+        Baseline patterns derived from historical closed deals. Used to generate
+        coaching nudges and close-rate impact estimates.
+      columns:
+        - name: crf_patternid
+          type: guid
+          required: true
+        - name: crf_patterntype
+          type: string
+          maxLength: 100
+        - name: crf_inactivitythresholddays
+          type: wholeNumber
+        - name: crf_closerateimpactpct
+          type: decimal
+        - name: crf_coachingmessagetemplate
+          type: multiline
+        - name: crf_lastupdated
+          type: datetime
+
+connections:
+  - connector: salesforce
+    display_name: Salesforce
+  - connector: dataverse
+    display_name: Microsoft Dataverse
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+
+agentDefinition:
+  templatePath: ../templates/agent-template.yaml
+  topicCoverage:
+    - Pipeline Summary
+    - Deal Health Check
+    - Deal Coaching
+    - Forecast Roll-Up
+    - Win/Loss Analysis
