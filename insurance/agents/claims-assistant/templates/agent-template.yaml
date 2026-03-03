@@ -26,6 +26,8 @@ global_variables:
     type: boolean
   - name: conversation_summary
     type: string
+  - name: compliance_event_logged
+    type: boolean
 
 topics:
   - name: Greeting
@@ -75,8 +77,44 @@ topics:
           line_of_business: "{line_of_business}"
         output:
           required_disclosure_text: required_disclosure_text
+          right_to_appraisal_disclosure_text: right_to_appraisal_disclosure_text
+          documentation_requirements: documentation_requirements
       - type: message
         text: "{required_disclosure_text}"
+      - type: question
+        variable: fraud_disclosure_acknowledged
+        prompt: Do you confirm you have read and understood the above statement?
+        entity: choice
+        options: [yes, no]
+      - type: message
+        text: "{right_to_appraisal_disclosure_text}"
+      - type: question
+        variable: appraisal_disclosure_acknowledged
+        prompt: Do you confirm you have read and understood the above statement?
+        entity: choice
+        options: [yes, no]
+      - type: action
+        action: LogComplianceEvent
+        input:
+          claim_reference: "{claim_reference}"
+          conversation_id: "{System.Conversation.Id}"
+          event_type: "disclosure_delivered"
+          disclosure_text: "{required_disclosure_text}"
+          customer_acknowledged: "{fraud_disclosure_acknowledged}"
+          handler_user_id: "{User.Id}"
+        output:
+          compliance_event_logged: compliance_event_logged
+      - type: action
+        action: LogComplianceEvent
+        input:
+          claim_reference: "{claim_reference}"
+          conversation_id: "{System.Conversation.Id}"
+          event_type: "appraisal_disclosure_delivered"
+          disclosure_text: "{right_to_appraisal_disclosure_text}"
+          customer_acknowledged: "{appraisal_disclosure_acknowledged}"
+          handler_user_id: "{User.Id}"
+        output:
+          compliance_event_logged: compliance_event_logged
       - type: question
         variable: incident_date
         prompt: What date did the incident occur?
@@ -166,6 +204,23 @@ topics:
         output:
           claim_reference: claim_reference
           intake_sla_due: intake_sla_due
+      - type: action
+        action: LogComplianceEvent
+        input:
+          claim_reference: "{claim_reference}"
+          conversation_id: "{System.Conversation.Id}"
+          event_type: "fnol_submitted"
+          disclosure_text: ""
+          customer_acknowledged: "yes"
+          handler_user_id: "{User.Id}"
+        output:
+          compliance_event_logged: compliance_event_logged
+      - type: action
+        action: RedactConversationLog
+        input:
+          conversation_id: "{System.Conversation.Id}"
+          claim_reference: "{claim_reference}"
+        output: {}
       - type: message
         text: >
           Your claim has been created. Claim number: {claim_reference}.
@@ -335,6 +390,143 @@ topics:
         text: >
           Catastrophe mode is now active for {cat_event_name}.
           Routing profile {cat_routing_profile} has been applied.
+
+  - name: Required Disclosures
+    description: >
+      Delivers state-required disclosures on demand including fraud warning statements
+      and right to independent appraisal, and logs each delivery with customer acknowledgment to the compliance audit trail.
+    trigger_phrases:
+      - What disclosures apply to my claim?
+      - Show me the required disclosures
+      - Tell me about my right to appraisal
+      - What are my rights as a policyholder?
+    steps:
+      - type: question
+        variable: claim_reference
+        prompt: Please provide your claim number so I can retrieve the applicable state disclosures.
+      - type: action
+        action: LookupStateDisclosure
+        input:
+          state_code: "{customer_state}"
+          line_of_business: "{line_of_business}"
+        output:
+          required_disclosure_text: required_disclosure_text
+          right_to_appraisal_disclosure_text: right_to_appraisal_disclosure_text
+          documentation_requirements: documentation_requirements
+      - type: message
+        text: "{required_disclosure_text}"
+      - type: question
+        variable: fraud_disclosure_acknowledged
+        prompt: Do you confirm you have read and understood the above statement?
+        entity: choice
+        options: [yes, no]
+      - type: message
+        text: "{right_to_appraisal_disclosure_text}"
+      - type: question
+        variable: appraisal_disclosure_acknowledged
+        prompt: Do you confirm you have read and understood the above statement?
+        entity: choice
+        options: [yes, no]
+      - type: message
+        text: "Documentation requirements for your claim: {documentation_requirements}"
+      - type: action
+        action: LogComplianceEvent
+        input:
+          claim_reference: "{claim_reference}"
+          conversation_id: "{System.Conversation.Id}"
+          event_type: "disclosure_delivered"
+          disclosure_text: "{required_disclosure_text}"
+          customer_acknowledged: "{fraud_disclosure_acknowledged}"
+          handler_user_id: "{User.Id}"
+        output:
+          compliance_event_logged: compliance_event_logged
+      - type: action
+        action: LogComplianceEvent
+        input:
+          claim_reference: "{claim_reference}"
+          conversation_id: "{System.Conversation.Id}"
+          event_type: "appraisal_disclosure_delivered"
+          disclosure_text: "{right_to_appraisal_disclosure_text}"
+          customer_acknowledged: "{appraisal_disclosure_acknowledged}"
+          handler_user_id: "{User.Id}"
+        output:
+          compliance_event_logged: compliance_event_logged
+
+  - name: Data Subject Request
+    description: >
+      Handles policyholder privacy requests including right-to-access and right-to-erasure
+      in compliance with applicable data protection regulations. Routes erasure requests through
+      the approved deletion workflow for legally permitted jurisdictions.
+    trigger_phrases:
+      - I want to access my personal data
+      - Delete my personal information
+      - What data do you have about me?
+      - I want to be forgotten
+    steps:
+      - type: question
+        variable: privacy_request_type
+        prompt: Are you requesting access to your personal data or deletion of your personal data?
+        entity: choice
+        options: [access, deletion]
+      - type: question
+        variable: policy_number
+        prompt: Please provide your policy number to verify your identity.
+      - type: condition
+        expression: "{privacy_request_type} = 'access'"
+        then:
+          - type: action
+            action: GetPiiDataSummary
+            input:
+              policy_number: "{policy_number}"
+              user_id: "{User.Id}"
+            output:
+              pii_summary: pii_summary
+          - type: message
+            text: >
+              Based on your policy number, the following personal data is held: {pii_summary}.
+              Data is used solely for claims handling, compliance, and fraud detection purposes.
+          - type: action
+            action: LogComplianceEvent
+            input:
+              claim_reference: ""
+              conversation_id: "{System.Conversation.Id}"
+              event_type: "data_access_request"
+              disclosure_text: ""
+              customer_acknowledged: "yes"
+              handler_user_id: "{User.Id}"
+            output:
+              compliance_event_logged: compliance_event_logged
+      - type: condition
+        expression: "{privacy_request_type} = 'deletion'"
+        then:
+          - type: message
+            text: >
+              Your deletion request has been received. Deletion is subject to legal retention
+              obligations. Where permitted, your personal data will be removed from operational
+              stores within the timeframe required by applicable law.
+          - type: action
+            action: SubmitErasureRequest
+            input:
+              policy_number: "{policy_number}"
+              user_id: "{User.Id}"
+              conversation_id: "{System.Conversation.Id}"
+            output:
+              erasure_request_id: erasure_request_id
+          - type: action
+            action: LogComplianceEvent
+            input:
+              claim_reference: ""
+              conversation_id: "{System.Conversation.Id}"
+              event_type: "data_erasure_request"
+              disclosure_text: ""
+              customer_acknowledged: "yes"
+              handler_user_id: "{User.Id}"
+            output:
+              compliance_event_logged: compliance_event_logged
+          - type: message
+            text: >
+              Your erasure request has been submitted. Reference ID: {erasure_request_id}.
+              You will be notified when the request is completed.
 
   - name: Escalation
     description: >

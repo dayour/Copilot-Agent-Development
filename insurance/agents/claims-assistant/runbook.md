@@ -64,7 +64,11 @@ This runbook defines deployment, compliance configuration, validation, and opera
    - `AcknowledgementDueDays`
    - `PaymentDueDaysFromProof`
    - `RequiredFraudDisclosureText`
+   - `RightToAppraisalDisclosureText`
+   - `AdditionalMandatoryDisclosures`
+   - `DocumentationRequirements`
    - `EscalationThresholdHours`
+   - `EffectiveDate`
 3. Validate table integrity with mandatory-field and duplicate-key checks.
 4. Publish and smoke-test disclosure rendering in FNOL.
 
@@ -87,12 +91,38 @@ This runbook defines deployment, compliance configuration, validation, and opera
 3. Schedule monitoring flow at 15-minute interval.
 4. Publish Teams notifications for handler queues nearing breach.
 
-### 7. Configure authentication and channels
+### 7. Configure compliance audit trail
+1. Enable Dataverse table `ComplianceLog`.
+2. Ensure Dataverse auditing is active for the `ComplianceLog` table.
+3. Confirm that the `LogComplianceEvent` flow is enabled and writing records that include:
+   - `ClaimReference`
+   - `ConversationId`
+   - `EventType` (disclosure_delivered, appraisal_disclosure_delivered, fnol_submitted, data_access_request, data_erasure_request)
+   - `DisclosureText`
+   - `CustomerAcknowledged`
+   - `AcknowledgedOn`
+   - `HandlerUserId`
+   - `Timestamp`
+4. Run a test FNOL conversation and verify that two disclosure records and one FNOL submission record appear in `ComplianceLog`.
+
+### 8. Configure regulatory report export
+1. Set the `RegulatoryReportStorageUrl` environment variable to the approved storage destination for state insurance department submissions.
+2. Set the `ComplianceReportRecipientEmail` environment variable to the compliance officer distribution list.
+3. Enable the `RegulatoryReportExport` flow, which runs weekly and exports claims and compliance audit data in state-required formats.
+4. Confirm test export runs successfully and the notification email is received.
+
+### 9. Configure PII redaction
+1. Set `PiiRedactionEnabled` environment variable to `true` for all production environments.
+2. Confirm the `RedactConversationLog` flow is enabled and applies redaction to PII fields in conversation log exports before long-term storage.
+3. Validate that `PiiDataClassification` is populated on `ClaimRecords` rows and that redaction honours classification levels.
+4. Review field-level security on the `ComplianceLog` and `ClaimRecords` tables to enforce least privilege for each role.
+
+### 10. Configure authentication and channels
 1. External channel: configure Azure AD B2C for policyholder web portal access.
 2. Internal channel: configure Azure AD tenant restriction for Teams handlers.
 3. Validate role-based access for handler-only topics (SLA status, CAT mode).
 
-### 8. Publish
+### 11. Publish
 1. Publish to custom website channel for policyholder intake.
 2. Publish to Teams for claims handlers and supervisors.
 3. Run post-publish smoke tests in both channels.
@@ -110,13 +140,22 @@ This runbook defines deployment, compliance configuration, validation, and opera
 
 ### Regulatory and compliance validation
 - [ ] State-required fraud disclosure text is rendered for all supported states.
+- [ ] Right-to-appraisal disclosure text is rendered and customer acknowledgment is captured.
+- [ ] Documentation requirements are returned from `StateComplianceRules` for each state and line.
 - [ ] Acknowledgment SLA is computed correctly by state rule.
 - [ ] Payment SLA is computed correctly after proof-of-loss received event.
 - [ ] Handler SLA dashboard identifies AtRisk and Breach claims.
 - [ ] Coverage denial intent is blocked from agent completion and escalated to human workflow.
+- [ ] Every FNOL submission writes disclosure and FNOL-submitted records to `ComplianceLog`.
+- [ ] Required Disclosures topic writes acknowledgment records to `ComplianceLog`.
+- [ ] Regulatory report export runs on schedule and delivers output to the configured storage location.
 
 ### Security and privacy validation
 - [ ] PII fields are masked in logs where required.
+- [ ] `RedactConversationLog` flow applies PII redaction before long-term storage when `PiiRedactionEnabled` is true.
+- [ ] `PiiDataClassification` is set correctly on all new `ClaimRecords` rows.
+- [ ] Data Subject Request topic processes access requests and returns a PII summary.
+- [ ] Data Subject Request topic submits erasure requests and logs the event to `ComplianceLog`.
 - [ ] Conversation transcripts follow configured retention period.
 - [ ] Right-to-erasure workflow removes eligible personal data from operational stores.
 - [ ] Access to fraud scoring and legal notes is restricted to authorized handler roles.

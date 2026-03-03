@@ -167,3 +167,87 @@
   description: >
     Tests that the agent explains fraud prevention measures in a professional,
     non-accusatory tone while providing factually accurate information.
+
+- id: ins-ca-crit-005
+  tier: critical
+  query: "Show me the required disclosures for my auto claim in Texas."
+  expected_keywords:
+    - disclosure
+    - fraud
+    - appraisal
+    - acknowledge
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Required Disclosures topic delivers state-required fraud warning statements
+    and right-to-independent-appraisal disclosures, then captures customer acknowledgment
+    and writes a record to the ComplianceLog table.
+  description: >
+    Verifies that the agent delivers required disclosures and prompts for customer
+    acknowledgment, satisfying state regulatory mandates.
+
+- id: ins-ca-crit-006
+  tier: critical
+  query: "I want to delete all my personal information."
+  expected_keywords:
+    - erasure
+    - deletion
+    - retention
+    - request
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Data Subject Request topic handles right-to-erasure requests. The agent
+    submits an erasure workflow, informs the policyholder of legal retention
+    obligations, and logs the event to the ComplianceLog table.
+  description: >
+    Verifies that the agent handles a data erasure request correctly, references
+    retention obligations, and confirms submission of the erasure workflow.
+
+- id: ins-ca-func-005
+  tier: functional
+  query: "What personal data do you hold about me as a policyholder?"
+  expected_keywords:
+    - personal data
+    - policy
+    - access
+    - information
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The Data Subject Request topic handles right-to-access requests. The agent
+    retrieves a PII summary for the policyholder, explains the purpose limitation,
+    and logs the event to the ComplianceLog table.
+  description: >
+    Tests that the agent correctly handles a data access request, provides a
+    meaningful summary, and references purpose limitation for collected data.
+
+- id: ins-ca-func-006
+  tier: functional
+  query: "Has the fraud warning disclosure been logged for claim CLM-2025-001122?"
+  expected_keywords:
+    - compliance
+    - log
+    - disclosure
+    - audit
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The ComplianceLog table records every disclosure delivery and customer acknowledgment
+    with a timestamp and conversation ID. Handlers can query this table to confirm
+    compliance audit records exist for a given claim.
+  description: >
+    Tests that the agent correctly describes the compliance audit trail mechanism
+    and can direct a handler to verify disclosure log records for a specific claim.

@@ -11,6 +11,24 @@ solution:
     CAT event operations, and dual channel deployment.
 
 environment_variables:
+  - name: RegulatoryReportStorageUrl
+    display_name: Regulatory Report Storage URL
+    type: string
+    description: Storage location for scheduled regulatory report exports submitted to state insurance departments.
+    default_value: ""
+
+  - name: ComplianceReportRecipientEmail
+    display_name: Compliance Report Recipient Email
+    type: string
+    description: Email distribution list for compliance report delivery notifications.
+    default_value: ""
+
+  - name: PiiRedactionEnabled
+    display_name: PII Redaction Enabled
+    type: boolean
+    description: When true, redacts PII fields from conversation log exports before storage.
+    default_value: "true"
+
   - name: ClaimsManagementApiBaseUrl
     display_name: Claims Management API Base URL
     type: string
@@ -68,6 +86,7 @@ components:
         - PaymentStatus
         - AssignedAdjusterId
         - CatEventFlag
+        - PiiDataClassification
         - CreatedOn
 
     - name: FraudSignals
@@ -85,13 +104,16 @@ components:
 
     - name: StateComplianceRules
       display_name: State Compliance Rules
-      description: State and line specific regulatory timelines and disclosures.
+      description: State and line specific regulatory timelines, disclosures, and documentation requirements.
       columns:
         - StateCode
         - LineOfBusiness
         - AcknowledgementDueDays
         - PaymentDueDaysFromProof
         - RequiredFraudDisclosureText
+        - RightToAppraisalDisclosureText
+        - AdditionalMandatoryDisclosures
+        - DocumentationRequirements
         - EscalationThresholdHours
         - EffectiveDate
 
@@ -116,6 +138,19 @@ components:
         - MaxOpenClaims
         - CurrentOpenClaims
         - AvailabilityStatus
+
+    - name: ComplianceLog
+      display_name: Compliance Log
+      description: Audit trail of every agent interaction including disclosures presented and customer acknowledgments.
+      columns:
+        - ClaimReference
+        - ConversationId
+        - EventType
+        - DisclosureText
+        - CustomerAcknowledged
+        - AcknowledgedOn
+        - HandlerUserId
+        - Timestamp
 
   ai_builder:
     - name: ClaimDocumentOCR
@@ -182,6 +217,34 @@ components:
       dependencies:
         - StateComplianceRules
         - AdjusterCapacity
+
+    - name: LogComplianceEvent
+      description: Writes a timestamped compliance audit record to the ComplianceLog table for each disclosure presented and customer acknowledgment received.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - ComplianceLog
+
+    - name: RegulatoryReportExport
+      description: Scheduled export of claims and compliance data in state insurance department required formats, stored in regulatory report storage.
+      trigger: scheduled
+      connector: dataverse
+      # Weekly on Monday at 06:00 UTC to align with state insurance department submission windows.
+      schedule: "0 6 * * 1"
+      dependencies:
+        - ClaimRecords
+        - ComplianceLog
+        - StateComplianceRules
+        - RegulatoryReportStorageUrl
+        - ComplianceReportRecipientEmail
+
+    - name: RedactConversationLog
+      description: Redacts PII fields from conversation log exports before writing to long-term storage when PII redaction is enabled.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - ClaimRecords
+        - PiiRedactionEnabled
 
 connections:
   - connector: http
