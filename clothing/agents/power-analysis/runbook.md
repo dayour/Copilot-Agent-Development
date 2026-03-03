@@ -36,6 +36,13 @@ Create or import these tables:
 - `ProductCatalog`
 - `StoreMaster`
 - `InventorySnapshots`
+- `BasketDetails`
+- `TenderMix`
+- `PurchaseOrders`
+- `StockMovements`
+- `TransferOrders`
+- `KpiCache`
+- `PipelineHealth`
 - `CustomerFeedback`
 - `DemandForecasts`
 - `SentimentResults`
@@ -46,6 +53,13 @@ Required column guidance:
 - `ProductCatalog`: ProductId (alternate key), SKU, Brand, Category, SubCategory, Season, StandardCost
 - `StoreMaster`: StoreId (alternate key), StoreName, Region, Country, Format, Cluster
 - `InventorySnapshots`: SnapshotId (alternate key), SnapshotDate, StoreId (lookup), ProductId (lookup), UnitsOnHand, UnitsReceived, InventoryCost, AvgWeeklySales, WeeksCover (calculated), ReorderPoint
+- `BasketDetails`: BasketDetailId (alternate key), SalesTransactionId (lookup), ProductId (lookup), LineNumber, Quantity, UnitPrice, LineNetAmount, LineDiscountAmount, LineGrossMarginAmount, PromotionCode
+- `TenderMix`: TenderMixId (alternate key), SalesTransactionId (lookup), TenderType, TenderAmount, TenderCurrency, TenderSequence
+- `PurchaseOrders`: PurchaseOrderId (alternate key), ProductId (lookup), StoreId (lookup), OrderDate, ExpectedDeliveryDate, OrderedQuantity, ReceivedQuantity, OutstandingQuantity (calculated), UnitCost, TotalOrderValue, POStatus, SupplierCode, ModifiedDate
+- `StockMovements`: StockMovementId (alternate key), MovementDate, StoreId (lookup), ProductId (lookup), MovementType, QuantityChange, ReferenceId, PostedTimestamp
+- `TransferOrders`: TransferOrderId (alternate key), ProductId (lookup), FromStoreId (lookup), ToStoreId (lookup), RequestedDate, ExpectedArrivalDate, TransferQuantity, TransferStatus, ModifiedTimestamp
+- `KpiCache`: KpiCacheId (alternate key), CacheTimestamp, GrainType, DimensionKey, PeriodKey, and all KPI measure columns
+- `PipelineHealth`: PipelineHealthId (alternate key), PipelineName, RunStartTimestamp, RunEndTimestamp, RunStatus, RecordsProcessed, RecordsFailed, ErrorCode, ErrorMessage, RetryAttempt, DataQualityChecksPassed, DataQualityFailureDetails, SourceSystemTimestamp, CorrelationId
 - `AlertRules`: AlertRuleId (alternate key), RuleName, Metric, Operator (choice), Threshold (decimal), ThresholdUnit, Scope (choice: store/region/category/enterprise), ScopeValue, CompoundLogic (choice: none/AND/OR), SecondaryMetric, SecondaryOperator, SecondaryThreshold, EvaluationFrequency (choice: real_time/hourly/daily/weekly), Owner, OwnerEntraId, IsActive (boolean, default true), CreatedOn, ModifiedOn
 - `AlertHistory`: AlertHistoryId (alternate key), AlertRuleId (lookup to AlertRules), TriggeredAt, MetricValue (decimal), ThresholdValue (decimal), Scope, ScopeValue, Status (choice: new/acknowledged/resolved, default new), AcknowledgedBy, AcknowledgedAt, ResolvedAt, ResolutionNotes
 - `SavedAnalyses`: SavedAnalysisId (alternate key), AnalysisName, QueryParameters (multiline text), ResultSnapshot (multiline text), GeneratedInsights (multiline text), AnalysisType (choice: sales_performance/root_cause/inventory/trend/what_if/anomaly), SavedAt, Owner, OwnerEntraId, SharedWith (multiline text), IsShared (boolean, default false)
@@ -56,6 +70,16 @@ Configure relationships:
 2. `SalesTransactions.ProductId -> ProductCatalog.ProductId` (N:1)
 3. `InventorySnapshots.StoreId -> StoreMaster.StoreId` (N:1)
 4. `InventorySnapshots.ProductId -> ProductCatalog.ProductId` (N:1)
+5. `BasketDetails.SalesTransactionId -> SalesTransactions.SalesTransactionId` (N:1)
+6. `BasketDetails.ProductId -> ProductCatalog.ProductId` (N:1)
+7. `TenderMix.SalesTransactionId -> SalesTransactions.SalesTransactionId` (N:1)
+8. `PurchaseOrders.ProductId -> ProductCatalog.ProductId` (N:1)
+9. `PurchaseOrders.StoreId -> StoreMaster.StoreId` (N:1)
+10. `StockMovements.StoreId -> StoreMaster.StoreId` (N:1)
+11. `StockMovements.ProductId -> ProductCatalog.ProductId` (N:1)
+12. `TransferOrders.ProductId -> ProductCatalog.ProductId` (N:1)
+13. `TransferOrders.FromStoreId -> StoreMaster.StoreId` (N:1)
+14. `TransferOrders.ToStoreId -> StoreMaster.StoreId` (N:1)
 5. `AlertHistory.AlertRuleId -> AlertRules.AlertRuleId` (N:1)
 
 Configure Dataverse calculated/rollup columns:
@@ -91,11 +115,22 @@ Validate role mapping:
    - `PowerBiWorkspaceId`
    - `PowerBiDatasetId`
    - `AnalyticsTeamsChannelId`
+   - `PipelineAlertTeamsChannelId`
    - `ScheduledReportsTeamsChannelId`
    - `ReportDefaultRecipients`
    - `PosApiBaseUrl`
    - `ErpApiBaseUrl`
    - `AllocationApiBaseUrl`
+   - `SynapseWorkspaceUrl`
+   - `DataLakeStorageAccountUrl`
+   - `PosSyncLastSuccessfulTimestamp` (initial backfill start date)
+   - `ErpSyncLastSuccessfulTimestamp` (initial backfill start date)
+   - `AllocationSyncLastSuccessfulTimestamp` (initial backfill start date)
+4. Verify imported components are healthy and connection references are bound.
+
+### 5. Configure Data Pipeline Sync
+Set up inbound pipelines. See `docs/data-sync-pipelines.md` for full data lineage,
+transformation logic, error handling, and operational runbook details.
    - `AIBuilderEnvironmentId`
    - `DemandForecastingModelId` (set after completing step 5a)
    - `CategoryClassificationModelId` (set after completing step 5b)
@@ -142,25 +177,83 @@ Validate role mapping:
 ### 6. Configure Data Pipeline Sync
 Set up inbound pipelines:
 
-1. **POS Sync (15-minute micro-batch)**
-   - Source: POS API / event stream
-   - Target: `SalesTransactions`
-   - Strategy: Upsert by TransactionId
+#### 5a. POS Data Sync (Daily Batch — 02:00 UTC)
+- Source: POS API (`${PosApiBaseUrl}`)
+- Targets: `SalesTransactions`, `BasketDetails`, `TenderMix`
+- Strategy: Incremental load using `TransactionTimestamp` watermark stored in environment variable `PosSyncLastSuccessfulTimestamp`
+- Upsert key: `SalesTransactionId` (transactions), `BasketDetailId` (basket lines), `TenderMixId` (tender)
+- Estimated volume: 500K to 1M transactions per day across all stores
+- Retry policy: 3 attempts with exponential backoff (30s, 60s, 120s)
+- SLA: Complete by 06:00 UTC
 
-2. **ERP Sync (hourly batch)**
-   - Source: ERP product and financial data
-   - Target: `ProductCatalog`, inventory cost fields
-   - Strategy: Upsert by ProductId and effective dates
+Steps:
+1. Import the `PosConnector` custom connector from the solution.
+2. Bind the connection reference `cr_pos_clothing` to a service account with POS API read access.
+3. Set environment variable `PosApiBaseUrl` to the POS API base URL.
+4. Initialize `PosSyncLastSuccessfulTimestamp` to the desired historical start date in ISO 8601 UTC format (for example `2025-01-01T00:00:00Z`). For a full backfill, set this to the earliest required transaction date. For incremental-only (no backfill), set it to the current UTC datetime.
+5. Enable and activate the `PosDataSync` Power Automate flow.
+6. Trigger a manual run and verify rows are written to `SalesTransactions`, `BasketDetails`, and `TenderMix`.
+7. Confirm `PipelineHealth` shows a `Succeeded` status row.
 
-3. **Inventory Snapshot Sync (daily and intraday checkpoints)**
-   - Source: Allocation/inventory planning system
-   - Target: `InventorySnapshots`
-   - Strategy: Append by SnapshotDate, StoreId, ProductId
+#### 5b. ERP Data Sync (Daily — 03:00 UTC)
+- Source: ERP API (`${ErpApiBaseUrl}`)
+- Targets: `ProductCatalog`, `PurchaseOrders`
+- Strategy: Delta sync using `ModifiedDate` field on source records
+- Upsert key: `ProductId` (catalog), `PurchaseOrderId` (POs)
+- Estimated volume: ~10K product updates and ~5K PO lines per day
+- Retry policy: 3 attempts with exponential backoff (30s, 60s, 120s)
+- SLA: Complete by 07:00 UTC
 
-4. **Store Master Sync (daily)**
-   - Source: Retail master data
-   - Target: `StoreMaster`
-   - Strategy: Slowly changing dimensions with effective dating
+Steps:
+1. Import the `ErpConnector` custom connector from the solution.
+2. Bind the connection reference `cr_erp_clothing` to a service account with ERP API read access.
+3. Set environment variable `ErpApiBaseUrl` to the ERP API base URL.
+4. Initialize `ErpSyncLastSuccessfulTimestamp` to the desired start date in ISO 8601 UTC format (for example `2025-01-01T00:00:00Z`).
+5. Enable and activate the `ErpDataSync` Power Automate flow.
+6. Trigger a manual run and verify rows are written to `ProductCatalog` and `PurchaseOrders`.
+7. Confirm `PipelineHealth` shows a `Succeeded` status row.
+
+#### 5c. Allocation Data Sync (Hourly)
+- Source: Allocation API (`${AllocationApiBaseUrl}`)
+- Targets: `InventorySnapshots` (full snapshot), `StockMovements` (incremental), `TransferOrders` (incremental)
+- Strategy: Full snapshot upsert for inventory; incremental load using `PostedTimestamp` and `ModifiedTimestamp` for movements and transfers
+- Upsert keys: `SnapshotId` (composite: SnapshotDate + StoreId + ProductId), `StockMovementId`, `TransferOrderId`
+- Estimated volume: ~200K inventory records per snapshot
+- Retry policy: 3 attempts with exponential backoff (30s, 60s, 120s)
+- SLA: Complete within 30 minutes of each hourly trigger
+
+Steps:
+1. Import the `AllocationConnector` custom connector from the solution.
+2. Bind the connection reference `cr_allocation_clothing` to a service account with Allocation API read access.
+3. Set environment variable `AllocationApiBaseUrl` to the Allocation API base URL.
+4. Initialize `AllocationSyncLastSuccessfulTimestamp` to the desired start date in ISO 8601 UTC format (for example `2025-01-01T00:00:00Z`).
+5. Enable and activate the `AllocationDataSync` Power Automate flow.
+6. Trigger a manual run and verify rows are written to `InventorySnapshots`, `StockMovements`, and `TransferOrders`.
+7. Confirm `PipelineHealth` shows a `Succeeded` status row.
+
+#### 5d. KPI Cache Refresh (Every 4 Hours)
+- Source: Power BI semantic model (`${PowerBiDatasetId}` in workspace `${PowerBiWorkspaceId}`)
+- Target: `KpiCache`
+- Strategy: Scheduled query of pre-calculated KPIs; insert new cache rows with current timestamp
+- Grains: StoreScorecard, CategoryPerformance, RegionalSummary
+- Retry policy: 3 attempts with exponential backoff (60s, 120s, 240s)
+- SLA: Complete within 45 minutes of each 4-hour trigger
+
+Steps:
+1. Bind the Power BI connection reference `cr_powerbi_clothing` to a service account with Power BI workspace reader access.
+2. Set environment variables `PowerBiWorkspaceId` and `PowerBiDatasetId`.
+3. Enable and activate the `KpiCacheRefresh` Power Automate flow.
+4. Trigger a manual run and verify rows are inserted into `KpiCache`.
+5. Confirm `PipelineHealth` shows a `Succeeded` status row.
+
+#### 5e. Pipeline Health Alert (Event-Triggered)
+- Trigger: Dataverse row created in `PipelineHealth` with `RunStatus = Failed` or `PartialFailure`
+- Action: Post alert to Teams channel `${PipelineAlertTeamsChannelId}`
+
+Steps:
+1. Set environment variable `PipelineAlertTeamsChannelId` to the Teams channel ID for pipeline operations alerts.
+2. Enable and activate the `PipelineHealthAlert` Power Automate flow.
+3. Simulate a failure by manually creating a `PipelineHealth` row with `RunStatus = Failed` and verify the Teams alert is posted.
 
 ### 7. Configure Power Automate Analytical Flows
 Bind and test the flows:
@@ -320,10 +413,19 @@ If any critical rule fails, stop publish promotion and notify data engineering.
 
 ### 9. Configure Dataverse Synapse Link
 1. Enable Synapse Link on Dataverse environment.
-2. Select `SalesTransactions`, `InventorySnapshots`, and supporting dimensions.
-3. Configure export to ADLS Gen2 and attach Synapse workspace.
+2. Select tables for export:
+   - `SalesTransactions`
+   - `BasketDetails`
+   - `TenderMix`
+   - `InventorySnapshots`
+   - `StockMovements`
+   - `PurchaseOrders`
+   - `ProductCatalog`
+   - `StoreMaster`
+3. Configure export to ADLS Gen2 (`${DataLakeStorageAccountUrl}`) and attach Synapse workspace (`${SynapseWorkspaceUrl}`).
 4. Build historical analytical views (multi-year trend and seasonality).
-5. Route long-window queries and heavy aggregations to Synapse-backed datasets.
+5. Route long-window queries and heavy aggregations (greater than 13 months) to Synapse-backed datasets.
+6. Verify Synapse Link export health daily (see Monitoring and Operations section).
 
 ### 10. Configure Authentication and Channel
 1. In Copilot Studio, set authentication to **Microsoft Entra ID**.
@@ -362,9 +464,27 @@ If any critical rule fails, stop publish promotion and notify data engineering.
 
 ## Monitoring and Operations
 
+### Pipeline Health
+
+The `PipelineHealth` Dataverse table is the central health register for all data sync
+pipelines. Every pipeline run writes a row with its status, record counts, error details,
+and data quality results. The Power Analysis agent's Pipeline Health Check topic queries
+this table and can report on feed health in response to questions such as:
+"Are all data feeds healthy?" and "Which pipelines failed recently?"
+
+For full operational runbook guidance on responding to pipeline failures, data quality
+alerts, and SLA breaches, see `docs/data-sync-pipelines.md`.
+
+### Agent and Automation Monitoring
+
 | Task | Frequency | Owner |
 |------|-----------|-------|
-| Monitor sync latency and failures | Hourly | Data Engineering |
+| Monitor pipeline health via PipelineHealth table and Teams alerts | Continuous | Data Engineering |
+| Review PosDataSync failures and data quality results | Daily | Data Engineering |
+| Review ErpDataSync delta failures and orphaned lookups | Daily | Data Engineering |
+| Review AllocationDataSync snapshot completeness | Hourly | Data Engineering |
+| Verify KPI cache freshness (CacheTimestamp within 4 hours) | Every 4 hours | Data Engineering |
+| Monitor sync latency vs SLA thresholds | Hourly | Data Engineering |
 | Review analytical flow failures | Daily | Automation Engineer |
 | Review AI Builder invoke flow failures | Daily | Automation Engineer |
 | Monitor AI Builder model accuracy and drift | Weekly | Data Science Lead |
@@ -372,6 +492,7 @@ If any critical rule fails, stop publish promotion and notify data engineering.
 | Validate KPI formulas after model changes | Each release | BI Lead |
 | Review anomaly false positives | Weekly | Retail Analytics |
 | Review unrecognized prompts and topic routing | Weekly | Copilot Studio Admin |
+| Verify Dataverse Synapse Link export health | Daily | Data Platform Team |
 | Verify Synapse Link export health | Daily | Data Platform Team |
 | Review model retraining logs and version history | Monthly | Data Science Lead |
 | Review AlertRuleEvaluator execution and missed evaluations | Daily | Automation Engineer |

@@ -19,9 +19,16 @@ The agent uses Dataverse as the central model synchronized from POS, ERP, and al
 | Table | Purpose | Key Columns |
 |------|---------|-------------|
 | **SalesTransactions** | Transaction-level sales facts | TransactionId, StoreId, ProductId, TransactionDate, UnitsSold, NetSalesAmount, DiscountAmount, GrossMarginAmount, Channel |
+| **BasketDetails** | Line-item basket contents per transaction | BasketDetailId, SalesTransactionId, ProductId, LineNumber, Quantity, LineNetAmount, LineGrossMarginAmount |
+| **TenderMix** | Payment method breakdown per transaction | TenderMixId, SalesTransactionId, TenderType, TenderAmount |
 | **ProductCatalog** | Product and assortment dimensions | ProductId, SKU, Brand, Category, SubCategory, Season, LifecycleStatus, StandardCost |
 | **StoreMaster** | Store attributes and hierarchy | StoreId, StoreName, Region, Country, Format, OpeningDate, FloorSpaceSqM, Cluster |
 | **InventorySnapshots** | Periodic inventory positions | SnapshotId, SnapshotDate, StoreId, ProductId, UnitsOnHand, UnitsReceived, InventoryCost, WeeksCover, ReorderPoint |
+| **PurchaseOrders** | ERP purchase order lines | PurchaseOrderId, ProductId, StoreId, OrderDate, OrderedQuantity, ReceivedQuantity, UnitCost, POStatus |
+| **StockMovements** | Incremental inventory movements | StockMovementId, MovementDate, StoreId, ProductId, MovementType, QuantityChange, PostedTimestamp |
+| **TransferOrders** | Inter-store and DC-to-store transfers | TransferOrderId, ProductId, FromStoreId, ToStoreId, TransferQuantity, TransferStatus |
+| **KpiCache** | Pre-calculated KPIs refreshed every 4 hours | KpiCacheId, CacheTimestamp, GrainType, DimensionKey, PeriodKey, SellThroughRatePct, GmroiValue |
+| **PipelineHealth** | Pipeline run health and data quality results | PipelineHealthId, PipelineName, RunStatus, RecordsProcessed, RecordsFailed, DataQualityChecksPassed |
 | **AlertRules** | Configurable alert threshold definitions | AlertRuleId, RuleName, Metric, Operator, Threshold, Scope, ScopeValue, CompoundLogic, EvaluationFrequency, Owner, IsActive |
 | **AlertHistory** | Log of triggered alert events | AlertHistoryId, AlertRuleId, TriggeredAt, MetricValue, ThresholdValue, Status (new/acknowledged/resolved), AcknowledgedBy, ResolvedAt, ResolutionNotes |
 | **SavedAnalyses** | Persisted analysis snapshots | SavedAnalysisId, AnalysisName, QueryParameters, ResultSnapshot, GeneratedInsights, AnalysisType, SavedAt, Owner, SharedWith, IsShared |
@@ -95,6 +102,8 @@ Scheduled reports provision a Power Automate recurrence flow per report and supp
 power-analysis/
 ├── README.md
 ├── runbook.md
+├── docs/
+│   └── data-sync-pipelines.md
 ├── templates/
 │   └── agent-template.yaml
 └── solution/
@@ -155,7 +164,8 @@ capabilities beyond rule-based analytics.
 
 1. Provision Dataverse schema and security as documented in `runbook.md`.
 2. Import `solution/solution-definition.yaml` into the target Copilot Studio solution-aware environment.
-3. Configure sync pipelines for POS, ERP, and inventory snapshots.
+3. Configure sync pipelines for POS, ERP, allocation, and KPI cache as documented in `runbook.md` step 5 and `docs/data-sync-pipelines.md`.
 4. Configure and validate the Power Automate analytical flows referenced by the agent template.
 5. Publish to Teams or web channel and execute validation tests for decomposition and root-cause scenarios.
+6. Validate pipeline health by asking the agent: "Are all data feeds healthy?"
 6. Configure AI Builder models and bind `DemandForecastingModelId`, `CategoryClassificationModelId`, `SentimentAnalysisModelId`, and `DocumentProcessingModelId` environment variables as documented in `runbook.md`.

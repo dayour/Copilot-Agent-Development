@@ -58,6 +58,66 @@ environment_variables:
     description: Base URL for inventory snapshot and allocation updates.
     default_value: ""
 
+  - name: SynapseWorkspaceUrl
+    display_name: Synapse Workspace URL
+    type: string
+    description: Azure Synapse Analytics workspace URL for Dataverse Synapse Link historical workloads.
+    default_value: ""
+
+  - name: DataLakeStorageAccountUrl
+    display_name: Data Lake Storage Account URL
+    type: string
+    description: ADLS Gen2 storage account URL for Synapse Link export target.
+    default_value: ""
+
+  - name: PipelineAlertTeamsChannelId
+    display_name: Pipeline Alert Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for pipeline failure and health alerts.
+    default_value: ""
+
+  - name: KpiCacheRefreshIntervalHours
+    display_name: KPI Cache Refresh Interval (Hours)
+    type: integer
+    description: How frequently (in hours) the KPI cache refresh flow runs. Default is 4.
+    default_value: "4"
+
+  - name: PosSyncLastTimestampVariableName
+    display_name: POS Sync Last Timestamp Variable Name
+    type: string
+    description: Name of the environment variable used to persist the last successful POS sync timestamp for incremental change tracking.
+    default_value: "PosSyncLastSuccessfulTimestamp"
+
+  - name: ErpSyncLastTimestampVariableName
+    display_name: ERP Sync Last Timestamp Variable Name
+    type: string
+    description: Name of the environment variable used to persist the last successful ERP sync timestamp for delta sync.
+    default_value: "ErpSyncLastSuccessfulTimestamp"
+
+  - name: AllocationSyncLastTimestampVariableName
+    display_name: Allocation Sync Last Timestamp Variable Name
+    type: string
+    description: Name of the environment variable used to persist the last successful allocation sync timestamp for incremental movement loads.
+    default_value: "AllocationSyncLastSuccessfulTimestamp"
+
+  - name: PosSyncMaxRetries
+    display_name: POS Sync Max Retries
+    type: integer
+    description: Maximum number of retry attempts for POS sync before marking the pipeline run as failed.
+    default_value: "3"
+
+  - name: ErpSyncMaxRetries
+    display_name: ERP Sync Max Retries
+    type: integer
+    description: Maximum number of retry attempts for ERP sync before marking the pipeline run as failed.
+    default_value: "3"
+
+  - name: AllocationSyncMaxRetries
+    display_name: Allocation Sync Max Retries
+    type: integer
+    description: Maximum number of retry attempts for Allocation sync before marking the pipeline run as failed.
+    default_value: "3"
+
   - name: AnalyticsTeamsChannelId
     display_name: Analytics Teams Channel ID
     type: string
@@ -226,6 +286,99 @@ components:
         - name: ReorderPoint
           type: decimal
 
+    - name: BasketDetails
+      display_name: Basket Details
+      description: Line-item basket contents per POS transaction, ingested in the daily POS batch sync.
+      primary_key: BasketDetailId
+      columns:
+        - name: BasketDetailId
+          type: string
+        - name: SalesTransactionId
+          type: lookup
+          references: SalesTransactions
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: LineNumber
+          type: integer
+        - name: Quantity
+          type: decimal
+        - name: UnitPrice
+          type: currency
+        - name: LineNetAmount
+          type: currency
+        - name: LineDiscountAmount
+          type: currency
+        - name: LineGrossMarginAmount
+          type: currency
+        - name: PromotionCode
+          type: string
+
+    - name: TenderMix
+      display_name: Tender Mix
+      description: Payment method breakdown per POS transaction, ingested in the daily POS batch sync.
+      primary_key: TenderMixId
+      columns:
+        - name: TenderMixId
+          type: string
+        - name: SalesTransactionId
+          type: lookup
+          references: SalesTransactions
+        - name: TenderType
+          type: string
+          description: "Payment method: Cash, Card, Digital Wallet, Gift Card, Loyalty Points."
+        - name: TenderAmount
+          type: currency
+        - name: TenderCurrency
+          type: string
+        - name: TenderSequence
+          type: integer
+
+    - name: PurchaseOrders
+      display_name: Purchase Orders
+      description: ERP purchase order headers and lines synced daily for open-to-buy and cost tracking.
+      primary_key: PurchaseOrderId
+      columns:
+        - name: PurchaseOrderId
+          type: string
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: OrderDate
+          type: date
+        - name: ExpectedDeliveryDate
+          type: date
+        - name: OrderedQuantity
+          type: decimal
+        - name: ReceivedQuantity
+          type: decimal
+        - name: OutstandingQuantity
+          type: calculated
+          formula: "OrderedQuantity - ReceivedQuantity"
+        - name: UnitCost
+          type: currency
+        - name: TotalOrderValue
+          type: currency
+        - name: POStatus
+          type: string
+          description: "Status: Open, Partially Received, Closed, Cancelled."
+        - name: SupplierCode
+          type: string
+        - name: ModifiedDate
+          type: datetime
+          description: Source ERP last-modified timestamp used for delta sync.
+
+    - name: StockMovements
+      display_name: Stock Movements
+      description: Incremental inventory movement records from the allocation system, synced hourly.
+      primary_key: StockMovementId
+      columns:
+        - name: StockMovementId
+          type: string
+        - name: MovementDate
     - name: DemandForecasts
       display_name: Demand Forecasts
       description: >
@@ -243,6 +396,129 @@ components:
         - name: ProductId
           type: lookup
           references: ProductCatalog
+        - name: MovementType
+          type: string
+          description: "Type: Sale, Return, Transfer In, Transfer Out, Adjustment, Write-Off."
+        - name: QuantityChange
+          type: decimal
+          description: Positive for inbound movements; negative for outbound.
+        - name: ReferenceId
+          type: string
+          description: Source system reference (TransactionId, TransferOrderId, or AdjustmentId).
+        - name: PostedTimestamp
+          type: datetime
+          description: UTC timestamp when the movement was posted in the source system.
+
+    - name: TransferOrders
+      display_name: Transfer Orders
+      description: Inter-store and DC-to-store transfer orders from the allocation system, synced hourly.
+      primary_key: TransferOrderId
+      columns:
+        - name: TransferOrderId
+          type: string
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: FromStoreId
+          type: lookup
+          references: StoreMaster
+        - name: ToStoreId
+          type: lookup
+          references: StoreMaster
+        - name: RequestedDate
+          type: date
+        - name: ExpectedArrivalDate
+          type: date
+        - name: TransferQuantity
+          type: decimal
+        - name: TransferStatus
+          type: string
+          description: "Status: Requested, Approved, In Transit, Received, Cancelled."
+        - name: ModifiedTimestamp
+          type: datetime
+          description: UTC timestamp for incremental change tracking.
+
+    - name: KpiCache
+      display_name: KPI Cache
+      description: >
+        Pre-calculated KPIs and aggregated metrics refreshed from Power BI every 4 hours.
+        Used to serve common agent queries without real-time DAX execution.
+      primary_key: KpiCacheId
+      columns:
+        - name: KpiCacheId
+          type: string
+        - name: CacheTimestamp
+          type: datetime
+          description: UTC timestamp when this cache row was generated.
+        - name: GrainType
+          type: string
+          description: "Aggregation grain: StoreScorecard, CategoryPerformance, RegionalSummary."
+        - name: DimensionKey
+          type: string
+          description: "Dimension identifier (StoreId, CategoryCode, RegionCode, or 'ALL')."
+        - name: PeriodKey
+          type: string
+          description: "Period identifier in format YYYY-Www (week) or YYYY-MM (month)."
+        - name: SellThroughRatePct
+          type: decimal
+        - name: GmroiValue
+          type: decimal
+        - name: WeeksCoverValue
+          type: decimal
+        - name: StockTurnValue
+          type: decimal
+        - name: NetSalesAmount
+          type: currency
+        - name: GrossMarginAmount
+          type: currency
+        - name: GrossMarginPct
+          type: decimal
+        - name: UnitsOnHand
+          type: decimal
+        - name: OpenToBuyValue
+          type: currency
+
+    - name: PipelineHealth
+      display_name: Pipeline Health
+      description: >
+        Tracks every pipeline run outcome. Agents query this table to report on
+        data feed health and surface pipeline failures to operations teams.
+      primary_key: PipelineHealthId
+      columns:
+        - name: PipelineHealthId
+          type: string
+        - name: PipelineName
+          type: string
+          description: "Name of the pipeline: PosDataSync, ErpDataSync, AllocationDataSync, KpiCacheRefresh."
+        - name: RunStartTimestamp
+          type: datetime
+        - name: RunEndTimestamp
+          type: datetime
+        - name: RunStatus
+          type: string
+          description: "Status: Running, Succeeded, Failed, PartialFailure, Skipped."
+        - name: RecordsProcessed
+          type: integer
+        - name: RecordsFailed
+          type: integer
+        - name: ErrorCode
+          type: string
+        - name: ErrorMessage
+          type: string
+        - name: RetryAttempt
+          type: integer
+          description: "0 for the initial attempt; increments by 1 for each retry."
+        - name: DataQualityChecksPassed
+          type: boolean
+        - name: DataQualityFailureDetails
+          type: string
+          description: JSON summary of any failed data quality checks.
+        - name: SourceSystemTimestamp
+          type: datetime
+          description: Watermark timestamp from the source system used for this run.
+        - name: CorrelationId
+          type: string
+          description: Power Automate flow run correlation ID for end-to-end trace.
         - name: ForecastHorizon
           type: string
         - name: PredictedUnits
@@ -528,6 +804,55 @@ components:
       to_table: ProductCatalog
       to_column: ProductId
       cardinality: many_to_one
+    - from_table: BasketDetails
+      from_column: SalesTransactionId
+      to_table: SalesTransactions
+      to_column: SalesTransactionId
+      cardinality: many_to_one
+    - from_table: BasketDetails
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: TenderMix
+      from_column: SalesTransactionId
+      to_table: SalesTransactions
+      to_column: SalesTransactionId
+      cardinality: many_to_one
+    - from_table: PurchaseOrders
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: PurchaseOrders
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: StockMovements
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: StockMovements
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: TransferOrders
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: TransferOrders
+      from_column: FromStoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: TransferOrders
+      from_column: ToStoreId
+      to_table: StoreMaster
+      to_column: StoreId
     - from_table: AlertHistory
       from_column: AlertRuleId
       to_table: AlertRules
@@ -586,24 +911,299 @@ components:
 
     - name: PosDataSync
       description: >
-        Ingests POS sales transactions into Dataverse SalesTransactions using upsert logic.
+        Daily batch sync of POS sales transactions, basket line items, and tender mix
+        into Dataverse. Uses incremental load with change tracking via a last-sync
+        watermark timestamp. Processes approximately 500K to 1M transactions per day
+        across all stores. Writes a PipelineHealth row for each run. Applies
+        exponential backoff with up to 3 retries on transient failures.
       trigger: scheduled_recurrence
-      schedule: every_15_minutes
+      schedule: daily
+      schedule_time: "02:00 UTC"
       connector: custom_pos_connector
+      sync_strategy:
+        method: incremental
+        watermark_field: TransactionTimestamp
+        watermark_variable: PosSyncLastSuccessfulTimestamp
+        upsert_key: SalesTransactionId
+      targets:
+        - table: SalesTransactions
+          upsert_key: SalesTransactionId
+        - table: BasketDetails
+          upsert_key: BasketDetailId
+        - table: TenderMix
+          upsert_key: TenderMixId
+      data_quality_checks:
+        - check: null_detection
+          columns: [SalesTransactionId, StoreId, ProductId, TransactionDate, UnitsSold, NetSalesAmount]
+        - check: range_validation
+          rules:
+            - column: UnitsSold
+              min: 0
+            - column: NetSalesAmount
+              min: 0
+            - column: GrossMarginAmount
+              min: -999999
+        - check: referential_integrity
+          rules:
+            - from: SalesTransactions.StoreId
+              to: StoreMaster.StoreId
+            - from: SalesTransactions.ProductId
+              to: ProductCatalog.ProductId
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+      estimated_volume: "500K to 1M transactions per day"
 
     - name: ErpDataSync
       description: >
-        Ingests ERP product and cost updates into ProductCatalog and related analytical fields.
+        Daily delta sync of ERP product catalog updates, cost price changes, and
+        purchase order lines into Dataverse. Uses modified-date delta strategy to
+        load only changed records. Processes approximately 10K product updates and
+        5K PO lines per day. Writes a PipelineHealth row for each run. Applies
+        exponential backoff with up to 3 retries on transient failures.
+      trigger: scheduled_recurrence
+      schedule: daily
+      schedule_time: "03:00 UTC"
+      connector: custom_erp_connector
+      sync_strategy:
+        method: delta
+        watermark_field: ModifiedDate
+        watermark_variable: ErpSyncLastSuccessfulTimestamp
+        upsert_key: ProductId
+      targets:
+        - table: ProductCatalog
+          upsert_key: ProductId
+          delta_field: ModifiedDate
+        - table: PurchaseOrders
+          upsert_key: PurchaseOrderId
+          delta_field: ModifiedDate
+      data_quality_checks:
+        - check: null_detection
+          columns: [ProductId, SKU, Brand, Category, StandardCost]
+        - check: range_validation
+          rules:
+            - column: StandardCost
+              min: 0
+        - check: referential_integrity
+          rules:
+            - from: PurchaseOrders.ProductId
+              to: ProductCatalog.ProductId
+            - from: PurchaseOrders.StoreId
+              to: StoreMaster.StoreId
+        - check: uniqueness
+          columns: [ProductCatalog.ProductId]
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+      estimated_volume: "10K product updates, 5K PO lines per day"
+
+    - name: AllocationDataSync
+      description: >
+        Hourly sync of inventory data from the allocation system into Dataverse.
+        Performs a full snapshot upsert for InventorySnapshots and an incremental
+        load for StockMovements and TransferOrders. Processes approximately 200K
+        inventory records per snapshot. Writes a PipelineHealth row for each run.
+        Applies exponential backoff with up to 3 retries on transient failures.
       trigger: scheduled_recurrence
       schedule: hourly
-      connector: custom_erp_connector
-
-    - name: InventorySnapshotSync
-      description: >
-        Ingests allocation and inventory snapshots into Dataverse InventorySnapshots.
-      trigger: scheduled_recurrence
-      schedule: daily_and_intraday
       connector: custom_allocation_connector
+      sync_strategy:
+        inventory_snapshots:
+          method: full_snapshot
+          upsert_key: SnapshotId
+          composite_key: [SnapshotDate, StoreId, ProductId]
+        stock_movements:
+          method: incremental
+          watermark_field: PostedTimestamp
+          watermark_variable: AllocationSyncLastSuccessfulTimestamp
+          upsert_key: StockMovementId
+        transfer_orders:
+          method: incremental
+          watermark_field: ModifiedTimestamp
+          upsert_key: TransferOrderId
+      targets:
+        - table: InventorySnapshots
+          upsert_key: SnapshotId
+        - table: StockMovements
+          upsert_key: StockMovementId
+        - table: TransferOrders
+          upsert_key: TransferOrderId
+      data_quality_checks:
+        - check: null_detection
+          columns: [SnapshotId, SnapshotDate, StoreId, ProductId, UnitsOnHand]
+        - check: range_validation
+          rules:
+            - column: UnitsOnHand
+              min: 0
+            - column: InventoryCost
+              min: 0
+            - column: WeeksCover
+              min: 0
+              max: 52
+        - check: referential_integrity
+          rules:
+            - from: InventorySnapshots.StoreId
+              to: StoreMaster.StoreId
+            - from: InventorySnapshots.ProductId
+              to: ProductCatalog.ProductId
+            - from: StockMovements.StoreId
+              to: StoreMaster.StoreId
+            - from: StockMovements.ProductId
+              to: ProductCatalog.ProductId
+        - check: uniqueness
+          composite_key: [SnapshotDate, StoreId, ProductId]
+          table: InventorySnapshots
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+      estimated_volume: "200K inventory records per snapshot"
+
+    - name: KpiCacheRefresh
+      description: >
+        Scheduled refresh that queries pre-calculated KPIs and aggregated metrics
+        from the Power BI semantic model and writes them into the Dataverse KpiCache
+        table. Runs every 4 hours to keep common agent queries fast without
+        triggering real-time DAX execution. Covers store scorecards, category
+        performance, and regional summaries. Writes a PipelineHealth row for each run.
+      trigger: scheduled_recurrence
+      schedule: every_4_hours
+      connector: power_bi
+      targets:
+        - table: KpiCache
+          grain_types:
+            - StoreScorecard
+            - CategoryPerformance
+            - RegionalSummary
+      kpi_queries:
+        - grain: StoreScorecard
+          measures: [SellThroughRatePct, GmroiValue, WeeksCoverValue, StockTurnValue, NetSalesAmount, GrossMarginPct, OpenToBuyValue]
+          dimensions: [StoreId]
+          periods: [CurrentWeek, CurrentMonth, QuarterToDate]
+        - grain: CategoryPerformance
+          measures: [SellThroughRatePct, GmroiValue, WeeksCoverValue, NetSalesAmount, GrossMarginPct]
+          dimensions: [CategoryCode]
+          periods: [CurrentWeek, CurrentMonth]
+        - grain: RegionalSummary
+          measures: [NetSalesAmount, GrossMarginPct, SellThroughRatePct, UnitsOnHand]
+          dimensions: [RegionCode]
+          periods: [CurrentWeek, CurrentMonth, QuarterToDate]
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 60
+        backoff_multiplier: 2
+        max_delay_seconds: 480
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+
+    - name: DataQualityValidation
+      description: >
+        Standalone validation flow executed after each sync pipeline completes.
+        Runs null detection, range validation, uniqueness, and referential integrity
+        checks across all sync target tables. Writes check results to PipelineHealth.
+        If critical rules fail, posts an alert to the pipeline alert Teams channel
+        and halts any pending downstream processing.
+      trigger: flow_called_from_sync_pipeline
+      connector: dataverse
+      validation_rules:
+        null_checks:
+          - table: SalesTransactions
+            required_columns: [SalesTransactionId, StoreId, ProductId, TransactionDate]
+          - table: ProductCatalog
+            required_columns: [ProductId, SKU, Brand, Category, StandardCost]
+          - table: InventorySnapshots
+            required_columns: [SnapshotId, SnapshotDate, StoreId, ProductId, UnitsOnHand]
+          - table: PurchaseOrders
+            required_columns: [PurchaseOrderId, ProductId, OrderDate, OrderedQuantity, UnitCost]
+        range_checks:
+          - table: SalesTransactions
+            column: UnitsSold
+            min: 0
+          - table: InventorySnapshots
+            column: UnitsOnHand
+            min: 0
+          - table: InventorySnapshots
+            column: WeeksCover
+            min: 0
+            max: 52
+          - table: ProductCatalog
+            column: StandardCost
+            min: 0
+        uniqueness_checks:
+          - table: SalesTransactions
+            key: SalesTransactionId
+          - table: ProductCatalog
+            key: ProductId
+          - table: InventorySnapshots
+            composite_key: [SnapshotDate, StoreId, ProductId]
+          - table: PurchaseOrders
+            key: PurchaseOrderId
+        referential_integrity_checks:
+          - from_table: SalesTransactions
+            from_column: StoreId
+            to_table: StoreMaster
+            to_column: StoreId
+          - from_table: SalesTransactions
+            from_column: ProductId
+            to_table: ProductCatalog
+            to_column: ProductId
+          - from_table: BasketDetails
+            from_column: SalesTransactionId
+            to_table: SalesTransactions
+            to_column: SalesTransactionId
+          - from_table: InventorySnapshots
+            from_column: StoreId
+            to_table: StoreMaster
+            to_column: StoreId
+          - from_table: InventorySnapshots
+            from_column: ProductId
+            to_table: ProductCatalog
+            to_column: ProductId
+        reconciliation_checks:
+          - description: POS daily totals vs Power BI semantic model totals at day and store level
+            method: sum_comparison
+            tolerance_pct: 0.01
+
+    - name: PipelineHealthAlert
+      description: >
+        Monitors the PipelineHealth table and posts failure alerts to the pipeline
+        alert Teams channel. Triggered when a sync pipeline writes a Failed or
+        PartialFailure status. Provides pipeline name, error details, retry count,
+        and last successful run timestamp so operations teams can respond quickly.
+        Also surfaces results to the agent via the Pipeline Health Check topic.
+      trigger: dataverse_row_created
+      table: PipelineHealth
+      filter: "RunStatus eq 'Failed' or RunStatus eq 'PartialFailure'"
+      connector: microsoft_teams
+      alert_content:
+        - PipelineName
+        - RunStatus
+        - RunStartTimestamp
+        - RecordsProcessed
+        - RecordsFailed
+        - ErrorCode
+        - ErrorMessage
+        - RetryAttempt
+        - DataQualityFailureDetails
 
     - name: InvokeDemandForecastModel
       description: >
@@ -792,35 +1392,135 @@ connections:
     display_name: ERP Connector
   - connector: custom_allocation_connector
     display_name: Allocation Connector
+  - connector: dataverse
+    display_name: Microsoft Dataverse
 
 custom_connectors:
   - name: PosConnector
     source: openapi
     base_url: "${PosApiBaseUrl}"
     auth: oauth2
+    operations:
+      - name: GetTransactions
+        description: Retrieves sales transactions changed after a given timestamp.
+        parameters:
+          - name: since_timestamp
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 1000
+          - name: page_token
+            type: string
+      - name: GetBasketDetails
+        description: Retrieves basket line items for a set of transaction IDs.
+      - name: GetTenderMix
+        description: Retrieves tender payment details for a set of transaction IDs.
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
   - name: ErpConnector
     source: openapi
     base_url: "${ErpApiBaseUrl}"
     auth: oauth2
+    operations:
+      - name: GetProductUpdates
+        description: Retrieves product catalog records modified after a given timestamp.
+        parameters:
+          - name: modified_since
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 500
+      - name: GetPurchaseOrders
+        description: Retrieves purchase order lines modified after a given timestamp.
+        parameters:
+          - name: modified_since
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 500
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
   - name: AllocationConnector
     source: openapi
     base_url: "${AllocationApiBaseUrl}"
     auth: oauth2
+    operations:
+      - name: GetInventorySnapshot
+        description: Retrieves the current full inventory snapshot for all stores and products.
+        parameters:
+          - name: snapshot_date
+            type: string
+            format: date
+      - name: GetStockMovements
+        description: Retrieves stock movements posted after a given timestamp.
+        parameters:
+          - name: since_timestamp
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 1000
+      - name: GetTransferOrders
+        description: Retrieves transfer orders modified after a given timestamp.
+        parameters:
+          - name: modified_since
+            type: string
+            format: datetime
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
 
 data_platform_extensions:
   synapse_link:
     enabled: true
     tables:
       - SalesTransactions
+      - BasketDetails
+      - TenderMix
       - InventorySnapshots
+      - StockMovements
+      - PurchaseOrders
       - ProductCatalog
       - StoreMaster
+    purpose: Historical and high-volume analytical workloads (2+ years of transactions)
       - DemandForecasts
       - SentimentResults
       - DocumentExtractionResults
       - CustomerFeedback
     purpose: Historical and high-volume analytical workloads
     export_mode: incremental
+    storage_account_url: "${DataLakeStorageAccountUrl}"
+    synapse_workspace_url: "${SynapseWorkspaceUrl}"
+
+pipeline_monitoring:
+  health_table: PipelineHealth
+  alert_channel: "${PipelineAlertTeamsChannelId}"
+  pipelines:
+    - name: PosDataSync
+      expected_schedule: daily
+      sla_completion_by: "06:00 UTC"
+      alert_on_failure: true
+      alert_on_sla_breach: true
+    - name: ErpDataSync
+      expected_schedule: daily
+      sla_completion_by: "07:00 UTC"
+      alert_on_failure: true
+      alert_on_sla_breach: true
+    - name: AllocationDataSync
+      expected_schedule: hourly
+      sla_latency_minutes: 30
+      alert_on_failure: true
+      alert_on_sla_breach: true
+    - name: KpiCacheRefresh
+      expected_schedule: every_4_hours
+      sla_latency_minutes: 45
+      alert_on_failure: true
+      alert_on_sla_breach: true
 
 ai_builder_models:
   - name: DemandForecastingModel
