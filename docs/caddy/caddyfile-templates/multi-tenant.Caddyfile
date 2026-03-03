@@ -1,0 +1,230 @@
+# Multi-Tenant Caddyfile Template
+#
+# Deployment pattern: each tenant gets a dedicated subdomain routed to an isolated
+# Copilot Studio agent endpoint. Caddy uses a wildcard TLS certificate.
+#
+# DNS prerequisite:
+#   *.agent.example.com  A  <caddy-server-ip>
+#
+# The wildcard certificate is obtained via a DNS-01 ACME challenge.
+# Configure the appropriate Caddy DNS provider plugin for your registrar.
+# Example: xcaddy build --with github.com/caddy-dns/azure
+#
+# Required environment variables:
+#   WILDCARD_DOMAIN       - Root domain (e.g. agent.example.com) -- Caddy binds *.{WILDCARD_DOMAIN}
+#   TLS_EMAIL             - Email for Let's Encrypt
+#   DNS_PROVIDER_TOKEN    - API token for DNS-01 challenge provider
+#   TENANT_A_HOST         - Full hostname for tenant A (e.g. contoso.agent.example.com)
+#   TENANT_A_UPSTREAM     - Copilot Studio endpoint for tenant A
+#   TENANT_B_HOST         - Full hostname for tenant B (e.g. fabrikam.agent.example.com)
+#   TENANT_B_UPSTREAM     - Copilot Studio endpoint for tenant B
+#   TENANT_C_HOST         - Full hostname for tenant C (e.g. northwind.agent.example.com)
+#   TENANT_C_UPSTREAM     - Copilot Studio endpoint for tenant C
+#   DIRECTLINE_SECRET     - Direct Line channel secret (shared or per-tenant)
+#   ALLOWED_ORIGINS       - Approved CORS origin pattern
+#   RATE_LIMIT_REQUESTS   - Requests per window per IP
+#   RATE_LIMIT_WINDOW     - Time window (e.g. 10s)
+#   LOG_FILE              - Absolute path for access log
+
+{
+  email {$TLS_EMAIL}
+}
+
+# -------------------------------------------------------------------------
+# Wildcard TLS certificate via DNS-01 challenge
+# This snippet is referenced by each tenant site block.
+# Replace the dns directive with the plugin matching your DNS provider.
+# -------------------------------------------------------------------------
+(wildcard_tls) {
+  tls {$TLS_EMAIL} {
+    dns azure {
+      tenant_id     {$AZURE_DNS_TENANT_ID}
+      client_id     {$AZURE_DNS_CLIENT_ID}
+      client_secret {$DNS_PROVIDER_TOKEN}
+    }
+    # Alternatively use: dns cloudflare {$DNS_PROVIDER_TOKEN}
+  }
+}
+
+# -------------------------------------------------------------------------
+# Shared security headers snippet
+# -------------------------------------------------------------------------
+(security_headers) {
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.botframework.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://directline.botframework.com wss://directline.botframework.com; frame-ancestors {$ALLOWED_ORIGINS};"
+    X-Frame-Options "SAMEORIGIN"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    -Server
+  }
+}
+
+# -------------------------------------------------------------------------
+# Shared rate limiting snippet
+# -------------------------------------------------------------------------
+(rate_limiting) {
+  rate_limit {
+    zone per_ip {
+      key {remote_host}
+      events {$RATE_LIMIT_REQUESTS}
+      window {$RATE_LIMIT_WINDOW}
+    }
+  }
+}
+
+# -------------------------------------------------------------------------
+# Shared access logging snippet
+# -------------------------------------------------------------------------
+(access_log) {
+  log {
+    output file {$LOG_FILE} {
+      roll_size 100MiB
+      roll_keep 10
+      roll_keep_for 720h
+    }
+    format json
+    level INFO
+  }
+}
+
+# -------------------------------------------------------------------------
+# Shared Direct Line token proxy snippet
+# -------------------------------------------------------------------------
+(token_proxy) {
+  handle /api/token {
+    uri strip_prefix /api/token
+    reverse_proxy https://directline.botframework.com/v3/directline/tokens/generate {
+      header_up Authorization "Bearer {$DIRECTLINE_SECRET}"
+      header_up Content-Type "application/json"
+      header_down -Server
+    }
+  }
+}
+
+# -------------------------------------------------------------------------
+# Tenant A site block
+# -------------------------------------------------------------------------
+{$TENANT_A_HOST} {
+  import wildcard_tls
+  import security_headers
+  import rate_limiting
+  import access_log
+  import token_proxy
+
+  handle /healthz {
+    respond "OK" 200
+  }
+
+  handle {
+    reverse_proxy {$TENANT_A_UPSTREAM} {
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Tenant-Id "tenant-a"
+      header_down -Server
+      header_down -X-Powered-By
+      transport http {
+        dial_timeout 10s
+        response_header_timeout 30s
+      }
+    }
+  }
+
+  @cors_preflight {
+    method OPTIONS
+  }
+  handle @cors_preflight {
+    header Access-Control-Allow-Origin "{$ALLOWED_ORIGINS}"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization"
+    header Access-Control-Max-Age "3600"
+    respond "" 204
+  }
+}
+
+# -------------------------------------------------------------------------
+# Tenant B site block
+# -------------------------------------------------------------------------
+{$TENANT_B_HOST} {
+  import wildcard_tls
+  import security_headers
+  import rate_limiting
+  import access_log
+  import token_proxy
+
+  handle /healthz {
+    respond "OK" 200
+  }
+
+  handle {
+    reverse_proxy {$TENANT_B_UPSTREAM} {
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Tenant-Id "tenant-b"
+      header_down -Server
+      header_down -X-Powered-By
+      transport http {
+        dial_timeout 10s
+        response_header_timeout 30s
+      }
+    }
+  }
+
+  @cors_preflight {
+    method OPTIONS
+  }
+  handle @cors_preflight {
+    header Access-Control-Allow-Origin "{$ALLOWED_ORIGINS}"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization"
+    header Access-Control-Max-Age "3600"
+    respond "" 204
+  }
+}
+
+# -------------------------------------------------------------------------
+# Tenant C site block
+# -------------------------------------------------------------------------
+{$TENANT_C_HOST} {
+  import wildcard_tls
+  import security_headers
+  import rate_limiting
+  import access_log
+  import token_proxy
+
+  handle /healthz {
+    respond "OK" 200
+  }
+
+  handle {
+    reverse_proxy {$TENANT_C_UPSTREAM} {
+      header_up Host {upstream_hostport}
+      header_up X-Real-IP {remote_host}
+      header_up X-Forwarded-For {remote_host}
+      header_up X-Forwarded-Proto {scheme}
+      header_up X-Tenant-Id "tenant-c"
+      header_down -Server
+      header_down -X-Powered-By
+      transport http {
+        dial_timeout 10s
+        response_header_timeout 30s
+      }
+    }
+  }
+
+  @cors_preflight {
+    method OPTIONS
+  }
+  handle @cors_preflight {
+    header Access-Control-Allow-Origin "{$ALLOWED_ORIGINS}"
+    header Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    header Access-Control-Allow-Headers "Content-Type, Authorization"
+    header Access-Control-Max-Age "3600"
+    respond "" 204
+  }
+}
