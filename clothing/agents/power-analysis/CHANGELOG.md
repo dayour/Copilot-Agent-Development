@@ -5,6 +5,15 @@ All notable changes to the Power Analysis agent will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-03-03
+
+### Added
+
+- Merge pull request #115 from dayour/copilot/implement-data-sync-pipelines
+- fix: resolve merge conflicts after PR #114 merged - keep all content
+- fix: resolve merge conflicts - keep data sync pipelines and existing content
+- feat: implement batch data sync pipelines for clothing power-analysis agent
+
 ## [2.1.0] - 2026-03-03
 
 ### Added
