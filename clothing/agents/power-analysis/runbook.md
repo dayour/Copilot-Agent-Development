@@ -15,6 +15,7 @@ The solution combines Copilot Studio orchestration, Dataverse as the data fabric
 | Power Platform environment | Dataverse-enabled, solution-aware environment |
 | Power BI Premium / Fabric | Required for Execute Queries and semantic model access |
 | Power Automate | Cloud flows for analytical query orchestration |
+| AI Builder credits | Required for prediction, classification, sentiment, and document models |
 | Microsoft Entra ID | Authentication, least-privilege role assignment |
 | Source system connectivity | POS, ERP, allocation feeds available for sync |
 | Azure Data Lake / Synapse workspace | Required for Dataverse Synapse Link |
@@ -35,6 +36,10 @@ Create or import these tables:
 - `ProductCatalog`
 - `StoreMaster`
 - `InventorySnapshots`
+- `CustomerFeedback`
+- `DemandForecasts`
+- `SentimentResults`
+- `DocumentExtractionResults`
 
 Required column guidance:
 - `SalesTransactions`: TransactionId (alternate key), StoreId (lookup), ProductId (lookup), TransactionDate, UnitsSold, NetSalesAmount, GrossMarginAmount, Channel
@@ -91,9 +96,50 @@ Validate role mapping:
    - `PosApiBaseUrl`
    - `ErpApiBaseUrl`
    - `AllocationApiBaseUrl`
+   - `AIBuilderEnvironmentId`
+   - `DemandForecastingModelId` (set after completing step 5a)
+   - `CategoryClassificationModelId` (set after completing step 5b)
+   - `SentimentAnalysisModelId` (set after completing step 5c)
+   - `DocumentProcessingModelId` (set after completing step 5d)
+   - `SentimentAlertThreshold` (default: 0.4)
+   - `ModelRetrainingSchedule` (default: monthly)
 4. Verify imported components are healthy and connection references are bound.
 
-### 5. Configure Data Pipeline Sync
+### 5. Configure AI Builder Models
+
+#### 5a. Demand Forecasting Model
+1. In [https://make.powerapps.com](https://make.powerapps.com), navigate to **AI Builder** -> **Models**.
+2. Create a new **Prediction** model named `DemandForecastingModel`.
+3. Select training table: `SalesTransactions`.
+4. Set label column to `UnitsSold` and feature columns to `ProductId`, `StoreId`, `TransactionDate`, `Channel`.
+5. Train the model on at least 2 years of historical data (minimum 10,000 rows required).
+6. Validate that Mean Absolute Percentage Error is below 15% and R-squared is above 0.75.
+7. Publish the model and copy the **Model ID** to the `DemandForecastingModelId` environment variable.
+
+#### 5b. Category Classification Model
+1. Create a new **Text Classification** model named `CategoryClassificationModel`.
+2. Select training table: `ProductCatalog` filtered to `LifecycleStatus = Active`.
+3. Set label column to `Category` and feature columns to `SKU`, `Brand`, `SubCategory`, `Season`.
+4. Ensure at least 500 labeled examples across all categories before training.
+5. Validate accuracy above 85%, precision above 80%, and recall above 80%.
+6. Publish the model and copy the **Model ID** to the `CategoryClassificationModelId` environment variable.
+
+#### 5c. Sentiment Analysis Model
+1. Create a new **Sentiment Analysis** model named `SentimentAnalysisModel`.
+   - If using the pre-built AI Builder sentiment model, navigate to **AI Builder** -> **Models** -> **Use prebuilt model** -> **Sentiment analysis**. Copy the **Model ID** displayed on the model detail page.
+   - If fine-tuning, use the `CustomerFeedback` Dataverse table with `FeedbackText` and `SentimentLabel` columns (minimum 2,000 labeled rows).
+2. Validate accuracy above 80% and F1 score above 0.78.
+3. Publish the model and copy the **Model ID** to the `SentimentAnalysisModelId` environment variable.
+4. Set `SentimentAlertThreshold` to the desired negative percentage trigger (default 0.4 = 40%).
+
+#### 5d. Document Processing Model
+1. Create a new **Document Processing** model named `DocumentProcessingModel`.
+2. Define three document collections: `supplier invoice`, `delivery note`, `competitor price sheet`.
+3. Tag a minimum of 5 sample documents per document type to train field extraction.
+4. Validate field extraction accuracy above 90% on a held-out document set.
+5. Publish the model and copy the **Model ID** to the `DocumentProcessingModelId` environment variable.
+
+### 6. Configure Data Pipeline Sync
 Set up inbound pipelines:
 
 1. **POS Sync (15-minute micro-batch)**
@@ -116,7 +162,7 @@ Set up inbound pipelines:
    - Target: `StoreMaster`
    - Strategy: Slowly changing dimensions with effective dating
 
-### 6. Configure Power Automate Analytical Flows
+### 7. Configure Power Automate Analytical Flows
 Bind and test the flows:
 
 #### Flow: `MultiMeasureQuery`
@@ -177,6 +223,54 @@ ROW(
 )
 ```
 
+#### Flow: `InvokeDemandForecastModel`
+Purpose: call the AI Builder demand forecasting model and write results to `DemandForecasts`.
+
+Configuration checklist:
+- Bind to AI Builder connector with `${DemandForecastingModelId}`.
+- Accept `sku`, `store`, and `forecast_period` inputs from the agent topic.
+- Write forecast output rows to the `DemandForecasts` Dataverse table.
+- Return `forecast_predicted_units`, `forecast_confidence_low`, `forecast_confidence_high`, `forecast_key_drivers`, `forecast_seasonality_index`, `forecast_promotion_impact`.
+
+#### Flow: `InvokeCategoryClassificationModel`
+Purpose: classify submitted products using the AI Builder text classification model.
+
+Configuration checklist:
+- Bind to AI Builder connector with `${CategoryClassificationModelId}`.
+- Accept `product_ids` and `confidence_threshold` inputs.
+- Apply accepted classifications (score >= threshold) to `ProductCatalog.Category`.
+- Write flagged classifications (score < threshold) to a pending-review queue.
+- Return `classification_submitted_count`, `classification_accepted_count`, `classification_flagged_count`, `classification_assignments_summary`.
+
+#### Flow: `InvokeSentimentAnalysisModel`
+Purpose: run sentiment analysis on customer feedback and alert on spikes.
+
+Configuration checklist:
+- Bind to AI Builder connector with `${SentimentAnalysisModelId}`.
+- Accept `category`, `period`, `feedback_source`, and `alert_threshold` inputs.
+- Aggregate sentiment scores and write to `SentimentResults`.
+- Set `sentiment_negative_spike_detected = true` when `NegativePct > alert_threshold`.
+- Return sentiment score fields and `sentiment_spike_summary`.
+
+#### Flow: `InvokeDocumentProcessingModel`
+Purpose: extract structured data from uploaded documents.
+
+Configuration checklist:
+- Bind to AI Builder connector with `${DocumentProcessingModelId}`.
+- Accept `document_type` and `document_content` (base64 or file reference) inputs.
+- Write extracted fields to `DocumentExtractionResults` with `ReviewStatus = Pending`.
+- Set `document_extraction_status` to `success` or `failed` based on confidence.
+- Return all extracted field variables to the agent topic.
+
+#### Flow: `ScheduleModelRetraining`
+Purpose: orchestrate periodic retraining for all AI Builder models.
+
+Configuration checklist:
+- Trigger on the schedule defined in `${ModelRetrainingSchedule}`.
+- For each model: verify minimum new training rows, initiate AI Builder retrain, wait for completion.
+- Validate model performance against defined thresholds before publishing.
+- Log model version, accuracy metrics, and training date to a `ModelVersionLog` record.
+- Send a training completion summary to `${AnalyticsTeamsChannelId}`.
 ### 7. Configure Reporting and Alerting Flows
 Bind and test the Dataverse-backed flows for alert management, saved analyses, and scheduled reports.
 
@@ -224,14 +318,14 @@ Validation checks:
 
 If any critical rule fails, stop publish promotion and notify data engineering.
 
-### 8. Configure Dataverse Synapse Link
+### 9. Configure Dataverse Synapse Link
 1. Enable Synapse Link on Dataverse environment.
 2. Select `SalesTransactions`, `InventorySnapshots`, and supporting dimensions.
 3. Configure export to ADLS Gen2 and attach Synapse workspace.
 4. Build historical analytical views (multi-year trend and seasonality).
 5. Route long-window queries and heavy aggregations to Synapse-backed datasets.
 
-### 9. Configure Authentication and Channel
+### 10. Configure Authentication and Channel
 1. In Copilot Studio, set authentication to **Microsoft Entra ID**.
 2. Validate user context propagation into flow calls, including `User.EntraId` and `User.IsAdmin` variable population at session start.
 3. Publish to Teams and run controlled UAT with analyst and store manager personas.
@@ -246,6 +340,12 @@ If any critical rule fails, stop publish promotion and notify data engineering.
 - [ ] Trend Detection explains period-over-period movement and contributing dimensions
 - [ ] What-If Analysis returns projected KPI changes with input assumptions
 - [ ] Anomaly Alerts identify threshold breaches and notify designated channel
+- [ ] Demand Forecasting returns predicted units, confidence interval, and key drivers
+- [ ] Category Classification assigns categories to test products and flags low-confidence items
+- [ ] Sentiment Analysis returns sentiment breakdown and triggers alert above threshold
+- [ ] Document Processing extracts fields from a sample invoice, delivery note, and price sheet
+- [ ] AI Builder model IDs are bound and all four invoke flows execute without error
+- [ ] ScheduleModelRetraining flow triggers, completes, and posts summary to Teams
 - [ ] Alert rule creation, listing, modification, and deletion work via conversation
 - [ ] Compound AND/OR alert rules evaluate correctly against live metric values
 - [ ] Alert lifecycle transitions (new to acknowledged, acknowledged to resolved) are persisted correctly
@@ -266,10 +366,14 @@ If any critical rule fails, stop publish promotion and notify data engineering.
 |------|-----------|-------|
 | Monitor sync latency and failures | Hourly | Data Engineering |
 | Review analytical flow failures | Daily | Automation Engineer |
+| Review AI Builder invoke flow failures | Daily | Automation Engineer |
+| Monitor AI Builder model accuracy and drift | Weekly | Data Science Lead |
+| Review sentiment alerts and validate true positives | Weekly | Retail Analytics |
 | Validate KPI formulas after model changes | Each release | BI Lead |
 | Review anomaly false positives | Weekly | Retail Analytics |
 | Review unrecognized prompts and topic routing | Weekly | Copilot Studio Admin |
 | Verify Synapse Link export health | Daily | Data Platform Team |
+| Review model retraining logs and version history | Monthly | Data Science Lead |
 | Review AlertRuleEvaluator execution and missed evaluations | Daily | Automation Engineer |
 | Review duplicate suppression in AlertHistory | Weekly | Automation Engineer |
 | Audit ScheduledReportDelivery success and failure rates | Daily | Automation Engineer |

@@ -101,6 +101,56 @@ power-analysis/
     └── solution-definition.yaml
 ```
 
+## AI Builder Integration
+
+Version 2.0 extends the agent with four AI Builder models that deliver advanced
+capabilities beyond rule-based analytics.
+
+### Demand Forecasting
+
+- Model type: AI Builder prediction model
+- Trained on 2+ years of historical `SalesTransactions` data
+- Predicts next-period demand by SKU and store combination
+- Factors in seasonality, promotions, and trend signals
+- Agent topic: **"What should I expect to sell next week?"**
+- Outputs: predicted units, confidence interval, key demand drivers, seasonality index
+- Forecast results stored in the `DemandForecasts` Dataverse table
+
+### Category Classification
+
+- Model type: AI Builder text classification model
+- Trained on the active `ProductCatalog` with verified category labels
+- Auto-classifies new products based on name, description, material, and demographic attributes
+- Results above the confidence threshold are written to `ProductCatalog` automatically
+- Results below the threshold are queued for human review
+- Agent topic: **"Classify these new arrivals"**
+
+### Sentiment Analysis
+
+- Model type: AI Builder sentiment analysis model
+- Analyzes customer feedback from surveys, reviews, and social media
+- Returns sentiment breakdown (positive / neutral / negative) and key themes
+- Tracks sentiment trends by product category and brand over configurable windows
+- Triggers a Teams alert when negative sentiment exceeds the configured threshold
+- Sentiment results stored in the `SentimentResults` Dataverse table
+- Agent topic: **"What are customers saying about our new denim line?"**
+
+### Document Processing
+
+- Model type: AI Builder document processing (form processing) model
+- Extracts structured data from supplier invoices, delivery notes, and competitor price sheets
+- Supports PDF, PNG, JPEG, and TIFF uploads via the agent conversation
+- Extracted data written to `DocumentExtractionResults` for review and approval
+- Agent topic: **"Process supplier invoice"** or **"Extract data from delivery note"**
+
+## AI Builder Dataverse Tables
+
+| Table | Purpose |
+|-------|---------|
+| **DemandForecasts** | Forecast model outputs per SKU, store, and horizon |
+| **SentimentResults** | Sentiment analysis outputs per category, brand, and period |
+| **DocumentExtractionResults** | Structured extraction results for uploaded documents |
+
 ## Quick Start
 
 1. Provision Dataverse schema and security as documented in `runbook.md`.
@@ -108,3 +158,4 @@ power-analysis/
 3. Configure sync pipelines for POS, ERP, and inventory snapshots.
 4. Configure and validate the Power Automate analytical flows referenced by the agent template.
 5. Publish to Teams or web channel and execute validation tests for decomposition and root-cause scenarios.
+6. Configure AI Builder models and bind `DemandForecastingModelId`, `CategoryClassificationModelId`, `SentimentAnalysisModelId`, and `DocumentProcessingModelId` environment variables as documented in `runbook.md`.
