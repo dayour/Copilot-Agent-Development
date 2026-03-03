@@ -29,8 +29,19 @@ Copilot Studio knowledge grounding is aligned to hub-associated libraries with m
 - **Onboarding and Training** -> `training-library`
 - **Store Operations** -> `operations-library`
 - **Menu Update** -> `seasonal-menu-library`
-- **Shift Handover** -> `shift-handover-list` (writeback)
-- **Store Lookup** -> `store-directory-list` (lookup)
+- **Shift Schedule** -> `shift-schedule-list` (query)
+- **Shift Handover** -> `handover-log-list` (writeback)
+- **Equipment Inventory** -> `equipment-inventory-list` (query)
+- **Store Lookup** -> `store-contact-directory-list` (lookup)
+
+## SharePoint List Schemas
+
+| List | Columns |
+|------|---------|
+| Shift Schedule | Store, Date, Shift, Employee, Role, Status |
+| Handover Log | Store, Date, FromEmployee, ToEmployee, CashBalanced, StockChecked, Issues, Timestamp |
+| Equipment Inventory | Store, Item, SerialNumber, LastMaintenance, NextService, Status |
+| Store Contact Directory | Store, Manager, RegionalDirector, Phone, Email |
 
 ## Folder Structure
 
@@ -38,6 +49,7 @@ Copilot Studio knowledge grounding is aligned to hub-associated libraries with m
 virtual-coach/
 |-- README.md
 |-- runbook.md
+|-- CHANGELOG.md
 |-- templates/
 |   |-- agent-template.yaml
 `-- solution/

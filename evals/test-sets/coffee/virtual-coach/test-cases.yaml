@@ -215,3 +215,66 @@
   description: >
     Final turn of the handover conversation. Tests that the agent provides
     closure guidance including handing over notes to the incoming barista.
+
+- id: coffee-vc-crit-005
+  tier: critical
+  query: "Show me the shift schedule for store 42 today"
+  expected_keywords:
+    - shift
+    - schedule
+    - store
+    - employee
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The virtual coach can query the Shift Schedule SharePoint list by store and date.
+    The list holds Store, Date, Shift, Employee, Role, and Status columns.
+  description: >
+    Verifies that the agent responds to a shift schedule query with relevant
+    scheduling terminology.
+
+- id: coffee-vc-func-004
+  tier: functional
+  query: "Is the espresso machine at store 12 operational or does it need service?"
+  expected_keywords:
+    - equipment
+    - status
+    - service
+    - store
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The virtual coach can query the Equipment Inventory SharePoint list.
+    Status values are Operational, Needs Service, Out of Service, or Under Repair.
+    The agent should indicate the current status or ask for clarification on the store number.
+  description: >
+    Tests that the agent correctly handles an equipment status query and returns
+    a meaningful response based on the Equipment Inventory list.
+
+- id: coffee-vc-func-005
+  tier: functional
+  query: "Who is the manager and regional director for store 7?"
+  expected_keywords:
+    - manager
+    - regional
+    - phone
+    - email
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The virtual coach queries the Store Contact Directory SharePoint list.
+    The list holds Store, Manager, RegionalDirector, Phone, and Email columns.
+    The agent should return contact details for the specified store.
+  description: >
+    Tests that the agent correctly retrieves manager and regional director
+    contact details from the Store Contact Directory list.

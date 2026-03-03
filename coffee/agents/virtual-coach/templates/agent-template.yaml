@@ -4,11 +4,12 @@ agent:
   name: Virtual Coach
   description: >
     A SharePoint-native virtual coach for coffee store teams.
-    Supports recipes, policies, training, operations, store lookup, and shift handover.
+    Supports recipes, policies, training, operations, store lookup, shift scheduling,
+    shift handover logging, equipment inventory, and store contact directory.
   language: en-US
   fallback_message: >
     I could not match that request yet. I can search recipes, policies, training guides,
-    operations procedures, store details, or help with shift handover.
+    operations procedures, store details, shift schedules, equipment status, or help with shift handover.
 
 topics:
   - name: Greeting
@@ -27,8 +28,10 @@ topics:
       - HR and policy
       - Training help
       - Store operations
+      - Shift schedule
       - Shift handover
-      - Store lookup
+      - Equipment status
+      - Store contacts
       - Menu updates
 
   - name: Drink Recipes
@@ -118,18 +121,17 @@ topics:
         prompt: What is the store number?
     actions:
       - type: sharepoint_list_query
-        list: store-directory-list
-        filter: "StoreNumber eq '{store_number}'"
+        list: store-contact-directory-list
+        filter: "Store eq '{store_number}'"
         select:
-          - StoreNumber
-          - StoreName
-          - Region
-          - ManagerName
-          - ManagerEmail
-          - StorePhone
+          - Store
+          - Manager
+          - RegionalDirector
+          - Phone
+          - Email
     messages:
       - text: >
-          I found the store details in the directory list. Let me know if you want contact or region details only.
+          I found the store contact details in the directory. Let me know if you want manager or regional director details only.
 
   - name: Shift Handover
     trigger_phrases:
@@ -140,46 +142,108 @@ topics:
       - submit handover
     messages:
       - text: >
-          Let us complete your shift handover. Fill out the checklist and I will save it to the store handover list.
+          Let us complete your shift handover. Fill out the checklist and I will save it to the store handover log.
     adaptive_card:
       title: Shift Handover Checklist
       fields:
-        - id: store_number
-          label: Store number
+        - id: store
+          label: Store
           type: text
         - id: shift_date
           label: Shift date
           type: date
+        - id: from_employee
+          label: Handing over from
+          type: text
+        - id: to_employee
+          label: Handing over to
+          type: text
         - id: cash_balanced
           label: Cash drawer balanced
           type: boolean
         - id: stock_checked
           label: Stock checked and updated
           type: boolean
-        - id: equipment_cleaned
-          label: Equipment cleaned and ready
-          type: boolean
         - id: issues
           label: Issues to hand over
           type: text
           multiline: true
-        - id: incoming_colleague
-          label: Handing over to
-          type: text
     submit_action:
       type: sharepoint_list_create_item
-      list: shift-handover-list
+      list: handover-log-list
       fields:
-        StoreNumber: "{store_number}"
-        ShiftDate: "{shift_date}"
+        Store: "{store}"
+        Date: "{shift_date}"
+        FromEmployee: "{from_employee}"
+        ToEmployee: "{to_employee}"
         CashBalanced: "{cash_balanced}"
         StockChecked: "{stock_checked}"
-        EquipmentCleaned: "{equipment_cleaned}"
         Issues: "{issues}"
-        IncomingColleague: "{incoming_colleague}"
-        SubmittedBy: "{employee_name}"
+        Timestamp: now
     completion_message: >
-      Your handover has been saved to SharePoint and is available for the next shift lead.
+      Your handover has been saved to the handover log and is available for the next shift lead.
+
+  - name: Shift Schedule
+    trigger_phrases:
+      - show my shift schedule
+      - who is working today at store {store_number}
+      - what shift am i on
+      - schedule for store {store_number} on {shift_date}
+      - who is on the opening shift
+    entities:
+      - name: store_number
+        type: string
+        prompt: What is the store number?
+      - name: shift_date
+        type: date
+        prompt: What date do you want to check?
+    actions:
+      - type: sharepoint_list_query
+        list: shift-schedule-list
+        filter: "Store eq '{store_number}' and Date eq '{shift_date}'"
+        select:
+          - Store
+          - Date
+          - Shift
+          - Employee
+          - Role
+          - Status
+    messages:
+      - text: >
+          Here are the scheduled shifts for that store and date. Status is color-coded: Confirmed is green, Scheduled is blue, Swapped is orange, and Absent is red.
+    fallback_message: >
+      I could not find shift schedule records for that store or date. Check the store number and date and try again.
+
+  - name: Equipment Inventory
+    trigger_phrases:
+      - what is the status of the espresso machine
+      - equipment needing service at store {store_number}
+      - when is next service for {item}
+      - show equipment inventory
+      - any equipment out of service
+    entities:
+      - name: store_number
+        type: string
+        prompt: What is the store number?
+      - name: item
+        type: string
+        prompt: Which equipment item do you need?
+    actions:
+      - type: sharepoint_list_query
+        list: equipment-inventory-list
+        filter: "Store eq '{store_number}'"
+        select:
+          - Store
+          - Item
+          - SerialNumber
+          - LastMaintenance
+          - NextService
+          - Status
+    messages:
+      - text: >
+          Here is the equipment inventory for that store. Status is color-coded: Operational is green, Needs Service is orange, Out of Service is red, and Under Repair is yellow.
+    fallback_message: >
+      I could not find equipment records for that store. Check the store number and try again.
 
   - name: Performance Tips
     trigger_phrases:

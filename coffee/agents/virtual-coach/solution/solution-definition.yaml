@@ -3,12 +3,14 @@
 solution:
   name: CoffeeVirtualCoach
   display_name: "Coffee - Virtual Coach"
-  version: "1.1.0"
+  version: "1.2.0"
   publisher: Copilot Agent Development
   description: >
     Production-ready SharePoint-centric solution for the Virtual Coach agent.
     Includes agent template, SharePoint knowledge sources, environment variables,
-    and Power Automate flow references for list operations and approval notifications.
+    Power Automate flow references for list operations and approval notifications,
+    and structured SharePoint lists for shift scheduling, handover logging,
+    equipment inventory, and store contact management.
 
 environment_variables:
   - name: HubSiteUrl
@@ -41,16 +43,28 @@ environment_variables:
     description: SharePoint document library URL for SOPs and store operations guidance.
     default_value: ""
 
-  - name: ShiftHandoverListUrl
-    display_name: Shift Handover List URL
+  - name: ShiftScheduleListUrl
+    display_name: Shift Schedule List URL
     type: string
-    description: SharePoint list URL used for shift handover writeback.
+    description: SharePoint list URL for the Shift Schedule list used to query and display shift assignments.
     default_value: ""
 
-  - name: StoreDirectoryListUrl
-    display_name: Store Directory List URL
+  - name: HandoverLogListUrl
+    display_name: Handover Log List URL
     type: string
-    description: SharePoint list URL used for store lookup queries.
+    description: SharePoint list URL for the Handover Log list used for shift handover writeback.
+    default_value: ""
+
+  - name: EquipmentInventoryListUrl
+    display_name: Equipment Inventory List URL
+    type: string
+    description: SharePoint list URL for the Equipment Inventory list used to query equipment status and service records.
+    default_value: ""
+
+  - name: StoreContactDirectoryListUrl
+    display_name: Store Contact Directory List URL
+    type: string
+    description: SharePoint list URL for the Store Contact Directory list used for manager and regional contact lookups.
     default_value: ""
 
   - name: SeasonalMenuLibraryUrl
@@ -103,24 +117,175 @@ components:
             - DrinkCategory
             - StoreRegion
       data_sources:
-        - id: shift-handover-list
+        - id: shift-schedule-list
           type: sharepoint_list
-          url: "${ShiftHandoverListUrl}"
-        - id: store-directory-list
+          url: "${ShiftScheduleListUrl}"
+          columns:
+            - name: Store
+              type: string
+              required: true
+            - name: Date
+              type: date
+              required: true
+            - name: Shift
+              type: choice
+              required: true
+              choices:
+                - Opening
+                - Mid
+                - Closing
+            - name: Employee
+              type: string
+              required: true
+            - name: Role
+              type: choice
+              required: true
+              choices:
+                - Barista
+                - Shift Lead
+                - Store Manager
+                - Trainer
+            - name: Status
+              type: choice
+              required: true
+              choices:
+                - Scheduled
+                - Confirmed
+                - Swapped
+                - Absent
+          list_formatting:
+            view_type: color_coded
+            status_column: Status
+            color_rules:
+              - value: Scheduled
+                color: blue
+              - value: Confirmed
+                color: green
+              - value: Swapped
+                color: orange
+              - value: Absent
+                color: red
+
+        - id: handover-log-list
           type: sharepoint_list
-          url: "${StoreDirectoryListUrl}"
+          url: "${HandoverLogListUrl}"
+          columns:
+            - name: Store
+              type: string
+              required: true
+            - name: Date
+              type: date
+              required: true
+            - name: FromEmployee
+              type: string
+              required: true
+            - name: ToEmployee
+              type: string
+              required: true
+            - name: CashBalanced
+              type: boolean
+              required: true
+            - name: StockChecked
+              type: boolean
+              required: true
+            - name: Issues
+              type: string
+              required: false
+              multiline: true
+            - name: Timestamp
+              type: datetime
+              required: true
+              default_value: now
+          list_formatting:
+            view_type: color_coded
+            status_column: CashBalanced
+            color_rules:
+              - value: "Yes"
+                color: green
+              - value: "No"
+                color: red
+
+        - id: equipment-inventory-list
+          type: sharepoint_list
+          url: "${EquipmentInventoryListUrl}"
+          columns:
+            - name: Store
+              type: string
+              required: true
+            - name: Item
+              type: string
+              required: true
+            - name: SerialNumber
+              type: string
+              required: true
+            - name: LastMaintenance
+              type: date
+              required: false
+            - name: NextService
+              type: date
+              required: false
+            - name: Status
+              type: choice
+              required: true
+              choices:
+                - Operational
+                - Needs Service
+                - Out of Service
+                - Under Repair
+          list_formatting:
+            view_type: color_coded
+            status_column: Status
+            color_rules:
+              - value: Operational
+                color: green
+              - value: Needs Service
+                color: orange
+              - value: Out of Service
+                color: red
+              - value: Under Repair
+                color: yellow
+
+        - id: store-contact-directory-list
+          type: sharepoint_list
+          url: "${StoreContactDirectoryListUrl}"
+          columns:
+            - name: Store
+              type: string
+              required: true
+            - name: Manager
+              type: string
+              required: true
+            - name: RegionalDirector
+              type: string
+              required: true
+            - name: Phone
+              type: string
+              required: true
+            - name: Email
+              type: string
+              required: true
       authentication:
         type: azure_ad
         tenant_restriction: true
 
   power_automate_flows:
-    - name: SaveShiftHandoverToSharePoint
-      description: Creates a new item in the SharePoint shift handover list from topic submission.
+    - name: QueryShiftSchedule
+      description: Retrieves shift schedule records from the SharePoint Shift Schedule list filtered by store and date.
       trigger: copilot_studio_topic_action
       connector: sharepoint_online
 
-    - name: QueryStoreDirectory
-      description: Retrieves store metadata from SharePoint store directory list.
+    - name: SaveHandoverLog
+      description: Creates a new handover log item in the SharePoint Handover Log list on shift handover submission.
+      trigger: copilot_studio_topic_action
+      connector: sharepoint_online
+
+    - name: QueryEquipmentInventory
+      description: Retrieves equipment records from the SharePoint Equipment Inventory list filtered by store and status.
+      trigger: copilot_studio_topic_action
+      connector: sharepoint_online
+
+    - name: QueryStoreContactDirectory
+      description: Retrieves manager and regional contact details from the SharePoint Store Contact Directory list.
       trigger: copilot_studio_topic_action
       connector: sharepoint_online
 
