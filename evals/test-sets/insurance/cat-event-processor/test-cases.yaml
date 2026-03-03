@@ -1,0 +1,194 @@
+# Test cases for insurance/cat-event-processor agent
+# Covers CAT event declaration, bulk FNOL intake, triage, dashboard, and outreach.
+#
+# Tiers:
+#   critical   -- CAT event processing facts that must always be present
+#   functional -- triage, dashboard, and outreach queries graded by LLM judge
+
+- id: ins-cat-crit-001
+  tier: critical
+  query: "How do I declare a catastrophe event for a hurricane affecting Florida?"
+  expected_keywords:
+    - declare
+    - event
+    - hurricane
+    - affected
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The CAT Event Processor allows claims managers to declare a catastrophe event
+    by providing the event name, type, affected states, and start time. A supervisor
+    approval step is required before the event is activated. Once approved, special
+    handling rules, expedited routing, and pre-approved vendor lists are activated.
+  description: >
+    Verifies that the agent provides guidance on declaring a CAT event including
+    event name, type, affected geography, and the approval process.
+
+- id: ins-cat-crit-002
+  tier: critical
+  query: "I need to file a claim for my home that was damaged in the hurricane."
+  expected_keywords:
+    - claim
+    - policy
+    - damage
+    - catastrophe
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    During an active CAT event, the agent switches to streamlined intake mode.
+    The minimum required fields are policy number, loss location, loss description,
+    and contact information. A claim reference number is returned after submission.
+  description: >
+    Verifies that the agent collects minimum viable intake fields and creates
+    a CAT claim record with a claim reference number.
+
+- id: ins-cat-crit-003
+  tier: critical
+  query: "What is the current claim volume and aggregate exposure for the active CAT event?"
+  expected_keywords:
+    - claims
+    - volume
+    - exposure
+    - dashboard
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The CAT dashboard provides real-time data on total claims filed, claims by state
+    and severity, estimated aggregate exposure by coverage type, and adjuster deployment
+    and capacity status.
+  description: >
+    Verifies that the agent surfaces CAT dashboard data including claim volume,
+    geographic distribution, aggregate exposure, and adjuster capacity.
+
+- id: ins-cat-crit-004
+  tier: critical
+  query: "How are catastrophe claims classified by severity?"
+  expected_keywords:
+    - severity
+    - total loss
+    - major
+    - minor
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The CAT Event Processor automatically triages claims into three severity tracks:
+    total loss (property destroyed or structurally uninhabitable), major damage
+    (significant structural or system damage), and minor damage (cosmetic or
+    limited damage below the repair cost threshold).
+  description: >
+    Verifies that the agent describes the three CAT triage severity classifications
+    and their routing to appropriate handling tracks.
+
+- id: ins-cat-crit-005
+  tier: critical
+  query: "How do I send proactive messages to policyholders in the affected area?"
+  expected_keywords:
+    - outreach
+    - policyholders
+    - affected
+    - message
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Policyholder Proactive Outreach flow identifies policyholders with active
+    property policies in the declared affected geography and dispatches check-in
+    messages via the configured agent channel. Opt-out records are respected.
+  description: >
+    Verifies that the agent explains the proactive outreach capability including
+    geography targeting, message dispatch, and opt-out handling.
+
+- id: ins-cat-func-001
+  tier: functional
+  query: "My house is completely destroyed by the wildfire. What happens next for my claim?"
+  expected_keywords:
+    - total loss
+    - adjuster
+    - track
+    - vendor
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    A claim described as a complete destruction of the property is classified as
+    total loss severity. The claim is routed to the senior adjuster fast track and
+    a pre-approved temporary housing vendor referral is provided. Final valuation
+    and settlement requires a licensed adjuster.
+  description: >
+    Tests that the agent correctly routes a total loss CAT claim and communicates
+    the handling track, adjuster assignment, and temporary housing vendor referral.
+
+- id: ins-cat-func-002
+  tier: functional
+  query: "When will a CAT event be deactivated and normal claims processing resume?"
+  expected_keywords:
+    - deactivation
+    - standard
+    - operations
+    - SLA
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    A CAT event is deactivated by the claims manager when the event period ends
+    and operations have normalized. Deactivation closes the event record, restores
+    standard SLA controls, and triggers a post-event summary report for claims leadership.
+  description: >
+    Tests that the agent explains the CAT event deactivation process and the
+    restoration of standard claims SLA controls.
+
+- id: ins-cat-func-003
+  tier: functional
+  query: "What documentation is required when filing a claim during a CAT event?"
+  expected_keywords:
+    - documentation
+    - relaxed
+    - expedited
+    - intake
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    During an active CAT event, documentation requirements are relaxed. The minimum
+    intake requires only a policy number, loss location, loss description, and contact
+    information. Supplementary documents such as photos and repair estimates can be
+    submitted after the initial claim is created.
+  description: >
+    Tests that the agent correctly describes the relaxed documentation requirements
+    during CAT mode and explains when supplementary documents can be provided.
+
+- id: ins-cat-func-004
+  tier: functional
+  query: "Can I check the status of my CAT claim and when to expect an adjuster contact?"
+  expected_keywords:
+    - status
+    - adjuster
+    - claim
+    - timeframe
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    After a CAT claim is filed, the policyholder receives a claim reference number,
+    an initial severity classification, an estimated response timeframe, and next steps.
+    The response timeframe depends on the triage severity track and adjuster capacity.
+  description: >
+    Tests that the agent provides claim status guidance including claim reference,
+    triage severity, expected adjuster contact timeframe, and next steps.

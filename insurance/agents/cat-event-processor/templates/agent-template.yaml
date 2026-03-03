@@ -1,0 +1,373 @@
+# Copilot Studio Agent Template — CAT Event Processor
+
+agent:
+  name: CAT Event Processor
+  description: >
+    Bulk claims processing agent for declared catastrophe events.
+    Supports CAT event declaration with supervisor approval, streamlined
+    bulk FNOL intake, automated severity triage, real-time CAT dashboard,
+    and proactive policyholder outreach for affected geographies.
+  language: en-US
+  orchestration: generative
+  fallback_message: >
+    I could not complete that request. For urgent catastrophe claims assistance,
+    please contact the claims operations center directly or connect to a claims handler.
+
+global_variables:
+  - name: cat_mode_active
+    type: boolean
+  - name: cat_event_name
+    type: string
+  - name: cat_event_id
+    type: string
+  - name: cat_affected_states
+    type: string
+  - name: cat_affected_counties
+    type: string
+  - name: claim_reference
+    type: string
+  - name: triage_severity
+    type: string
+  - name: customer_state
+    type: string
+  - name: line_of_business
+    type: string
+  - name: conversation_summary
+    type: string
+
+topics:
+  - name: Greeting
+    description: >
+      Introduces the CAT Event Processor and routes claims managers, supervisors,
+      handlers, and policyholders to declaration, bulk intake, dashboard,
+      triage, outreach, or deactivation actions.
+    trigger_phrases:
+      - Hello
+      - I need to declare a catastrophe event
+      - I need to file a CAT claim
+      - Show me the CAT dashboard
+    messages:
+      - text: >
+          I can help you declare a catastrophe event, file a claim under an active
+          CAT event, view the CAT operations dashboard, trigger policyholder outreach,
+          or deactivate an event when operations return to normal.
+    quick_replies:
+      - Declare a CAT event
+      - File a CAT claim
+      - View CAT dashboard
+      - Trigger policyholder outreach
+      - Deactivate CAT event
+
+  - name: CAT Event Declaration
+    description: >
+      Allows claims managers and supervisors to declare a named catastrophe event,
+      specify affected geography, and activate special handling rules including
+      relaxed documentation requirements, expedited routing, and pre-approved vendor lists.
+      Requires supervisor approval before activation.
+    trigger_phrases:
+      - Declare a CAT event
+      - Activate catastrophe mode
+      - We have a hurricane event to declare
+      - Start catastrophe operations for wildfire
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: cat_event_name
+        prompt: Enter the catastrophe event name (for example, Hurricane Milton, California Wildfire 2026).
+      - type: question
+        variable: cat_event_type
+        prompt: Select the event type.
+        entity: choice
+        options: [hurricane, wildfire, flood, hail, tornado, earthquake, other]
+      - type: question
+        variable: cat_affected_states
+        prompt: Enter the affected states (comma-separated state codes, for example FL, GA, SC).
+      - type: question
+        variable: cat_affected_counties
+        prompt: Enter the affected counties or leave blank to apply to all counties in the selected states.
+      - type: question
+        variable: cat_start_time
+        prompt: Enter the CAT event start date and time.
+      - type: question
+        variable: cat_surge_multiplier
+        prompt: >
+          Enter the estimated intake surge multiplier relative to normal daily volume
+          (for example, 5 for five times normal volume).
+      - type: action
+        action: DeclareCatEvent
+        input:
+          event_name: "{cat_event_name}"
+          event_type: "{cat_event_type}"
+          affected_states: "{cat_affected_states}"
+          affected_counties: "{cat_affected_counties}"
+          start_time: "{cat_start_time}"
+          surge_multiplier: "{cat_surge_multiplier}"
+          declared_by: "{User.Email}"
+        output:
+          cat_event_id: cat_event_id
+          approval_request_id: approval_request_id
+          cat_mode_active: cat_mode_active
+          cat_routing_profile: cat_routing_profile
+          vendor_list_activated: vendor_list_activated
+      - type: message
+        text: >
+          CAT event {cat_event_name} has been submitted for supervisor approval.
+          Approval request ID: {approval_request_id}.
+          Once approved, routing profile {cat_routing_profile} will be applied
+          and pre-approved vendor list will be activated.
+
+  - name: Bulk FNOL Intake
+    description: >
+      Streamlined first notice of loss intake for policyholders filing claims
+      during an active catastrophe event. Collects minimum viable fields for
+      rapid batch processing and creates claim records via the bulk FNOL flow.
+    trigger_phrases:
+      - File a CAT claim
+      - I need to report storm damage
+      - My property was damaged in the disaster
+      - Submit a catastrophe claim
+    steps:
+      - type: action
+        action: GetActiveCatEvent
+        input:
+          requested_state: "{customer_state}"
+        output:
+          cat_mode_active: cat_mode_active
+          cat_event_name: cat_event_name
+          cat_event_id: cat_event_id
+      - type: condition
+        expression: "{cat_mode_active} = false"
+        then:
+          - type: message
+            text: >
+              There is no active catastrophe event at this time. To report a standard claim,
+              please use the Claims Assistant.
+          - type: end_conversation
+      - type: message
+        text: >
+          You are filing a claim under active CAT event: {cat_event_name}.
+          We are using an expedited intake process. I will ask for the most essential
+          information to get your claim created as quickly as possible.
+      - type: question
+        variable: policy_number
+        prompt: Please provide your policy number.
+      - type: question
+        variable: customer_state
+        prompt: In which state did the loss occur?
+      - type: question
+        variable: loss_location
+        prompt: Please provide the full address of the damaged property or loss location.
+      - type: question
+        variable: loss_description
+        prompt: Please briefly describe the damage or loss.
+      - type: question
+        variable: contact_phone
+        prompt: What is the best phone number to reach you?
+      - type: question
+        variable: contact_email
+        prompt: What is your email address for claim updates?
+      - type: action
+        action: ProcessBulkFNOL
+        input:
+          policy_number: "{policy_number}"
+          customer_state: "{customer_state}"
+          loss_location: "{loss_location}"
+          loss_description: "{loss_description}"
+          contact_phone: "{contact_phone}"
+          contact_email: "{contact_email}"
+          cat_event_id: "{cat_event_id}"
+          submitted_by: "{User.Id}"
+        output:
+          claim_reference: claim_reference
+          triage_severity: triage_severity
+          estimated_response_timeframe: estimated_response_timeframe
+          next_steps: next_steps
+      - type: message
+        text: >
+          Your CAT claim has been created. Claim number: {claim_reference}.
+          Initial severity classification: {triage_severity}.
+          Expected response timeframe: {estimated_response_timeframe}.
+          Next steps: {next_steps}.
+
+  - name: CAT Dashboard
+    description: >
+      Provides claims managers and supervisors a real-time view of active catastrophe
+      event operations including claim volume by geography, estimated aggregate exposure
+      by coverage type, and adjuster deployment and capacity status.
+    trigger_phrases:
+      - View CAT dashboard
+      - Show catastrophe operations summary
+      - How many CAT claims have been filed?
+      - What is the current aggregate exposure for the CAT event?
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: dashboard_event_filter
+        prompt: >
+          Enter a CAT event name to filter the dashboard, or leave blank to view
+          all active events.
+      - type: action
+        action: GetCatDashboard
+        input:
+          event_name_filter: "{dashboard_event_filter}"
+          requested_by: "{User.Id}"
+        output:
+          total_claims_filed: total_claims_filed
+          claims_by_state: claims_by_state
+          claims_by_severity: claims_by_severity
+          aggregate_exposure_estimate: aggregate_exposure_estimate
+          adjuster_deployed_count: adjuster_deployed_count
+          adjuster_remaining_capacity: adjuster_remaining_capacity
+          dashboard_as_of: dashboard_as_of
+      - type: message
+        text: >
+          CAT Dashboard as of {dashboard_as_of}.
+          Total claims filed: {total_claims_filed}.
+          Claims by state: {claims_by_state}.
+          Claims by severity: {claims_by_severity}.
+          Estimated aggregate exposure: {aggregate_exposure_estimate}.
+          Adjusters deployed: {adjuster_deployed_count}.
+          Remaining adjuster capacity: {adjuster_remaining_capacity}.
+
+  - name: Automated CAT Triage
+    description: >
+      Classifies a CAT claim by damage severity based on the initial loss description
+      and routes the claim to the appropriate handling track: total loss, major damage,
+      or minor damage. Can be invoked directly for claims requiring re-triage.
+    trigger_phrases:
+      - Triage a CAT claim
+      - Re-classify a catastrophe claim severity
+      - What is the severity of my CAT claim?
+      - Route claim for catastrophe review
+    steps:
+      - type: question
+        variable: claim_reference
+        prompt: Please provide the claim number to triage.
+      - type: action
+        action: TriageCatClaim
+        input:
+          claim_reference: "{claim_reference}"
+          cat_event_id: "{cat_event_id}"
+          requested_by: "{User.Id}"
+        output:
+          triage_severity: triage_severity
+          triage_rationale: triage_rationale
+          assigned_track: assigned_track
+          assigned_adjuster_id: assigned_adjuster_id
+          vendor_referral: vendor_referral
+          triage_timestamp: triage_timestamp
+      - type: message
+        text: >
+          Claim {claim_reference} triage complete as of {triage_timestamp}.
+          Severity: {triage_severity}.
+          Handling track: {assigned_track}.
+          Assigned adjuster ID: {assigned_adjuster_id}.
+          Vendor referral: {vendor_referral}.
+          Triage rationale: {triage_rationale}.
+
+  - name: Policyholder Proactive Outreach
+    description: >
+      Triggers a Power Automate flow that identifies policyholders with active property
+      policies in the declared affected geography and dispatches proactive check-in
+      messages through the configured agent channel to help them understand next steps.
+    trigger_phrases:
+      - Trigger policyholder outreach
+      - Send proactive messages to affected policyholders
+      - Notify policyholders in the disaster area
+      - Start outreach for CAT event
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: outreach_event_id
+        prompt: Enter the CAT event ID for which to trigger outreach.
+      - type: question
+        variable: outreach_message_template
+        prompt: >
+          Select the outreach message template.
+        entity: choice
+        options:
+          - standard_cat_checkin
+          - urgent_evacuation_area
+          - post_event_claim_guidance
+      - type: action
+        action: SendPolicyholderOutreach
+        input:
+          cat_event_id: "{outreach_event_id}"
+          message_template: "{outreach_message_template}"
+          triggered_by: "{User.Email}"
+        output:
+          outreach_batch_id: outreach_batch_id
+          policyholders_identified: policyholders_identified
+          messages_queued: messages_queued
+          estimated_send_completion: estimated_send_completion
+      - type: message
+        text: >
+          Outreach batch {outreach_batch_id} has been queued.
+          Policyholders identified in affected geography: {policyholders_identified}.
+          Messages queued for dispatch: {messages_queued}.
+          Estimated send completion: {estimated_send_completion}.
+
+  - name: CAT Event Deactivation
+    description: >
+      Allows claims managers and supervisors to close an active catastrophe event,
+      restore standard SLA controls, and generate a post-event summary for claims leadership.
+    trigger_phrases:
+      - Deactivate CAT event
+      - End catastrophe mode
+      - Close the active CAT event
+      - Return to standard claims operations
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: deactivation_event_id
+        prompt: Enter the CAT event ID to deactivate.
+      - type: question
+        variable: deactivation_reason
+        prompt: Provide the reason for deactivation (for example, event period ended, operations normalized).
+      - type: action
+        action: DeactivateCatEvent
+        input:
+          cat_event_id: "{deactivation_event_id}"
+          deactivation_reason: "{deactivation_reason}"
+          deactivated_by: "{User.Email}"
+        output:
+          cat_mode_active: cat_mode_active
+          event_summary_report: event_summary_report
+          total_claims_processed: total_claims_processed
+          deactivation_timestamp: deactivation_timestamp
+      - type: message
+        text: >
+          CAT event has been deactivated as of {deactivation_timestamp}.
+          Standard SLA controls have been restored.
+          Total claims processed during event: {total_claims_processed}.
+          Post-event summary report has been distributed to claims leadership.
+
+  - name: Escalation
+    description: >
+      Transfers a CAT claims conversation to a human claims handler with full operational
+      context including event ID, claim reference, triage severity, and conversation summary.
+    trigger_phrases:
+      - Connect me to a claims handler
+      - I need to speak with a human adjuster
+      - Escalate my CAT claim
+      - This requires human review
+    steps:
+      - type: action
+        action: BuildConversationSummary
+        input:
+          conversation_id: "{System.Conversation.Id}"
+        output:
+          conversation_summary: conversation_summary
+      - type: message
+        text: >
+          I am transferring you to a claims handler now.
+      - type: action
+        action: handoff_to_agent
+        context:
+          claim_reference: "{claim_reference}"
+          cat_event_id: "{cat_event_id}"
+          cat_event_name: "{cat_event_name}"
+          triage_severity: "{triage_severity}"
+          customer_state: "{customer_state}"
+          line_of_business: "{line_of_business}"
+          conversation_summary: "{conversation_summary}"

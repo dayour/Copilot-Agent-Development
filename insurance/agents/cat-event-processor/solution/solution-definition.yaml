@@ -1,0 +1,253 @@
+# Copilot Studio Solution Definition — CAT Event Processor
+
+solution:
+  name: InsuranceCatEventProcessor
+  display_name: "Insurance - CAT Event Processor"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Bulk claims processing solution for declared catastrophe events.
+    Includes CAT event declaration with supervisor approval, streamlined
+    bulk FNOL intake, automated severity triage, real-time CAT dashboard,
+    and proactive policyholder outreach for affected geographies.
+
+environment_variables:
+  - name: ClaimsManagementApiBaseUrl
+    display_name: Claims Management API Base URL
+    type: string
+    description: Guidewire ClaimCenter or Duck Creek API base URL for claim record creation.
+    default_value: ""
+
+  - name: ClaimsManagementApiClientId
+    display_name: Claims Management API Client ID
+    type: string
+    description: OAuth client ID for claims management API.
+    default_value: ""
+
+  - name: ClaimsManagementApiClientSecret
+    display_name: Claims Management API Client Secret
+    type: secret
+    description: OAuth client secret for claims management API.
+    default_value: ""
+
+  - name: AffectedGeographyApiBaseUrl
+    display_name: Affected Geography API Base URL
+    type: string
+    description: >
+      API base URL for affected geography data (for example, FEMA disaster declaration
+      feed or internal event geography service) used for outreach targeting.
+    default_value: ""
+
+  - name: OutreachSenderAddress
+    display_name: Outreach Sender Email Address
+    type: string
+    description: >
+      Approved sender email address for policyholder outreach messages.
+      Must comply with CAN-SPAM and applicable state insurance communication regulations.
+    default_value: ""
+
+  - name: SupervisorApprovalGroupEmail
+    display_name: Supervisor Approval Group Email
+    type: string
+    description: Email distribution for CAT event declaration and deactivation approval requests.
+    default_value: ""
+
+  - name: CatDashboardRefreshIntervalMinutes
+    display_name: CAT Dashboard Refresh Interval (Minutes)
+    type: string
+    description: Scheduled refresh interval for CAT dashboard aggregate data. Default is 5.
+    default_value: "5"
+
+  - name: HandlerEscalationQueueEmail
+    display_name: Handler Escalation Queue Email
+    type: string
+    description: Email distribution for urgent CAT claim escalations requiring human handling.
+    default_value: ""
+
+components:
+  dataverse_tables:
+    - name: CatEvents
+      display_name: CAT Events
+      description: Master record for declared catastrophe events including status and geography.
+      columns:
+        - EventId
+        - EventName
+        - EventType
+        - AffectedStates
+        - AffectedCounties
+        - StartDateTime
+        - EndDateTime
+        - Status
+        - ActivatedBy
+        - ApprovedBy
+        - SurgeMultiplier
+        - RoutingProfile
+        - CreatedOn
+
+    - name: CatClaimRecords
+      display_name: CAT Claim Records
+      description: Streamlined intake claim records created during active CAT events.
+      columns:
+        - ClaimReference
+        - PolicyNumber
+        - CatEventId
+        - StateCode
+        - LossLocation
+        - LossDescription
+        - ContactPhone
+        - ContactEmail
+        - TriageSeverity
+        - AssignedTrack
+        - AssignedAdjusterId
+        - ClaimStatus
+        - CreatedOn
+
+    - name: CatTriageResults
+      display_name: CAT Triage Results
+      description: Severity classification and routing decisions for CAT claims.
+      columns:
+        - ClaimReference
+        - CatEventId
+        - TriageSeverity
+        - TriageRationale
+        - AssignedTrack
+        - AssignedAdjusterId
+        - VendorReferral
+        - TriageTimestamp
+
+    - name: AffectedPolicyholdersOutreach
+      display_name: Affected Policyholders Outreach
+      description: Tracking record for proactive outreach messages sent to policyholders in affected areas.
+      columns:
+        - OutreachId
+        - CatEventId
+        - PolicyholderPolicyNumber
+        - PolicyholderEmail
+        - MessageTemplate
+        - SentTimestamp
+        - DeliveryStatus
+        - OptOutRespected
+
+    - name: CatVendorDirectory
+      display_name: CAT Vendor Directory
+      description: Pre-approved vendors for emergency repair services activated during CAT events.
+      columns:
+        - VendorId
+        - VendorName
+        - ServiceCategory
+        - SupportedStates
+        - CoverageTypes
+        - ContactPhone
+        - ContactEmail
+        - ActiveStatus
+
+  agents:
+    - name: CatEventProcessor
+      template_file: ../templates/agent-template.yaml
+      authentication:
+        modes:
+          - type: azure_ad_b2c
+            audience: external_policyholders
+            allow_unauthenticated: false
+          - type: azure_ad
+            audience: internal_claims_handlers
+            allow_unauthenticated: false
+
+  power_automate_flows:
+    - name: DeclareCatEvent
+      description: >
+        Creates a pending CAT event record, triggers supervisor approval, and on
+        approval activates CAT mode with the selected routing profile and vendor list.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CatEvents
+        - SupervisorApprovalGroupEmail
+        - CatVendorDirectory
+
+    - name: ProcessBulkFNOL
+      description: >
+        Accepts bulk FNOL intake data, creates claim records in the claims management
+        system, writes records to CatClaimRecords, and triggers initial triage.
+      trigger: copilot_studio_topic_action
+      connector: http
+      dependencies:
+        - CatClaimRecords
+        - CatEvents
+        - ClaimsManagementApiBaseUrl
+
+    - name: GetCatDashboard
+      description: >
+        Aggregates real-time claim volume by geography and severity, estimated
+        aggregate exposure by coverage type, and adjuster deployment and capacity data.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CatClaimRecords
+        - CatTriageResults
+        - CatEvents
+
+    - name: TriageCatClaim
+      description: >
+        Classifies a CAT claim by severity (total loss, major damage, minor damage)
+        based on loss description and routes the claim to the appropriate handling track.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CatClaimRecords
+        - CatTriageResults
+        - CatVendorDirectory
+
+    - name: SendPolicyholderOutreach
+      description: >
+        Identifies policyholders with active property policies in the declared
+        affected geography and dispatches proactive check-in messages via the
+        configured agent channel, respecting opt-out records.
+      trigger: copilot_studio_topic_action
+      connector: office365_outlook
+      dependencies:
+        - AffectedPolicyholdersOutreach
+        - CatEvents
+        - AffectedGeographyApiBaseUrl
+        - OutreachSenderAddress
+
+    - name: DeactivateCatEvent
+      description: >
+        Closes an active CAT event record, restores standard SLA controls, and
+        generates a post-event summary report distributed to claims leadership.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CatEvents
+        - CatClaimRecords
+
+    - name: GetActiveCatEvent
+      description: >
+        Retrieves the currently active CAT event record for a given state to
+        determine whether CAT mode is active for intake routing.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      dependencies:
+        - CatEvents
+
+connections:
+  - connector: http
+    display_name: HTTP (Claims Management API)
+  - connector: dataverse
+    display_name: Microsoft Dataverse
+  - connector: office365_outlook
+    display_name: Office 365 Outlook (Outreach)
+  - connector: teams
+    display_name: Microsoft Teams (Handler Notifications)
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    display_name: Claims Handler and Supervisor Teams Channel
+    authentication: azure_ad
+    require_admin_approval: true
+  - type: custom_website
+    enabled: true
+    display_name: Policyholder Web Portal (CAT Intake)
+    authentication: azure_ad_b2c
+    embed_type: webchat
