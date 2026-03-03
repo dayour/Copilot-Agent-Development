@@ -5,7 +5,7 @@
 solution:
   name: ClothingPowerAnalysis
   display_name: "Clothing — Power Analysis"
-  version: "2.2.0"
+  version: "2.3.0"
   publisher: Copilot Agent Development
   description: >
     Deep reasoning analytics solution for the Power Analysis agent in the
@@ -188,6 +188,74 @@ environment_variables:
       (e.g., "monthly", "weekly") or a cron expression (e.g., "0 0 1 * *" for the
       first day of each calendar month at midnight).
     default_value: "monthly"
+
+  - name: WeatherApiBaseUrl
+    display_name: Weather API Base URL
+    type: string
+    description: Base URL for the weather data API used by the CrossDomainCorrelation flow.
+    default_value: ""
+
+  - name: WeatherApiKey
+    display_name: Weather API Key
+    type: string
+    description: API key for authenticating requests to the weather data service.
+    default_value: ""
+
+  - name: EventsCalendarApiBaseUrl
+    display_name: Events Calendar API Base URL
+    type: string
+    description: Base URL for the local events calendar API used by the CrossDomainCorrelation flow.
+    default_value: ""
+
+  - name: EventsCalendarApiKey
+    display_name: Events Calendar API Key
+    type: string
+    description: API key for the local events calendar service.
+    default_value: ""
+
+  - name: SocialMediaApiBaseUrl
+    display_name: Social Media API Base URL
+    type: string
+    description: Base URL for the social media sentiment API used by the CrossDomainCorrelation flow.
+    default_value: ""
+
+  - name: SocialMediaApiKey
+    display_name: Social Media API Key
+    type: string
+    description: API key for the social media data service.
+    default_value: ""
+
+  - name: AnomalyDetectionStdDevThreshold
+    display_name: Anomaly Detection Standard Deviation Threshold
+    type: decimal
+    description: >
+      Number of standard deviations from the regional mean required to classify a store as an
+      outlier in the AnomalyDetection flow. Default is 2.0 (flags stores 2+ std devs from mean).
+    default_value: "2.0"
+
+  - name: CorrelationSignificanceLevel
+    display_name: Correlation Significance Level
+    type: decimal
+    description: >
+      p-value threshold below which a correlation is classified as statistically significant
+      in the CrossDomainCorrelation flow. Default is 0.05.
+    default_value: "0.05"
+
+  - name: ElasticityDataLookbackDays
+    display_name: Elasticity Data Lookback Days
+    type: integer
+    description: >
+      Number of days of historical sales data used to calculate price and promotion elasticity
+      in the WhatIfScenario flow. Default is 365.
+    default_value: "365"
+
+  - name: TrendAnalysisConfidenceLevel
+    display_name: Trend Analysis Confidence Level
+    type: decimal
+    description: >
+      Confidence level used when calculating confidence intervals in the TrendAnalysis flow.
+      Expressed as a decimal between 0 and 1. Default is 0.95 (95% confidence intervals).
+    default_value: "0.95"
 
 components:
   dataverse_tables:
@@ -624,6 +692,67 @@ components:
         - name: SentimentLabel
           type: string
 
+    - name: AnomalyAlerts
+      display_name: Anomaly Alerts
+      description: >
+        Stores anomaly alert records written by the AnomalyDetection flow when a store's
+        metric value deviates 2 or more standard deviations from the regional mean.
+        Categorizes anomalies as positive (overperformance) or negative (underperformance).
+      primary_key: AnomalyAlertId
+      columns:
+        - name: AnomalyAlertId
+          type: string
+        - name: DetectedAt
+          type: datetime
+          description: UTC timestamp when the anomaly was detected.
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: RegionCode
+          type: string
+          description: Region to which the store belongs, used for regional mean calculation.
+        - name: MetricName
+          type: string
+          description: Name of the KPI metric that triggered the anomaly (e.g., NetSalesAmount, GrossMarginPct).
+        - name: MetricValue
+          type: decimal
+          description: Observed metric value for the store in the detection period.
+        - name: RegionalMean
+          type: decimal
+          description: Mean metric value across all stores in the same region and period.
+        - name: RegionalStdDev
+          type: decimal
+          description: Standard deviation of the metric across stores in the same region and period.
+        - name: ZScore
+          type: decimal
+          description: Number of standard deviations the store's metric value is from the regional mean.
+        - name: AnomalyType
+          type: choice
+          options: [positive, negative]
+          description: "positive = overperformance (z-score above threshold); negative = underperformance (z-score below negative threshold)."
+        - name: Severity
+          type: choice
+          options: [low, medium, high, critical]
+          description: "Severity band based on absolute z-score: 2.0-2.5 = low, 2.5-3.0 = medium, 3.0-4.0 = high, 4.0+ = critical."
+        - name: DetectionPeriod
+          type: string
+          description: "Date or period label for which the anomaly was detected (e.g., 2026-03-02)."
+        - name: Status
+          type: choice
+          options: [new, acknowledged, resolved]
+          default: new
+        - name: AcknowledgedBy
+          type: string
+        - name: AcknowledgedAt
+          type: datetime
+        - name: ResolvedAt
+          type: datetime
+        - name: ResolutionNotes
+          type: string
+        - name: CorrelationId
+          type: string
+          description: Flow run correlation ID linking this alert to the AnomalyDetection flow run.
+
     - name: AlertRules
       display_name: Alert Rules
       description: >
@@ -873,41 +1002,595 @@ components:
   power_automate_flows:
     - name: MultiMeasureQuery
       description: >
-        Executes parameterized DAX queries against the semantic model and returns
-        KPI outputs across store, category, brand, and channel dimensions.
+        Accepts an array of measures, filters, and grouping dimensions from a Copilot Studio
+        topic action. Fans out parallel DAX queries against the Power BI semantic model
+        (one query per requested measure group), then merges the results into a single unified
+        dataset. Returns structured JSON for agent consumption so multi-metric analyses
+        are answered in a single round-trip.
       trigger: copilot_studio_topic_action
       connector: power_bi
+      input_parameters:
+        - name: measures
+          type: array
+          items: string
+          description: >
+            List of DAX measure names to evaluate (e.g., [NetSalesAmount, GrossMarginPct,
+            SellThroughRatePct]). Each measure is executed in its own parallel branch.
+          required: true
+        - name: filters
+          type: object
+          description: >
+            Key-value pairs defining slicer context for the query: StoreId, RegionCode,
+            CategoryCode, BrandName, Channel, StartDate, EndDate. All filters are optional;
+            omitted filters apply no restriction.
+          required: false
+        - name: grouping_dimensions
+          type: array
+          items: string
+          description: >
+            Dimensions to include as rows in the result set (e.g., [StoreId, WeekKey]).
+            Must match dimension table columns in the semantic model.
+          required: true
+        - name: period
+          type: string
+          description: >
+            Shorthand period selector applied when StartDate/EndDate are omitted.
+            Accepted values: CurrentWeek, LastWeek, CurrentMonth, LastMonth,
+            QuarterToDate, YearToDate, Last52Weeks.
+          required: false
+      execution:
+        strategy: parallel_fan_out
+        description: >
+          Each measure in the measures array is dispatched as an independent Power BI
+          Execute Queries API call using the Apply to Each (parallel) pattern.
+          Concurrency limit is 10 simultaneous branches.
+        concurrency_limit: 10
+        merge_strategy: >
+          After all branches complete, results are joined on the shared grouping_dimensions
+          keys using a left outer join. Measures with no data for a dimension key are
+          populated as null. The merged dataset is sorted by the first grouping dimension
+          in ascending order.
+      output_schema:
+        type: object
+        properties:
+          query_id:
+            type: string
+            description: Unique identifier for this query execution, used for caching and tracing.
+          executed_at:
+            type: string
+            format: datetime
+          measures_returned:
+            type: array
+            items: string
+          rows:
+            type: array
+            description: >
+              Each row contains values for all requested measures keyed by their DAX
+              measure name, plus all grouping dimension values.
+          total_row_count:
+            type: integer
+          data_as_of:
+            type: string
+            format: datetime
+            description: Timestamp of the semantic model's most recent refresh.
+          errors:
+            type: array
+            description: Per-measure errors when a specific DAX query fails. Partial results are returned.
       query_patterns:
         - SalesPerformance
         - RCASalesDiagnostics
         - RCAInventoryDiagnostics
         - RCAStaffingExternal
         - InventoryIntelligence
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 10
+        backoff_multiplier: 2
+        max_delay_seconds: 80
+      error_handling:
+        partial_failure: return_available_measures_with_error_array
+        full_failure: return_empty_rows_with_error_message
 
     - name: TrendAnalysis
       description: >
-        Performs period-over-period trend calculations and driver decomposition.
+        Calculates rolling averages (7-day, 28-day, 52-week), period-over-period growth
+        rates (WoW, MoM, YoY), and seasonal decomposition for any requested metric.
+        Returns trend data with confidence intervals. Long-window requests (more than
+        13 months) are routed to the Synapse workspace rather than querying Dataverse
+        directly to avoid timeout on large row counts.
       trigger: copilot_studio_topic_action
       connector: power_bi
+      input_parameters:
+        - name: metric
+          type: string
+          description: >
+            DAX measure name to trend (e.g., NetSalesAmount, GrossMarginPct,
+            SellThroughRatePct, UnitsOnHand).
+          required: true
+        - name: filters
+          type: object
+          description: Slicer context (StoreId, RegionCode, CategoryCode, BrandName, Channel).
+          required: false
+        - name: analysis_window_days
+          type: integer
+          description: >
+            Number of calendar days to include in the trend window. Values above 395
+            route the query to Synapse rather than the semantic model.
+          required: true
+        - name: rolling_averages
+          type: array
+          items:
+            type: integer
+          description: >
+            List of rolling-average window sizes in days to compute alongside daily values.
+            Default windows are [7, 28, 364].
+          required: false
+          default: [7, 28, 364]
+        - name: include_period_over_period
+          type: boolean
+          description: >
+            When true, calculates WoW, MoM, and YoY growth rates for each date point.
+          required: false
+          default: true
+        - name: include_seasonal_decomposition
+          type: boolean
+          description: >
+            When true, decomposes the time series into trend, seasonal, and residual
+            components using additive decomposition.
+          required: false
+          default: false
+        - name: confidence_level
+          type: decimal
+          description: >
+            Confidence level for calculated intervals. Defaults to the
+            TrendAnalysisConfidenceLevel environment variable (default 0.95).
+          required: false
+      calculations:
+        rolling_averages:
+          description: >
+            For each rolling window size, calculates the simple moving average of the
+            metric over the preceding N days for every date in the result set.
+            Dates with insufficient history are marked with a null rolling average value.
+        period_over_period_growth:
+          wow:
+            description: >
+              Week-over-week growth rate: (current_week_value - prior_week_value)
+              / prior_week_value, expressed as a decimal.
+          mom:
+            description: >
+              Month-over-month growth rate: (current_month_value - prior_month_value)
+              / prior_month_value.
+          yoy:
+            description: >
+              Year-over-year growth rate: (current_period_value - same_period_last_year_value)
+              / same_period_last_year_value.
+        seasonal_decomposition:
+          method: additive
+          season_length_days: 364
+          description: >
+            Splits the time series into three components: trend (long-run direction),
+            seasonal (repeating cycle), and residual (unexplained variance). Returns all
+            three component series alongside the original metric series.
+        confidence_intervals:
+          method: bootstrap
+          iterations: 1000
+          description: >
+            Calculates upper and lower confidence bounds for each rolling average and
+            period-over-period growth rate using bootstrap resampling.
+      data_routing:
+        short_window:
+          max_days: 395
+          source: power_bi_semantic_model
+        long_window:
+          min_days: 396
+          source: synapse_workspace
+          synapse_url_variable: "${SynapseWorkspaceUrl}"
+      output_schema:
+        type: object
+        properties:
+          metric:
+            type: string
+          analysis_window_days:
+            type: integer
+          data_as_of:
+            type: string
+            format: datetime
+          series:
+            type: array
+            description: >
+              One row per calendar day. Each row includes the raw metric value,
+              each requested rolling average, WoW/MoM/YoY growth rates, seasonal
+              component values (when requested), and confidence interval bounds.
+          summary:
+            type: object
+            description: >
+              Aggregate summary: overall trend direction, peak date, trough date,
+              average WoW growth, average MoM growth, seasonality strength index.
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 15
+        backoff_multiplier: 2
+        max_delay_seconds: 120
 
     - name: AnomalyDetection
       description: >
-        Detects KPI deviations using baseline and z-score logic for proactive monitoring.
+        Scheduled daily flow that runs statistical analysis on sales data across all active
+        stores. Detects outliers where a store's metric value is 2 or more standard deviations
+        from the regional mean (z-score threshold configurable via
+        AnomalyDetectionStdDevThreshold). Writes alert records to the AnomalyAlerts Dataverse
+        table. Categorizes anomalies as positive (overperformance) or negative
+        (underperformance). Triggers SendAnomalyAlertNotification for critical and high
+        severity anomalies.
       trigger: scheduled_recurrence
-      schedule: hourly
+      schedule: daily
+      schedule_time: "06:30 UTC"
       connector: power_bi
+      metrics_evaluated:
+        - name: NetSalesAmount
+          description: Daily net sales amount per store.
+        - name: GrossMarginPct
+          description: Gross margin percentage per store.
+        - name: SellThroughRatePct
+          description: Sell-through rate percentage per store.
+        - name: UnitsOnHand
+          description: End-of-day units on hand per store.
+        - name: WeeksCoverValue
+          description: Weeks of cover per store.
+      detection_logic:
+        step_1_aggregate:
+          description: >
+            Query the Power BI semantic model for the current day's metric values
+            grouped by StoreId and RegionCode for all active stores.
+        step_2_compute_regional_statistics:
+          description: >
+            For each RegionCode and metric combination, calculate the mean and standard
+            deviation across all stores in that region using the current day's values.
+        step_3_z_score:
+          description: >
+            Compute z-score for each store-metric pair:
+            z_score = (store_value - regional_mean) / regional_std_dev.
+            Stores where regional_std_dev equals zero are skipped (no variance in region).
+        step_4_flag_anomalies:
+          description: >
+            Flag a store-metric combination as an anomaly when abs(z_score) >=
+            AnomalyDetectionStdDevThreshold. Classify as positive when z_score is above
+            the positive threshold, negative when below the negative threshold.
+        step_5_severity_band:
+          description: >
+            Assign severity based on abs(z_score):
+            2.0 to 2.5 = low, 2.5 to 3.0 = medium, 3.0 to 4.0 = high, 4.0+ = critical.
+        step_6_write_alerts:
+          description: >
+            For each detected anomaly, upsert an AnomalyAlerts record with StoreId,
+            RegionCode, MetricName, MetricValue, RegionalMean, RegionalStdDev, ZScore,
+            AnomalyType, Severity, DetectionPeriod, Status=new, and CorrelationId.
+          target_table: AnomalyAlerts
+          upsert_key_composite: [StoreId, MetricName, DetectionPeriod]
+        step_7_notify:
+          description: >
+            For anomalies with Severity equal to high or critical, call
+            SendAnomalyAlertNotification to post a summary to the analytics Teams channel.
+          severity_threshold: [high, critical]
+      output:
+        anomalies_written: integer
+        stores_evaluated: integer
+        metrics_evaluated: integer
+        run_date: string
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+      error_logging:
+        table: PipelineHealth
+        pipeline_name: AnomalyDetection
+        on_failure: write_failure_record
+        on_success: write_success_record
 
     - name: WhatIfScenario
       description: >
-        Applies scenario parameters to project KPI impacts for planning decisions.
+        Accepts parameter variations for price change percentage, promotional discount
+        percentage, and stock increase percentage. Calculates projected impact on revenue
+        and gross margin using historical price and promotion elasticity data drawn from
+        the configured ElasticityDataLookbackDays period. Returns a scenario comparison
+        table showing baseline, scenario, and delta values for key KPIs.
       trigger: copilot_studio_topic_action
       connector: power_bi
+      input_parameters:
+        - name: scope
+          type: object
+          description: >
+            Scope of the scenario: StoreId and/or CategoryCode and/or BrandName.
+            At least one scope dimension is required.
+          required: true
+        - name: base_period
+          type: string
+          description: >
+            Reference period for baseline metrics. Accepted values: LastWeek, LastMonth,
+            LastQuarter, Last52Weeks. Default is LastMonth.
+          required: false
+          default: LastMonth
+        - name: price_change_pct
+          type: decimal
+          description: >
+            Percentage change applied to the average selling price.
+            Positive values represent a price increase; negative a decrease.
+            Example: 5.0 means a 5% price increase. Null means no price change.
+          required: false
+        - name: promo_discount_pct
+          type: decimal
+          description: >
+            Promotional discount percentage applied on top of the current selling price.
+            Example: 20.0 means a 20% off promotion. Null means no promotional change.
+          required: false
+        - name: stock_increase_pct
+          type: decimal
+          description: >
+            Percentage increase in available stock units relative to the current inventory
+            position. Example: 15.0 means 15% more units available. Null means no change.
+          required: false
+      calculations:
+        elasticity_lookup:
+          description: >
+            Queries the Power BI semantic model for historical price elasticity and
+            promotion response data over the ElasticityDataLookbackDays window for the
+            requested scope. Elasticity is calculated as:
+            price_elasticity = % change in units_sold / % change in price.
+            Promotion lift is the average incremental units sold during historical promotions.
+          lookback_variable: "${ElasticityDataLookbackDays}"
+        baseline_metrics:
+          description: >
+            Retrieves current baseline values for the scope and base_period:
+            NetSalesAmount, GrossMarginAmount, GrossMarginPct, UnitsSold, AverageSellPrice.
+        projected_units:
+          description: >
+            Applies price elasticity to estimate unit volume change from price_change_pct.
+            Applies promotion lift factor to estimate additional units from promo_discount_pct.
+            Applies direct stock availability multiplier from stock_increase_pct (capped at
+            historical demand ceiling).
+        projected_revenue:
+          description: >
+            Calculates projected net sales as: projected_units * adjusted_sell_price,
+            where adjusted_sell_price accounts for both price_change_pct and promo_discount_pct.
+        projected_margin:
+          description: >
+            Calculates projected gross margin using the standard cost from ProductCatalog
+            and the adjusted sell price. Returns both absolute margin and margin percentage.
+      output_schema:
+        type: object
+        properties:
+          scope_description:
+            type: string
+          base_period:
+            type: string
+          parameters_applied:
+            type: object
+            description: Echo of the input parameter values used in this scenario.
+          scenario_comparison:
+            type: array
+            description: >
+              One row per KPI. Each row contains the KPI name, baseline value,
+              projected value, absolute delta, and percentage delta.
+            items:
+              type: object
+              properties:
+                kpi:
+                  type: string
+                baseline:
+                  type: decimal
+                projected:
+                  type: decimal
+                delta_absolute:
+                  type: decimal
+                delta_pct:
+                  type: decimal
+          elasticity_inputs:
+            type: object
+            description: >
+              Shows the price elasticity and promotion lift coefficients used so the agent
+              can communicate model assumptions transparently.
+          confidence_note:
+            type: string
+            description: >
+              Qualitative confidence note based on the historical data depth available
+              for elasticity calculation (e.g., "Based on 12 months of data" or
+              "Limited history; treat projections as indicative only").
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 10
+        backoff_multiplier: 2
+        max_delay_seconds: 80
 
     - name: SendAnomalyAlertNotification
       description: >
-        Sends anomaly summaries and impacted KPI details to analytics stakeholders in Teams.
+        Sends anomaly summaries and impacted KPI details to analytics stakeholders in
+        the analytics Teams channel. Called by the AnomalyDetection flow for anomalies
+        with high or critical severity. Posts an adaptive card summarizing the store,
+        metric, z-score, anomaly type, and a direct link to the AnomalyAlerts record in
+        Dataverse for acknowledgement.
       trigger: flow_called_from_anomaly_detection
       connector: microsoft_teams
+      alert_channel_variable: "${AnalyticsTeamsChannelId}"
+      card_content:
+        - StoreId
+        - StoreName
+        - RegionCode
+        - MetricName
+        - MetricValue
+        - RegionalMean
+        - ZScore
+        - AnomalyType
+        - Severity
+        - DetectionPeriod
+        - link_to_anomaly_alert_record
+
+    - name: CrossDomainCorrelation
+      description: >
+        Correlates retail sales data with external signals to identify statistically
+        significant drivers for root cause analysis. Ingests weather data
+        (temperature, precipitation), local events calendar data (concerts, sports,
+        holidays), and social media sentiment (brand mentions, trending topics) for
+        the requested scope and period. Calculates Pearson correlation coefficients
+        between each external signal and the selected sales metric. Returns only
+        correlations where the p-value is below the CorrelationSignificanceLevel
+        threshold, ranked by absolute correlation strength.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      input_parameters:
+        - name: metric
+          type: string
+          description: >
+            Sales metric to correlate against external signals (e.g., NetSalesAmount,
+            UnitsSold, FootTraffic).
+          required: true
+        - name: filters
+          type: object
+          description: >
+            Slicer context: StoreId, RegionCode, CategoryCode. At least StoreId or
+            RegionCode is required to scope the geographic signals.
+          required: true
+        - name: analysis_window_days
+          type: integer
+          description: >
+            Number of days to include in the correlation window. Minimum 28 days for
+            statistical validity. Maximum 365 days.
+          required: true
+          minimum: 28
+          maximum: 365
+        - name: signals
+          type: array
+          items:
+            type: string
+            enum: [weather, local_events, social_media_sentiment]
+          description: >
+            List of external signal categories to include. All three are included by
+            default when not specified.
+          required: false
+          default: [weather, local_events, social_media_sentiment]
+      external_data_ingestion:
+        weather:
+          connector: WeatherConnector
+          api_base_url_variable: "${WeatherApiBaseUrl}"
+          api_key_variable: "${WeatherApiKey}"
+          data_points:
+            - name: max_temperature_c
+              description: Daily maximum temperature in Celsius at the nearest weather station.
+            - name: min_temperature_c
+              description: Daily minimum temperature in Celsius.
+            - name: precipitation_mm
+              description: Total daily precipitation in millimetres.
+            - name: weather_event_flag
+              description: >
+                Binary flag set to 1 when an extreme weather event (storm, heatwave,
+                heavy snow) was recorded for the day.
+          granularity: daily
+          geographic_matching: nearest_station_to_store_postcode
+        local_events:
+          connector: EventsCalendarConnector
+          api_base_url_variable: "${EventsCalendarApiBaseUrl}"
+          api_key_variable: "${EventsCalendarApiKey}"
+          data_points:
+            - name: event_count
+              description: Number of publicly listed events within 5 km of the store on that day.
+            - name: event_category
+              description: >
+                Dominant event category: concert, sports, festival, public_holiday, market,
+                other.
+            - name: estimated_attendance
+              description: Sum of estimated attendance figures for all events near the store.
+            - name: public_holiday_flag
+              description: Binary flag set to 1 when the date is a public holiday in the store's country.
+          granularity: daily
+          geographic_radius_km: 5
+        social_media_sentiment:
+          connector: SocialMediaConnector
+          api_base_url_variable: "${SocialMediaApiBaseUrl}"
+          api_key_variable: "${SocialMediaApiKey}"
+          data_points:
+            - name: brand_mention_count
+              description: Total brand mentions in the analysis window day.
+            - name: sentiment_score
+              description: >
+                Aggregate sentiment score for brand mentions on the day, ranging from
+                -1.0 (fully negative) to 1.0 (fully positive).
+            - name: trending_topic_flag
+              description: >
+                Binary flag set to 1 when a brand or product hashtag is trending in the
+                store's geographic market on that day.
+          granularity: daily
+          geographic_scoping: store_market_region
+      correlation_analysis:
+        method: pearson
+        description: >
+          Calculates Pearson correlation coefficients between the daily sales metric series
+          and each external signal series over the analysis window. Filters to only return
+          pairs where the two-tailed p-value is below the CorrelationSignificanceLevel
+          threshold. Results are ranked by absolute correlation coefficient descending.
+        significance_level_variable: "${CorrelationSignificanceLevel}"
+        lag_analysis:
+          enabled: true
+          max_lag_days: 7
+          description: >
+            In addition to same-day correlation, tests lagged correlations (signal on day
+            D correlated with sales on day D+1 through D+7) to detect leading indicators.
+      output_schema:
+        type: object
+        properties:
+          metric:
+            type: string
+          analysis_window_days:
+            type: integer
+          analysis_period:
+            type: object
+            properties:
+              start_date:
+                type: string
+                format: date
+              end_date:
+                type: string
+                format: date
+          significant_correlations:
+            type: array
+            description: >
+              Each entry represents a statistically significant correlation. Empty when
+              no signals meet the significance threshold.
+            items:
+              type: object
+              properties:
+                signal_category:
+                  type: string
+                  description: "weather, local_events, or social_media_sentiment."
+                signal_name:
+                  type: string
+                correlation_coefficient:
+                  type: decimal
+                  description: Pearson r value ranging from -1.0 to 1.0.
+                p_value:
+                  type: decimal
+                lag_days:
+                  type: integer
+                  description: 0 for same-day correlation; positive integer for lagged.
+                interpretation:
+                  type: string
+                  description: >
+                    Short plain-text interpretation generated by the flow
+                    (e.g., "Strong positive same-day correlation with event attendance").
+          non_significant_signals:
+            type: array
+            description: Signals tested but not meeting the significance threshold (for transparency).
+          data_coverage_pct:
+            type: decimal
+            description: Percentage of days in the window for which all three signal categories had data.
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 15
+        backoff_multiplier: 2
+        max_delay_seconds: 120
+      error_handling:
+        partial_signal_failure: >
+          If one or two signal categories fail to retrieve data, the flow proceeds with
+          the available signals and includes a data_coverage_warning in the output.
+        full_failure: return_empty_correlations_with_error_message
 
     - name: PosDataSync
       description: >
@@ -1394,6 +2077,12 @@ connections:
     display_name: Allocation Connector
   - connector: dataverse
     display_name: Microsoft Dataverse
+  - connector: custom_weather_connector
+    display_name: Weather Connector
+  - connector: custom_events_calendar_connector
+    display_name: Events Calendar Connector
+  - connector: custom_social_media_connector
+    display_name: Social Media Connector
 
 custom_connectors:
   - name: PosConnector
@@ -1475,6 +2164,122 @@ custom_connectors:
         description: Probe endpoint for connector health check.
         path: /health
 
+  - name: WeatherConnector
+    source: openapi
+    base_url: "${WeatherApiBaseUrl}"
+    auth: api_key
+    api_key_header: X-Api-Key
+    api_key_variable: "${WeatherApiKey}"
+    operations:
+      - name: GetDailyWeather
+        description: Retrieves daily weather observations for a given location and date range.
+        parameters:
+          - name: latitude
+            type: decimal
+          - name: longitude
+            type: decimal
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+      - name: GetWeatherEvents
+        description: Retrieves extreme weather event flags for a location and date range.
+        parameters:
+          - name: latitude
+            type: decimal
+          - name: longitude
+            type: decimal
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
+
+  - name: EventsCalendarConnector
+    source: openapi
+    base_url: "${EventsCalendarApiBaseUrl}"
+    auth: api_key
+    api_key_header: X-Api-Key
+    api_key_variable: "${EventsCalendarApiKey}"
+    operations:
+      - name: GetEventsNearLocation
+        description: >
+          Retrieves publicly listed events within a specified radius of a location
+          for a given date range.
+        parameters:
+          - name: latitude
+            type: decimal
+          - name: longitude
+            type: decimal
+          - name: radius_km
+            type: integer
+            default: 5
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+      - name: GetPublicHolidays
+        description: Retrieves public holidays for a given country and year.
+        parameters:
+          - name: country_code
+            type: string
+          - name: year
+            type: integer
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
+
+  - name: SocialMediaConnector
+    source: openapi
+    base_url: "${SocialMediaApiBaseUrl}"
+    auth: api_key
+    api_key_header: X-Api-Key
+    api_key_variable: "${SocialMediaApiKey}"
+    operations:
+      - name: GetBrandMentions
+        description: >
+          Retrieves daily brand mention counts and aggregate sentiment scores for
+          one or more brand terms over a date range.
+        parameters:
+          - name: brand_terms
+            type: array
+            items: string
+          - name: geographic_market
+            type: string
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+      - name: GetTrendingTopics
+        description: >
+          Returns daily trending topic flags for brand or product hashtags in
+          a given geographic market over a date range.
+        parameters:
+          - name: hashtags
+            type: array
+            items: string
+          - name: geographic_market
+            type: string
+          - name: start_date
+            type: string
+            format: date
+          - name: end_date
+            type: string
+            format: date
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
+
 data_platform_extensions:
   synapse_link:
     enabled: true
@@ -1519,6 +2324,11 @@ pipeline_monitoring:
     - name: KpiCacheRefresh
       expected_schedule: every_4_hours
       sla_latency_minutes: 45
+      alert_on_failure: true
+      alert_on_sla_breach: true
+    - name: AnomalyDetection
+      expected_schedule: daily
+      sla_completion_by: "08:00 UTC"
       alert_on_failure: true
       alert_on_sla_breach: true
 

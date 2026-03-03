@@ -103,7 +103,8 @@ power-analysis/
 ├── README.md
 ├── runbook.md
 ├── docs/
-│   └── data-sync-pipelines.md
+│   ├── data-sync-pipelines.md
+│   └── analytics-pipelines.md
 ├── templates/
 │   └── agent-template.yaml
 └── solution/
@@ -160,12 +161,44 @@ capabilities beyond rule-based analytics.
 | **SentimentResults** | Sentiment analysis outputs per category, brand, and period |
 | **DocumentExtractionResults** | Structured extraction results for uploaded documents |
 
+## Advanced Analytics Pipeline Flows
+
+Five Power Automate flows provide the deep reasoning capabilities of the agent.
+Full specifications are in `docs/analytics-pipelines.md`.
+
+| Flow | Trigger | Capability |
+|------|---------|------------|
+| **MultiMeasureQuery** | Topic action | Parallel DAX query fan-out across multiple measures with unified result merge |
+| **TrendAnalysis** | Topic action | Rolling averages (7-day, 28-day, 52-week), WoW/MoM/YoY growth, seasonal decomposition, confidence intervals |
+| **AnomalyDetection** | Daily 06:30 UTC | Z-score outlier detection across stores; writes positive/negative anomalies to AnomalyAlerts table |
+| **WhatIfScenario** | Topic action | Revenue and margin projection using historical elasticity for price, promo, and stock changes |
+| **CrossDomainCorrelation** | Topic action | Pearson correlation of sales against weather, local events, and social media sentiment |
+
+### AnomalyAlerts Table
+
+The `AnomalyDetection` flow writes results to the `AnomalyAlerts` Dataverse table.
+Each record captures the store, metric, observed value, regional mean, z-score, anomaly
+type (positive or negative), severity (low through critical), and lifecycle status
+(new, acknowledged, resolved). High and critical anomalies trigger a Teams notification.
+
+### Cross-Domain Signal Connectors
+
+The `CrossDomainCorrelation` flow uses three external connectors configured via
+environment variables:
+
+| Connector | Environment Variables | Signals |
+|---|---|---|
+| WeatherConnector | WeatherApiBaseUrl, WeatherApiKey | Temperature, precipitation, extreme weather events |
+| EventsCalendarConnector | EventsCalendarApiBaseUrl, EventsCalendarApiKey | Event count, attendance, public holidays |
+| SocialMediaConnector | SocialMediaApiBaseUrl, SocialMediaApiKey | Brand mentions, sentiment score, trending topics |
+
 ## Quick Start
 
 1. Provision Dataverse schema and security as documented in `runbook.md`.
 2. Import `solution/solution-definition.yaml` into the target Copilot Studio solution-aware environment.
 3. Configure sync pipelines for POS, ERP, allocation, and KPI cache as documented in `runbook.md` step 5 and `docs/data-sync-pipelines.md`.
-4. Configure and validate the Power Automate analytical flows referenced by the agent template.
-5. Publish to Teams or web channel and execute validation tests for decomposition and root-cause scenarios.
-6. Validate pipeline health by asking the agent: "Are all data feeds healthy?"
-6. Configure AI Builder models and bind `DemandForecastingModelId`, `CategoryClassificationModelId`, `SentimentAnalysisModelId`, and `DocumentProcessingModelId` environment variables as documented in `runbook.md`.
+4. Configure external API credentials (WeatherApiKey, EventsCalendarApiKey, SocialMediaApiKey) for the CrossDomainCorrelation flow as documented in `docs/analytics-pipelines.md`.
+5. Configure and validate the Power Automate analytical flows referenced by the agent template. See `docs/analytics-pipelines.md` for full flow specifications.
+6. Publish to Teams or web channel and execute validation tests for decomposition and root-cause scenarios.
+7. Validate pipeline health by asking the agent: "Are all data feeds healthy?"
+8. Configure AI Builder models and bind `DemandForecastingModelId`, `CategoryClassificationModelId`, `SentimentAnalysisModelId`, and `DocumentProcessingModelId` environment variables as documented in `runbook.md`.
