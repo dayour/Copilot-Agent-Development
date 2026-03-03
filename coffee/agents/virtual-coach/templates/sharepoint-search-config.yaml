@@ -1,0 +1,550 @@
+# SharePoint Search Configuration - Virtual Coach (Coffee)
+#
+# This file defines the SharePoint search schema, result sources, managed properties,
+# refiners, verticals, relevance tuning, and crawl settings required to support
+# Copilot Studio generative knowledge grounding for the Virtual Coach agent.
+
+schemaVersion: "1.0"
+agent: VirtualCoach
+vertical: coffee
+
+# ---------------------------------------------------------------------------
+# 1. Custom Search Result Sources
+#    Scoped result sources limit searches to Virtual Coach content libraries
+#    and ensure Copilot Studio generative answers draw only from approved content.
+# ---------------------------------------------------------------------------
+resultSources:
+  - name: VirtualCoach-Recipes
+    description: Approved drink recipes from the recipes document library.
+    scope: site_library
+    libraryEnvironmentVariable: RecipeLibraryUrl
+    query_template: "{searchTerms} ContentTypeId:0x0101* ApprovalStatus:Approved"
+    sort_by: LastApprovedDate
+    sort_direction: descending
+
+  - name: VirtualCoach-HrPolicy
+    description: HR and policy documents from the HR policy library.
+    scope: site_library
+    libraryEnvironmentVariable: HrPolicyLibraryUrl
+    query_template: "{searchTerms} ContentTypeId:0x0101* ApprovalStatus:Approved"
+    sort_by: LastApprovedDate
+    sort_direction: descending
+
+  - name: VirtualCoach-Training
+    description: Onboarding and training guides from the training library.
+    scope: site_library
+    libraryEnvironmentVariable: TrainingLibraryUrl
+    query_template: "{searchTerms} ContentTypeId:0x0101* ApprovalStatus:Approved"
+    sort_by: LastApprovedDate
+    sort_direction: descending
+
+  - name: VirtualCoach-Operations
+    description: SOPs and store operations guidance from the operations library.
+    scope: site_library
+    libraryEnvironmentVariable: OperationsLibraryUrl
+    query_template: "{searchTerms} ContentTypeId:0x0101* ApprovalStatus:Approved"
+    sort_by: LastApprovedDate
+    sort_direction: descending
+
+  - name: VirtualCoach-SeasonalMenu
+    description: Seasonal menu updates and promotional drink instructions.
+    scope: site_library
+    libraryEnvironmentVariable: SeasonalMenuLibraryUrl
+    query_template: "{searchTerms} ContentTypeId:0x0101* ApprovalStatus:Approved"
+    sort_by: LastApprovedDate
+    sort_direction: descending
+
+  - name: VirtualCoach-AllLibraries
+    description: Federated result source across all Virtual Coach content libraries.
+    scope: hub_site
+    hubSiteEnvironmentVariable: HubSiteUrl
+    query_template: >
+      {searchTerms}
+      (ContentTypeId:0x0101*)
+      ApprovalStatus:Approved
+      (Path:{RecipeLibraryUrl} OR Path:{HrPolicyLibraryUrl}
+       OR Path:{TrainingLibraryUrl} OR Path:{OperationsLibraryUrl}
+       OR Path:{SeasonalMenuLibraryUrl})
+    sort_by: LastApprovedDate
+    sort_direction: descending
+
+# ---------------------------------------------------------------------------
+# 2. Managed Properties
+#    Maps crawled properties (from SharePoint content type columns) to managed
+#    properties used in queries, filters, and refiners.
+# ---------------------------------------------------------------------------
+managedProperties:
+  - name: DrinkCategory
+    crawled_property: ows_DrinkCategory
+    type: text
+    searchable: true
+    queryable: true
+    retrievable: true
+    refinable: true
+    sortable: false
+    alias: DrinkCategoryOWS
+    description: Taxonomy term for the drink category (Espresso, Filter, Cold Brew, etc.).
+
+  - name: PolicyType
+    crawled_property: ows_PolicyType
+    type: text
+    searchable: true
+    queryable: true
+    retrievable: true
+    refinable: true
+    sortable: false
+    alias: PolicyTypeOWS
+    description: HR policy classification (Attendance, Benefits, Health and Safety, etc.).
+
+  - name: StoreRegion
+    crawled_property: ows_StoreRegion
+    type: text
+    searchable: true
+    queryable: true
+    retrievable: true
+    refinable: true
+    sortable: false
+    alias: StoreRegionOWS
+    description: Geographic region identifier for store-scoped content retrieval.
+
+  - name: JobRole
+    crawled_property: ows_JobRole
+    type: text
+    searchable: true
+    queryable: true
+    retrievable: true
+    refinable: true
+    sortable: false
+    alias: JobRoleOWS
+    description: Intended audience role (Barista, Shift Lead, Store Manager, Regional Manager).
+
+  - name: ApprovalStatus
+    crawled_property: ows__ModerationStatus
+    type: text
+    searchable: false
+    queryable: true
+    retrievable: true
+    refinable: false
+    sortable: false
+    description: Content approval state. Approved content only is surfaced to the agent.
+
+  - name: LastApprovedDate
+    crawled_property: ows__ApprovalDate
+    type: datetime
+    searchable: false
+    queryable: true
+    retrievable: true
+    refinable: false
+    sortable: true
+    description: Date when content was most recently approved. Used for recency-based ranking.
+
+  - name: ContentOwner
+    crawled_property: ows_ContentOwner
+    type: text
+    searchable: false
+    queryable: true
+    retrievable: true
+    refinable: false
+    sortable: false
+    description: Named business owner responsible for content accuracy.
+
+  - name: SeasonalFlag
+    crawled_property: ows_SeasonalFlag
+    type: boolean
+    searchable: false
+    queryable: true
+    retrievable: true
+    refinable: false
+    sortable: false
+    description: Flags content as time-limited seasonal material for menu and promotional topics.
+
+# ---------------------------------------------------------------------------
+# 3. Search Schema Refiners
+#    Configured as refiners to allow Copilot Studio knowledge source queries
+#    to narrow results by key taxonomy dimensions.
+# ---------------------------------------------------------------------------
+refiners:
+  - name: DrinkCategoryRefiner
+    managed_property: DrinkCategory
+    display_name: "Drink Category"
+    multi_value: false
+    sort_by: count
+    description: >
+      Narrows recipe and seasonal menu results to a specific drink category.
+      Use when the barista specifies espresso, filter, cold brew, or similar.
+
+  - name: PolicyTypeRefiner
+    managed_property: PolicyType
+    display_name: "Policy Type"
+    multi_value: false
+    sort_by: alphabetical
+    description: >
+      Narrows HR and policy results to a policy classification such as
+      Attendance, Benefits, or Health and Safety.
+
+  - name: StoreRegionRefiner
+    managed_property: StoreRegion
+    display_name: "Store Region"
+    multi_value: false
+    sort_by: alphabetical
+    description: >
+      Scopes content to a store region so regionally specific procedures and
+      compliance overlays are surfaced accurately.
+
+  - name: JobRoleRefiner
+    managed_property: JobRole
+    display_name: "Job Role"
+    multi_value: false
+    sort_by: alphabetical
+    description: >
+      Filters content to the requesting employee role so training, operations,
+      and policy documents are relevant to the audience.
+
+# ---------------------------------------------------------------------------
+# 4. Custom Search Verticals
+#    Dedicated search verticals provide query-scoped entry points for each
+#    major knowledge domain served by the Virtual Coach agent.
+# ---------------------------------------------------------------------------
+searchVerticals:
+  - name: Recipes
+    display_name: "Recipes"
+    result_source: VirtualCoach-Recipes
+    query_template: "{searchTerms} DrinkCategory:{drinkCategory}"
+    refiners:
+      - DrinkCategoryRefiner
+      - StoreRegionRefiner
+    description: >
+      Searches only the approved recipes library. Supports drink name and
+      ingredient phrase queries from the Drink Recipes topic.
+
+  - name: Policies
+    display_name: "Policies"
+    result_source: VirtualCoach-HrPolicy
+    query_template: "{searchTerms} PolicyType:{policyType}"
+    refiners:
+      - PolicyTypeRefiner
+      - StoreRegionRefiner
+      - JobRoleRefiner
+    description: >
+      Searches only the HR and policy library. Supports policy name, topic,
+      and role-based queries from the HR and Policy topic.
+
+  - name: Training
+    display_name: "Training"
+    result_source: VirtualCoach-Training
+    query_template: "{searchTerms} JobRole:{jobRole}"
+    refiners:
+      - JobRoleRefiner
+      - StoreRegionRefiner
+    description: >
+      Searches only the training library. Supports onboarding, station, and
+      task-based queries from the Onboarding and Training topic.
+
+  - name: Operations
+    display_name: "Operations"
+    result_source: VirtualCoach-Operations
+    query_template: "{searchTerms} StoreRegion:{storeRegion}"
+    refiners:
+      - StoreRegionRefiner
+      - JobRoleRefiner
+    description: >
+      Searches only the operations library. Supports checklist and procedure
+      queries from the Store Operations topic.
+
+  - name: SeasonalMenu
+    display_name: "Seasonal Menu"
+    result_source: VirtualCoach-SeasonalMenu
+    query_template: "{searchTerms} SeasonalFlag:true"
+    refiners:
+      - DrinkCategoryRefiner
+      - StoreRegionRefiner
+    description: >
+      Searches only the seasonal menu library. Surfaces current promotions
+      and discontinued item notices from the Menu Update topic.
+
+# ---------------------------------------------------------------------------
+# 5. Relevance Ranking
+#    Tuning configuration to prioritize recently approved content and promote
+#    content with complete mandatory metadata above incomplete records.
+# ---------------------------------------------------------------------------
+relevanceRanking:
+  freshness_boost:
+    enabled: true
+    property: LastApprovedDate
+    decay_days: 90
+    boost_factor: 1.4
+    description: >
+      Boosts content approved within the last 90 days. Ensures baristas
+      receive current procedure versions rather than superseded documents.
+
+  metadata_completeness_boost:
+    enabled: true
+    required_properties:
+      - DrinkCategory
+      - PolicyType
+      - StoreRegion
+      - JobRole
+    boost_factor: 1.2
+    description: >
+      Increases rank for documents where all mandatory metadata columns are
+      populated. Encourages content owners to maintain metadata hygiene.
+
+  promoted_results:
+    - title: "Barista Quick Reference - Espresso Station"
+      url_pattern: "*/recipes-library/*espresso*"
+      query_keywords:
+        - espresso steps
+        - espresso shots
+        - how to pull a shot
+      description: Surfaces the espresso quick reference card for common shot queries.
+
+    - title: "Barista Quick Reference - Cold Brew Station"
+      url_pattern: "*/recipes-library/*cold-brew*"
+      query_keywords:
+        - cold brew
+        - cold brew steps
+        - how do i make cold brew
+      description: Surfaces the cold brew quick reference card for cold brew preparation queries.
+
+    - title: "Opening and Closing Checklists"
+      url_pattern: "*/operations-library/*checklist*"
+      query_keywords:
+        - opening checklist
+        - closing checklist
+        - open close
+      description: Promotes the consolidated checklist document for opening and closing shift queries.
+
+# ---------------------------------------------------------------------------
+# 6. Search Query Coverage Tests
+#    Validates that topic trigger phrases from agent-template.yaml produce
+#    results from the expected result source and vertical.
+# ---------------------------------------------------------------------------
+queryTests:
+  - topic: Drink Recipes
+    test_cases:
+      - phrase: "how do i make a latte"
+        expected_vertical: Recipes
+        expected_result_source: VirtualCoach-Recipes
+        minimum_results: 1
+      - phrase: "recipe for cold brew"
+        expected_vertical: Recipes
+        expected_result_source: VirtualCoach-Recipes
+        minimum_results: 1
+      - phrase: "what are the steps for cappuccino"
+        expected_vertical: Recipes
+        expected_result_source: VirtualCoach-Recipes
+        minimum_results: 1
+      - phrase: "what goes in a flat white"
+        expected_vertical: Recipes
+        expected_result_source: VirtualCoach-Recipes
+        minimum_results: 1
+      - phrase: "how many shots in a macchiato"
+        expected_vertical: Recipes
+        expected_result_source: VirtualCoach-Recipes
+        minimum_results: 1
+
+  - topic: HR and Policy
+    test_cases:
+      - phrase: "what is the break policy"
+        expected_vertical: Policies
+        expected_result_source: VirtualCoach-HrPolicy
+        minimum_results: 1
+      - phrase: "how do i request time off"
+        expected_vertical: Policies
+        expected_result_source: VirtualCoach-HrPolicy
+        minimum_results: 1
+      - phrase: "what is the dress code"
+        expected_vertical: Policies
+        expected_result_source: VirtualCoach-HrPolicy
+        minimum_results: 1
+      - phrase: "can i swap shifts"
+        expected_vertical: Policies
+        expected_result_source: VirtualCoach-HrPolicy
+        minimum_results: 1
+      - phrase: "where is the attendance policy"
+        expected_vertical: Policies
+        expected_result_source: VirtualCoach-HrPolicy
+        minimum_results: 1
+
+  - topic: Onboarding and Training
+    test_cases:
+      - phrase: "i am new where do i start"
+        expected_vertical: Training
+        expected_result_source: VirtualCoach-Training
+        minimum_results: 1
+      - phrase: "show me training for espresso station"
+        expected_vertical: Training
+        expected_result_source: VirtualCoach-Training
+        minimum_results: 1
+      - phrase: "onboarding checklist"
+        expected_vertical: Training
+        expected_result_source: VirtualCoach-Training
+        minimum_results: 1
+      - phrase: "training for opening shift"
+        expected_vertical: Training
+        expected_result_source: VirtualCoach-Training
+        minimum_results: 1
+      - phrase: "how do i complete my training"
+        expected_vertical: Training
+        expected_result_source: VirtualCoach-Training
+        minimum_results: 1
+
+  - topic: Store Operations
+    test_cases:
+      - phrase: "opening checklist"
+        expected_vertical: Operations
+        expected_result_source: VirtualCoach-Operations
+        minimum_results: 1
+      - phrase: "closing checklist"
+        expected_vertical: Operations
+        expected_result_source: VirtualCoach-Operations
+        minimum_results: 1
+      - phrase: "what is the cleaning procedure"
+        expected_vertical: Operations
+        expected_result_source: VirtualCoach-Operations
+        minimum_results: 1
+      - phrase: "what do i do for equipment issue"
+        expected_vertical: Operations
+        expected_result_source: VirtualCoach-Operations
+        minimum_results: 1
+      - phrase: "standard operating procedure for rush hour"
+        expected_vertical: Operations
+        expected_result_source: VirtualCoach-Operations
+        minimum_results: 1
+
+  - topic: Menu Update
+    test_cases:
+      - phrase: "what is new on the menu"
+        expected_vertical: SeasonalMenu
+        expected_result_source: VirtualCoach-SeasonalMenu
+        minimum_results: 1
+      - phrase: "seasonal drinks this week"
+        expected_vertical: SeasonalMenu
+        expected_result_source: VirtualCoach-SeasonalMenu
+        minimum_results: 1
+      - phrase: "what drinks are discontinued"
+        expected_vertical: SeasonalMenu
+        expected_result_source: VirtualCoach-SeasonalMenu
+        minimum_results: 1
+      - phrase: "latest menu change"
+        expected_vertical: SeasonalMenu
+        expected_result_source: VirtualCoach-SeasonalMenu
+        minimum_results: 1
+      - phrase: "promo drink instructions"
+        expected_vertical: SeasonalMenu
+        expected_result_source: VirtualCoach-SeasonalMenu
+        minimum_results: 1
+
+# ---------------------------------------------------------------------------
+# 7. Continuous Crawl Schedule
+#    Configures incremental and full crawl schedules for each content source
+#    to ensure near-real-time content availability after approvals or updates.
+# ---------------------------------------------------------------------------
+crawlSchedule:
+  continuous_crawl:
+    enabled: true
+    description: >
+      Continuous crawl enables near-real-time indexing of newly approved
+      or modified documents. Activated on all Virtual Coach libraries.
+    applies_to:
+      - RecipeLibraryUrl
+      - HrPolicyLibraryUrl
+      - TrainingLibraryUrl
+      - OperationsLibraryUrl
+      - SeasonalMenuLibraryUrl
+
+  incremental_crawl:
+    schedule: "every 15 minutes"
+    description: >
+      Incremental crawl picks up any items not captured by the continuous crawl
+      within the 15-minute window. Balances recency with crawl resource usage.
+    applies_to:
+      - RecipeLibraryUrl
+      - HrPolicyLibraryUrl
+      - TrainingLibraryUrl
+      - OperationsLibraryUrl
+      - SeasonalMenuLibraryUrl
+
+  full_crawl:
+    schedule: "weekly on Sunday at 02:00"
+    description: >
+      Full crawl runs weekly to ensure index consistency and detect any
+      property mapping changes applied during the week.
+    applies_to:
+      - RecipeLibraryUrl
+      - HrPolicyLibraryUrl
+      - TrainingLibraryUrl
+      - OperationsLibraryUrl
+      - SeasonalMenuLibraryUrl
+
+  post_schema_change_reindex:
+    trigger: manual
+    description: >
+      A manual full reindex must be triggered after any managed property
+      mapping changes or new content type deployments to apply schema updates.
+
+# ---------------------------------------------------------------------------
+# 8. Generative Answer Validation
+#    Acceptance criteria for validating that Copilot Studio generative answers
+#    correctly surface SharePoint content after search configuration is applied.
+# ---------------------------------------------------------------------------
+generativeAnswerValidation:
+  validation_criteria:
+    - id: GA-001
+      description: Generative answer for a recipe query cites the approved recipe document.
+      sample_query: "How do I make a vanilla latte?"
+      expected_grounding_source: recipes-library
+      expected_citation: true
+
+    - id: GA-002
+      description: Generative answer for a policy query cites the approved HR policy document.
+      sample_query: "What is the break policy for a six-hour shift?"
+      expected_grounding_source: hr-policy-library
+      expected_citation: true
+
+    - id: GA-003
+      description: Generative answer for a training query cites the correct training guide.
+      sample_query: "What are the steps for espresso station onboarding?"
+      expected_grounding_source: training-library
+      expected_citation: true
+
+    - id: GA-004
+      description: Generative answer for an operations query cites the current SOP document.
+      sample_query: "What is the closing checklist procedure?"
+      expected_grounding_source: operations-library
+      expected_citation: true
+
+    - id: GA-005
+      description: Generative answer for a menu query cites the current seasonal menu document.
+      sample_query: "What seasonal drinks are available this week?"
+      expected_grounding_source: seasonal-menu-library
+      expected_citation: true
+
+    - id: GA-006
+      description: Generative answer does not surface unapproved draft content.
+      sample_query: "What is the new espresso recipe?"
+      expected_grounding_source: recipes-library
+      disallowed_approval_status: Pending
+      expected_citation: true
+
+    - id: GA-007
+      description: Generative answer respects StoreRegion metadata filter.
+      sample_query: "What are the opening procedures for the Pacific Northwest region?"
+      expected_grounding_source: operations-library
+      expected_region_match: true
+      expected_citation: true
+
+    - id: GA-008
+      description: Generative answer respects JobRole metadata filter.
+      sample_query: "What training do I need as a new barista?"
+      expected_grounding_source: training-library
+      expected_role_match: true
+      expected_citation: true
+
+  failure_thresholds:
+    minimum_citation_rate: 0.90
+    maximum_hallucination_rate: 0.05
+    description: >
+      At least 90 percent of grounded responses must include a citation to the
+      source SharePoint document. Hallucinated content rate must remain below
+      5 percent across the full query test set.

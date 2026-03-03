@@ -41,15 +41,76 @@ This runbook defines deployment and operations for the Virtual Coach Copilot Stu
 4. Apply content types and required managed metadata columns.
 5. Enable major versioning and content approval for recipe, policy, and training libraries.
 
-### 3. Configure Search Schema for Knowledge Ingestion
-1. In SharePoint admin center, verify crawl status for all target libraries.
-2. Map crawled properties to managed properties for:
-   - Drink category
-   - Policy type
-   - Region
-   - Role
-3. Mark managed properties as searchable and queryable where needed.
-4. Reindex updated libraries after schema changes.
+### 3. Configure Search Schema and Optimization for Knowledge Ingestion
+
+All SharePoint search settings are defined in `templates/sharepoint-search-config.yaml`. Apply each section in the order below.
+
+#### 3a. Managed Property Mapping
+
+1. In SharePoint admin center, go to **Search** > **Manage Search Schema**.
+2. For each managed property defined in `sharepoint-search-config.yaml` under `managedProperties`, locate or create the property and set the following flags:
+
+   | Property | Searchable | Queryable | Retrievable | Refinable | Sortable |
+   |---|---|---|---|---|---|
+   | DrinkCategory | Yes | Yes | Yes | Yes | No |
+   | PolicyType | Yes | Yes | Yes | Yes | No |
+   | StoreRegion | Yes | Yes | Yes | Yes | No |
+   | JobRole | Yes | Yes | Yes | Yes | No |
+   | ApprovalStatus | No | Yes | Yes | No | No |
+   | LastApprovedDate | No | Yes | Yes | No | Yes |
+   | ContentOwner | No | Yes | Yes | No | No |
+   | SeasonalFlag | No | Yes | Yes | No | No |
+
+3. Map each managed property to its crawled property (`ows_<ColumnName>`) as listed in the config file.
+4. Save all changes.
+5. Reindex all Virtual Coach libraries after any schema change.
+
+#### 3b. Custom Search Result Sources
+
+1. In SharePoint admin center, go to **Search** > **Manage Result Sources**.
+2. Create one result source per entry in `sharepoint-search-config.yaml` under `resultSources`:
+   - `VirtualCoach-Recipes` scoped to `RecipeLibraryUrl`.
+   - `VirtualCoach-HrPolicy` scoped to `HrPolicyLibraryUrl`.
+   - `VirtualCoach-Training` scoped to `TrainingLibraryUrl`.
+   - `VirtualCoach-Operations` scoped to `OperationsLibraryUrl`.
+   - `VirtualCoach-SeasonalMenu` scoped to `SeasonalMenuLibraryUrl`.
+   - `VirtualCoach-AllLibraries` federated across the hub site for cross-library queries.
+3. Set each query template to filter on `ApprovalStatus:Approved` to exclude draft and pending content.
+4. Set the default sort to `LastApprovedDate` descending on each result source.
+
+#### 3c. Search Schema Refiners
+
+1. In SharePoint admin center, go to **Search** > **Manage Query Rules** or the refiners panel.
+2. Confirm the following managed properties are marked as Refinable (already set in 3a):
+   - `DrinkCategory`, `PolicyType`, `StoreRegion`, `JobRole`.
+3. These refiners are used in the search verticals to narrow knowledge retrieval by topic domain.
+
+#### 3d. Custom Search Verticals
+
+1. In SharePoint admin center, go to **Search** > **Manage Search Verticals** (or via the Microsoft Search admin center for M365 Search).
+2. Create one vertical per entry in `sharepoint-search-config.yaml` under `searchVerticals`:
+   - **Recipes** - backed by `VirtualCoach-Recipes`, refiners: DrinkCategory, StoreRegion.
+   - **Policies** - backed by `VirtualCoach-HrPolicy`, refiners: PolicyType, StoreRegion, JobRole.
+   - **Training** - backed by `VirtualCoach-Training`, refiners: JobRole, StoreRegion.
+   - **Operations** - backed by `VirtualCoach-Operations`, refiners: StoreRegion, JobRole.
+   - **Seasonal Menu** - backed by `VirtualCoach-SeasonalMenu`, refiners: DrinkCategory, StoreRegion.
+3. Configure the query template for each vertical as specified in the config file.
+
+#### 3e. Relevance Ranking Tuning
+
+1. In the search schema settings, enable the freshness boost on `LastApprovedDate`:
+   - Boost factor: 1.4 for content approved within the last 90 days.
+2. Enable the metadata completeness boost (factor 1.2) for records with all four required properties populated: DrinkCategory, PolicyType, StoreRegion, JobRole.
+3. Add the three promoted results defined in `relevanceRanking.promoted_results` for espresso station, cold brew station, and opening/closing checklists.
+
+#### 3f. Continuous Crawl and Crawl Schedule
+
+1. In SharePoint admin center, go to **Search** > **Manage Content Sources**.
+2. For each of the five Virtual Coach libraries, enable **Continuous Crawl**:
+   - Recipes, HR Policy, Training, Operations, Seasonal Menu.
+3. Set the incremental crawl schedule to every 15 minutes as a fallback.
+4. Set the full crawl schedule to weekly on Sunday at 02:00.
+5. After any managed property mapping change, trigger a manual full crawl for all affected libraries.
 
 ### 4. Import the Copilot Studio Solution
 1. Open **Solutions** and select **Import solution**.
@@ -94,6 +155,13 @@ This runbook defines deployment and operations for the Virtual Coach Copilot Stu
 - [ ] Shift handover submissions create records in `shift-handover-list`.
 - [ ] Menu update requests resolve from `seasonal-menu-library`.
 - [ ] Teams and mobile web channels both return consistent grounded answers.
+- [ ] All eight generative answer validation criteria (GA-001 through GA-008) in `templates/sharepoint-search-config.yaml` pass.
+- [ ] Citation rate is at or above 90 percent across the full query test set.
+- [ ] No unapproved draft content surfaces in any generative answer.
+- [ ] All five custom result sources return results scoped to their target library.
+- [ ] All five search verticals are accessible and return correct results.
+- [ ] Continuous crawl is active on all five Virtual Coach libraries.
+- [ ] Search query coverage tests in `queryTests` pass for all 25 trigger phrase cases.
 
 ## Monitoring and Operations
 

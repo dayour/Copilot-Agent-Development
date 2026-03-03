@@ -3,7 +3,7 @@
 solution:
   name: CoffeeVirtualCoach
   display_name: "Coffee - Virtual Coach"
-  version: "1.1.0"
+  version: "1.2.0"
   publisher: Copilot Agent Development
   description: >
     Production-ready SharePoint-centric solution for the Virtual Coach agent.
@@ -148,3 +148,10 @@ channels:
     enabled: true
     configuration:
       mobile_optimized: true
+
+search_configuration:
+  config_file: ../templates/sharepoint-search-config.yaml
+  description: >
+    SharePoint search schema, result sources, managed properties, refiners,
+    search verticals, relevance ranking, crawl schedule, and generative answer
+    validation criteria for the Virtual Coach knowledge grounding layer.
