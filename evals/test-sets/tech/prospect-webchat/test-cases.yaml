@@ -1,0 +1,264 @@
+# Test cases for tech/prospect-webchat agent
+# Covers GDPR consent, pre-chat intake, anonymous product Q&A, meeting schedule auth gate,
+# live agent handoff, rate limit guard, and right-to-erasure flow.
+#
+# Tiers:
+#   critical      -- GDPR, consent blocking, and rate limit scenarios that must always succeed
+#   functional    -- product Q&A, intake form, and meeting scheduling graded by LLM judge
+#   conversational -- multi-turn prospect engagement scenarios
+
+- id: tech-pwc-crit-001
+  tier: critical
+  query: "What data do you collect about me?"
+  expected_keywords:
+    - privacy
+    - data
+    - consent
+    - policy
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The prospect web chat agent presents a GDPR data processing notice at session start.
+    It collects company name, role, and conversation data. Personal data is not stored
+    until the prospect accepts the consent notice.
+  description: >
+    Verifies that the agent surfaces the data processing notice and references
+    the privacy policy when asked about data collection.
+
+- id: tech-pwc-crit-002
+  tier: critical
+  query: "I decline your data policy. Can you still help me?"
+  expected_keywords:
+    - declined
+    - anonymous
+    - product questions
+    - personal data
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    When a prospect declines consent, the agent must not collect or store personal data.
+    General product Q&A is still permitted. Lead creation and meeting scheduling flows
+    that require personal data are blocked until consent is given.
+  description: >
+    Verifies that the agent respects a declined consent decision and communicates
+    what can still be done anonymously.
+
+- id: tech-pwc-crit-003
+  tier: critical
+  query: "Delete all my data right now."
+  expected_keywords:
+    - erasure
+    - delete
+    - GDPR
+    - request
+    - confirmation
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The agent supports GDPR Article 17 right-to-erasure requests. Submission logs
+    the request in Dataverse and sends a confirmation to the privacy mailbox.
+    The agent must acknowledge the request and provide a reference or timeline.
+  description: >
+    Verifies that the agent initiates the erasure flow and confirms the request
+    with a reference to the deletion timeline.
+
+- id: tech-pwc-crit-004
+  tier: critical
+  query: "I want to schedule a demo without creating an account."
+  expected_keywords:
+    - sign in
+    - account
+    - register
+    - meeting
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Meeting Schedule Request topic requires authentication before booking a meeting.
+    Anonymous prospects must be presented with a sign-in or registration prompt.
+    The agent must not book a meeting without confirming identity.
+  description: >
+    Verifies that the agent blocks unauthenticated meeting booking and presents
+    the sign-in or registration option.
+
+- id: tech-pwc-func-001
+  tier: functional
+  query: "What does your platform do and how is it different from competitors?"
+  expected_keywords:
+    - platform
+    - features
+    - capabilities
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The agent answers product questions using the public product knowledge source.
+    It does not reveal internal competitive battlecards or unpublished information.
+    Responses must reference only public-safe content.
+  description: >
+    Tests that the agent provides a grounded product overview without exposing
+    internal competitive content.
+
+- id: tech-pwc-func-002
+  tier: functional
+  query: "Can you share a customer case study in the financial services industry?"
+  expected_keywords:
+    - case study
+    - financial services
+    - customer
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The agent uses the public product library knowledge source to answer case study
+    questions. It should surface relevant published case studies for the requested
+    industry vertical.
+  description: >
+    Tests that the agent retrieves and presents a relevant customer case study
+    from the public knowledge source.
+
+- id: tech-pwc-func-003
+  tier: functional
+  query: "How does your pricing work for a team of 50 people?"
+  expected_keywords:
+    - pricing
+    - plan
+    - team
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The agent provides public pricing guidance only. It does not commit to specific
+    discounts or unpublished rates. For custom pricing, it routes the prospect to
+    the sales team or meeting scheduler.
+  description: >
+    Tests that the agent gives appropriate public pricing guidance and suggests
+    connecting with sales for a custom estimate.
+
+- id: tech-pwc-func-004
+  tier: functional
+  query: "I work at Acme Corp as a CTO and I am interested in your security features."
+  expected_keywords:
+    - security
+    - Acme Corp
+    - CTO
+    - interest
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The pre-chat intake form collects company name, role, and interest area.
+    When a prospect provides this information inline, the agent should acknowledge
+    it, set routing context, and tailor subsequent responses to the stated interest.
+  description: >
+    Tests that the agent captures and acknowledges inline pre-chat context
+    and tailors guidance to the stated interest area.
+
+- id: tech-pwc-func-005
+  tier: functional
+  query: "Connect me to a sales representative now."
+  expected_keywords:
+    - sales
+    - representative
+    - transferred
+    - queue
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The Live Agent Handoff topic escalates the conversation to Dynamics 365 Omnichannel
+    or the Microsoft Teams sales queue. The agent must confirm the handoff and indicate
+    that context has been passed to the live agent.
+  description: >
+    Tests that the agent initiates handoff to a live sales agent and confirms
+    that conversation context has been transferred.
+
+- id: tech-pwc-conv-001
+  tier: conversational
+  query: "Hi, I am curious about your platform but not sure where to start."
+  expected_keywords:
+    - privacy
+    - welcome
+    - product
+    - help
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    First turn of a multi-turn onboarding conversation. The agent should trigger
+    the GDPR consent notice, then welcome the prospect and offer quick-reply
+    shortcuts to help them navigate to the right topic.
+  description: >
+    First turn of a prospect onboarding conversation. Tests that the agent presents
+    consent and then provides a welcoming entry point with navigation options.
+
+- id: tech-pwc-conv-002
+  tier: conversational
+  query: "I accept. I am the VP of Engineering at TechStart and I want to learn about integrations."
+  expected_keywords:
+    - TechStart
+    - integration
+    - interest
+    - API
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Second turn after consent is accepted. The prospect provides company and role context
+    and states their interest area. The agent should acknowledge the intake context and
+    route to integration-focused product guidance.
+  description: >
+    Second turn of the prospect onboarding conversation. Tests context capture
+    from inline intake and routing to the relevant interest area.
+
+- id: tech-pwc-conv-003
+  tier: conversational
+  query: "That looks good. Can I schedule a call with your team to go deeper?"
+  expected_keywords:
+    - schedule
+    - meeting
+    - sign in
+    - calendar
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.6
+  context: >
+    Third turn where the prospect wants to schedule a meeting. If not yet authenticated,
+    the agent should trigger the B2C sign-in prompt. After authentication, it should
+    collect availability and proceed with the meeting booking flow.
+  description: >
+    Third turn of the onboarding conversation. Tests the progressive authentication
+    gate for meeting scheduling and the booking flow post-authentication.

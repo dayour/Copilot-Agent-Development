@@ -1,0 +1,266 @@
+schemaVersion: 1.0
+solution:
+  name: ProspectWebChatSolution
+  displayName: Prospect Web Chat
+  publisher: TechProspectPlatform
+  version: "1.0.0"
+  managed: false
+  description: >
+    Copilot Studio solution for external-facing prospect web chat engagement.
+    Includes the agent definition, topics, GDPR consent flow, pre-chat intake,
+    Azure AD B2C authentication, live agent handoff, rate limiting configuration,
+    and right-to-erasure support.
+
+environmentVariables:
+  - name: ProspectWebsiteDomain
+    type: string
+    required: true
+    isSecret: false
+    description: Allowed origin domain for the web chat embed script. Must match the website HTTPS domain exactly.
+  - name: B2cTenantId
+    type: string
+    required: true
+    isSecret: false
+    description: Azure AD B2C tenant identifier (for example, contosoprospects.onmicrosoft.com).
+  - name: B2cClientId
+    type: secret
+    required: true
+    isSecret: true
+    description: Application (client) ID for the ProspectWebChatApp registered in the B2C tenant.
+  - name: B2cUserFlowName
+    type: string
+    required: true
+    isSecret: false
+    description: Name of the Azure AD B2C sign-up and sign-in user flow (for example, B2C_1_ProspectSignUpIn).
+  - name: LiveAgentQueueId
+    type: string
+    required: true
+    isSecret: false
+    description: Dynamics 365 Omnichannel queue ID or Microsoft Teams channel ID for live agent handoff.
+  - name: RateLimitWindowSeconds
+    type: string
+    required: true
+    isSecret: false
+    description: Rate limiting window duration in seconds (recommended 60).
+  - name: RateLimitMaxMessages
+    type: string
+    required: true
+    isSecret: false
+    description: Maximum number of messages permitted per session within the rate limit window (recommended 10).
+  - name: GdprDataControllerName
+    type: string
+    required: true
+    isSecret: false
+    description: Legal entity name of the GDPR data controller presented in the privacy notice.
+  - name: GdprPrivacyPolicyUrl
+    type: string
+    required: true
+    isSecret: false
+    description: Public URL of the organization privacy policy linked from the GDPR consent topic.
+  - name: ErasureRequestMailbox
+    type: string
+    required: true
+    isSecret: false
+    description: Email address of the privacy team mailbox that receives erasure request confirmations.
+
+dataverse:
+  tables:
+    - logicalName: crf_ProspectSessions
+      displayName: ProspectSessions
+      description: Stores web chat session metadata and pre-chat form responses.
+      columns:
+        - name: crf_sessionid
+          type: guid
+          required: true
+        - name: crf_company
+          type: string
+          maxLength: 255
+        - name: crf_role
+          type: string
+          maxLength: 255
+        - name: crf_interestarea
+          type: string
+          maxLength: 100
+        - name: crf_authenticated
+          type: boolean
+        - name: crf_createdon
+          type: datetime
+    - logicalName: crf_ConsentRecords
+      displayName: ConsentRecords
+      description: Stores prospect consent choices with timestamp for GDPR audit trail.
+      columns:
+        - name: crf_consentid
+          type: guid
+          required: true
+        - name: crf_sessionid
+          type: string
+          maxLength: 100
+        - name: crf_choice
+          type: string
+          maxLength: 50
+        - name: crf_timestamp
+          type: datetime
+    - logicalName: crf_ErasureRequests
+      displayName: ErasureRequests
+      description: Stores GDPR right-to-erasure requests submitted by prospects.
+      columns:
+        - name: crf_erasureid
+          type: guid
+          required: true
+        - name: crf_sessionid
+          type: string
+          maxLength: 100
+        - name: crf_prospectemail
+          type: string
+          maxLength: 320
+        - name: crf_company
+          type: string
+          maxLength: 255
+        - name: crf_status
+          type: string
+          maxLength: 50
+        - name: crf_requestedon
+          type: datetime
+
+powerAutomateFlows:
+  - name: CreateProspectLead
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Dataverse
+    inputs:
+      - company
+      - role
+      - interestArea
+      - sessionId
+    outputs:
+      - leadId
+      - status
+    timeoutSeconds: 30
+  - name: ScheduleProspectMeeting
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - MicrosoftGraph
+      - Outlook
+    inputs:
+      - prospectEmail
+      - company
+      - interestArea
+      - preferredWindow
+    outputs:
+      - proposedSlots
+      - calendarInviteStatus
+    timeoutSeconds: 60
+  - name: HandoffToLiveAgent
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Dataverse
+      - MicrosoftTeams
+    inputs:
+      - conversationId
+      - company
+      - role
+      - interestArea
+      - authenticated
+      - channel
+    outputs:
+      - handoffStatus
+      - queuePosition
+    timeoutSeconds: 30
+  - name: SubmitErasureRequest
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Dataverse
+      - Office365Outlook
+    inputs:
+      - sessionId
+      - email
+      - company
+    outputs:
+      - erasureRequestId
+      - confirmationSent
+    timeoutSeconds: 30
+  - name: RecordConsentChoice
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Dataverse
+    inputs:
+      - choice
+      - sessionId
+    outputs:
+      - consentRecordId
+    timeoutSeconds: 15
+
+knowledgeSources:
+  - key: public-product-library
+    name: Public Product Library
+    visibility: external
+    sourceType: website-or-public-docs
+    contentPolicy: public-safe-only
+    description: Public product pages, approved case studies, public pricing guidance, and compliance statements.
+
+authentication:
+  external:
+    channel: custom-website
+    provider: azure-ad-b2c
+    tenantIdRef: B2cTenantId
+    clientIdRef: B2cClientId
+    userFlowRef: B2cUserFlowName
+    progressiveAuth: true
+    anonymousEntryAllowed: true
+    socialProviders:
+      - linkedin
+      - google
+    progressiveProfiling:
+      enabled: true
+      collectOnSecondInteraction:
+        - companyName
+        - jobTitle
+
+channels:
+  - name: custom-website
+    mode: external
+    enabled: true
+    domainRef: ProspectWebsiteDomain
+    embed:
+      scriptType: webchat
+      originRestriction: strict
+    branding:
+      logoUrl: configurable
+      primaryColor: configurable
+      welcomeMessage: configurable
+      windowTitle: configurable
+    capabilities:
+      - gdpr-consent
+      - pre-chat-form
+      - prospect-product-guidance
+      - meeting-scheduling
+      - live-agent-handoff
+      - right-to-erasure
+    restrictions:
+      - no-internal-competitive-content
+      - no-rep-only-workflows
+
+rateLimiting:
+  perSession:
+    maxMessagesPerWindow: 10
+    windowRef: RateLimitWindowSeconds
+    responseOnExceeded: >
+      You have reached the message limit for this session window. Please wait a moment before sending another message.
+  perIp:
+    maxSessionsPerHour: 100
+    enforced: api-management-or-front-door
+  monitoring:
+    alertThresholdPercent: 5
+    alertWindowMinutes: 5
+
+agentDefinition:
+  templatePath: ../templates/agent-template.yaml
+  topicCoverage:
+    - GDPR Consent and Privacy Notice
+    - Pre-Chat Intake Form
+    - Prospect Welcome
+    - Product and Pricing Guidance
+    - Anonymous Mode Guard
+    - Meeting Schedule Request
+    - Live Agent Handoff
+    - Right to Erasure

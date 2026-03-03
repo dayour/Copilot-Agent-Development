@@ -1,0 +1,404 @@
+schemaVersion: 1.0
+agent:
+  name: Prospect Web Chat
+  vertical: Tech
+  orchestrationMode: generative
+  description: >
+    External-facing web chat agent for inbound prospect engagement.
+    Supports anonymous entry, GDPR consent, a pre-chat intake form, public-safe
+    product guidance, a progressive authentication gate for meeting scheduling,
+    live agent handoff, and a right-to-erasure flow.
+  defaultLanguage: en-US
+  channels:
+    external:
+      name: custom-website
+      audience: prospects
+
+variables:
+  global:
+    - name: Global.Authenticated
+      type: boolean
+    - name: Global.ConsentGiven
+      type: boolean
+    - name: Global.ProspectCompany
+      type: string
+    - name: Global.ProspectRole
+      type: string
+    - name: Global.ProspectInterestArea
+      type: string
+    - name: Global.SessionMessageCount
+      type: number
+    - name: Global.RateLimitExceeded
+      type: boolean
+
+tools:
+  - name: CreateProspectLead
+    type: flow
+    description: Creates a prospect lead record in Dynamics 365 or Salesforce from pre-chat form data.
+  - name: ScheduleProspectMeeting
+    type: flow
+    description: Checks seller calendar availability via Microsoft Graph and books a meeting slot.
+  - name: HandoffToLiveAgent
+    type: flow
+    description: Transfers the conversation with transcript and context to the Dynamics 365 Omnichannel or Teams sales queue.
+  - name: SubmitErasureRequest
+    type: flow
+    description: Logs a GDPR right-to-erasure request in Dataverse and sends a confirmation email to the privacy mailbox.
+  - name: RecordConsentChoice
+    type: flow
+    description: Persists the prospect consent decision with timestamp in the ConsentRecords Dataverse table.
+
+topics:
+  - name: GDPR Consent and Privacy Notice
+    description: >
+      Presents the data processing notice and cookie consent to the prospect at session start.
+      Blocks personal data collection until the prospect accepts. Must fire before any other
+      data-collecting topic. Stores the consent decision in Dataverse.
+    triggerPhrases:
+      - privacy notice
+      - cookie consent
+      - data policy
+      - how do you use my data
+    flow:
+      - kind: SendMessage
+        id: showPrivacyNotice
+        message: >
+          Before we continue, please review our data processing notice.
+          We collect your name, company, and conversation data to respond to your inquiry
+          and improve our services. You can request deletion of your data at any time.
+          Our full privacy policy is available at {System.EnvironmentVariables.GdprPrivacyPolicyUrl}.
+      - kind: Question
+        id: askConsent
+        variable: Topic.ConsentChoice
+        prompt: Do you accept our data processing notice and cookie policy?
+        choices:
+          - label: I accept
+            value: accept
+          - label: I decline
+            value: decline
+      - kind: ConditionGroup
+        id: branchOnConsent
+        conditions:
+          - id: consentAccepted
+            condition: =Topic.ConsentChoice = "accept"
+            actions:
+              - kind: SetVariable
+                variable: Global.ConsentGiven
+                value: true
+              - kind: InvokeTool
+                tool: RecordConsentChoice
+                inputs:
+                  choice: accept
+                  sessionId: =System.Conversation.Id
+              - kind: SendMessage
+                message: Thank you. You can now continue your conversation.
+          - id: consentDeclined
+            condition: =Topic.ConsentChoice = "decline"
+            actions:
+              - kind: SetVariable
+                variable: Global.ConsentGiven
+                value: false
+              - kind: InvokeTool
+                tool: RecordConsentChoice
+                inputs:
+                  choice: decline
+                  sessionId: =System.Conversation.Id
+              - kind: SendMessage
+                message: >
+                  You have declined data processing. We will not collect or store personal data
+                  during this session. You may still ask general product questions, but we cannot
+                  save your inquiry or contact you. You can change your preference at any time.
+
+  - name: Pre-Chat Intake Form
+    description: >
+      Collects company name, role, and interest area from the prospect before routing
+      to the appropriate topic. Fires after consent is confirmed. Creates a lead record
+      and sets global routing variables for downstream topics.
+    triggerPhrases:
+      - I want to learn more
+      - I am interested in your product
+      - get started
+      - tell me more about what you offer
+    flow:
+      - kind: ConditionGroup
+        id: checkConsent
+        conditions:
+          - id: consentRequired
+            condition: =Global.ConsentGiven = false
+            actions:
+              - kind: RedirectToTopic
+                topic: GDPR Consent and Privacy Notice
+      - kind: SendAdaptiveCard
+        id: intakeCard
+        cardJson: |
+          {
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "type": "AdaptiveCard",
+            "version": "1.5",
+            "body": [
+              {
+                "type": "TextBlock",
+                "text": "Tell us a bit about yourself",
+                "weight": "Bolder",
+                "size": "Medium"
+              },
+              {
+                "type": "Input.Text",
+                "id": "company",
+                "label": "Company name",
+                "isRequired": true
+              },
+              {
+                "type": "Input.Text",
+                "id": "role",
+                "label": "Your role",
+                "isRequired": true
+              },
+              {
+                "type": "Input.ChoiceSet",
+                "id": "interestArea",
+                "label": "Area of interest",
+                "isRequired": true,
+                "choices": [
+                  { "title": "Platform overview", "value": "platform" },
+                  { "title": "Pricing and plans", "value": "pricing" },
+                  { "title": "Integration and APIs", "value": "integration" },
+                  { "title": "Security and compliance", "value": "security" },
+                  { "title": "Customer success stories", "value": "case-studies" },
+                  { "title": "Talk to sales", "value": "sales" }
+                ]
+              }
+            ],
+            "actions": [
+              { "type": "Action.Submit", "title": "Continue" }
+            ]
+          }
+      - kind: SetVariable
+        variable: Global.ProspectCompany
+        value: =Topic.Activity.Value.company
+      - kind: SetVariable
+        variable: Global.ProspectRole
+        value: =Topic.Activity.Value.role
+      - kind: SetVariable
+        variable: Global.ProspectInterestArea
+        value: =Topic.Activity.Value.interestArea
+      - kind: InvokeTool
+        tool: CreateProspectLead
+        inputs:
+          company: =Global.ProspectCompany
+          role: =Global.ProspectRole
+          interestArea: =Global.ProspectInterestArea
+          sessionId: =System.Conversation.Id
+      - kind: ConditionGroup
+        id: routeByInterest
+        conditions:
+          - id: routeToSales
+            condition: =Global.ProspectInterestArea = "sales"
+            actions:
+              - kind: RedirectToTopic
+                topic: Live Agent Handoff
+        elseActions:
+          - kind: SendMessage
+            message: >
+              Thank you, {Global.ProspectCompany}. I will tailor my responses to your interest in {Global.ProspectInterestArea}.
+              What would you like to know?
+
+  - name: Prospect Welcome
+    description: >
+      Greets inbound website prospects, presents quick-reply shortcuts, and initiates
+      the GDPR consent flow at session start. Entry point for all new web chat sessions.
+    triggerPhrases:
+      - hello
+      - hi
+      - good morning
+      - good afternoon
+    flow:
+      - kind: RedirectToTopic
+        topic: GDPR Consent and Privacy Notice
+      - kind: SendMessage
+        id: welcomeMessage
+        message: >
+          Welcome. I am the Contoso prospect assistant. I can answer product questions,
+          share case studies, help with pricing guidance, and connect you with our sales team.
+      - kind: SendQuickReplies
+        replies:
+          - label: Learn about the platform
+            value: tell me about your platform
+          - label: Pricing information
+            value: how does pricing work
+          - label: Customer case studies
+            value: share customer case studies
+          - label: Talk to sales
+            value: connect me to sales
+          - label: Schedule a meeting
+            value: schedule a meeting
+
+  - name: Product and Pricing Guidance
+    description: >
+      Answers product, pricing, and case-study questions using public-safe knowledge sources.
+      Does not expose internal competitive intelligence or unpublished pricing.
+      Available to both anonymous and authenticated prospects.
+    triggerPhrases:
+      - tell me about your platform
+      - how does pricing work
+      - what features does your product have
+      - share customer case studies
+    flow:
+      - kind: GenerativeAnswer
+        knowledgeSources:
+          - public-product-library
+        citationMode: required
+      - kind: SendMessage
+        message: >
+          Would you like more details, a custom pricing estimate, or to speak with a sales specialist?
+      - kind: SendQuickReplies
+        replies:
+          - label: Request custom pricing
+            value: I want custom pricing
+          - label: Schedule a meeting
+            value: schedule a meeting
+          - label: Talk to sales now
+            value: connect me to sales
+
+  - name: Anonymous Mode Guard
+    description: >
+      Handles attempts to access features that require authentication when the prospect is anonymous.
+      Explains what is available without sign-in and presents the option to continue anonymously
+      or register to unlock additional capabilities.
+    triggerPhrases:
+      - what can I do without signing in
+      - do I need to create an account
+      - can I stay anonymous
+      - what requires registration
+    flow:
+      - kind: SendMessage
+        message: >
+          You can ask product and pricing questions, view case studies, and explore our capabilities
+          without signing in. To schedule a meeting with our team or access personalized content,
+          you will need to create a free account. It only takes about 60 seconds.
+      - kind: SendQuickReplies
+        replies:
+          - label: Continue without signing in
+            value: continue anonymously
+          - label: Create an account
+            value: register now
+
+  - name: Meeting Schedule Request
+    description: >
+      Allows a prospect to request a meeting with the sales team. Requires authentication
+      via Azure AD B2C before confirming the booking. Anonymous prospects are prompted to
+      sign in or register. Post-authentication, checks calendar availability and proposes slots.
+    triggerPhrases:
+      - schedule a meeting
+      - book a demo
+      - talk to sales
+      - set up a call with your team
+    flow:
+      - kind: ConditionGroup
+        id: checkAuthForMeeting
+        conditions:
+          - id: notAuthenticated
+            condition: =Global.Authenticated = false
+            actions:
+              - kind: SendMessage
+                message: >
+                  To book a meeting, I need to confirm who you are so our team can prepare
+                  and send you a calendar invite. Please sign in or create a free account.
+              - kind: SignIn
+                provider: azure-ad-b2c
+                userFlowRef: B2cUserFlowName
+                onSuccess:
+                  - kind: SetVariable
+                    variable: Global.Authenticated
+                    value: true
+      - kind: Question
+        id: askPreferredTime
+        variable: Topic.PreferredWindow
+        prompt: What date or time range works best for you?
+        entity: StringPrebuiltEntity
+      - kind: InvokeTool
+        tool: ScheduleProspectMeeting
+        inputs:
+          prospectEmail: =User.Email
+          company: =Global.ProspectCompany
+          interestArea: =Global.ProspectInterestArea
+          preferredWindow: =Topic.PreferredWindow
+      - kind: SendMessage
+        message: >
+          I have found available slots and sent a calendar invite to {User.Email}.
+          A sales specialist will confirm within one business day.
+
+  - name: Live Agent Handoff
+    description: >
+      Escalates the conversation to a live sales representative in Dynamics 365 Omnichannel
+      or a Microsoft Teams sales queue. Passes transcript summary and prospect context.
+      Available to both anonymous and authenticated prospects.
+    triggerPhrases:
+      - connect me to sales
+      - talk to a person
+      - speak to a human
+      - escalate to sales rep
+    flow:
+      - kind: InvokeTool
+        tool: HandoffToLiveAgent
+        inputs:
+          conversationId: =System.Conversation.Id
+          company: =Global.ProspectCompany
+          role: =Global.ProspectRole
+          interestArea: =Global.ProspectInterestArea
+          authenticated: =Global.Authenticated
+          channel: custom-website
+      - kind: SendMessage
+        message: >
+          I have transferred your conversation to our sales team. A representative will
+          join shortly. Your conversation context has been shared so you will not need
+          to repeat yourself.
+
+  - name: Right to Erasure
+    description: >
+      Allows a prospect to submit a GDPR right-to-erasure (Article 17) request to delete
+      all personal data collected during their sessions. Logs the request in Dataverse
+      and sends a confirmation email to the privacy mailbox.
+    triggerPhrases:
+      - delete my data
+      - right to erasure
+      - remove my information
+      - forget me
+    flow:
+      - kind: SendMessage
+        id: erasureExplanation
+        message: >
+          You have the right to request deletion of all personal data we hold about you
+          under GDPR Article 17. This includes your name, company, email, and conversation history.
+          Submitting this request will initiate our deletion process. We will acknowledge
+          within 72 hours and complete deletion within 30 days.
+      - kind: Question
+        id: confirmErasure
+        variable: Topic.ErasureConfirmed
+        prompt: Do you want to proceed with the data deletion request?
+        choices:
+          - label: Yes, delete my data
+            value: confirmed
+          - label: No, cancel
+            value: cancelled
+      - kind: ConditionGroup
+        id: branchErasure
+        conditions:
+          - id: erasureConfirmed
+            condition: =Topic.ErasureConfirmed = "confirmed"
+            actions:
+              - kind: InvokeTool
+                tool: SubmitErasureRequest
+                inputs:
+                  sessionId: =System.Conversation.Id
+                  email: =User.Email
+                  company: =Global.ProspectCompany
+              - kind: SendMessage
+                message: >
+                  Your erasure request has been submitted. You will receive a confirmation
+                  email within 72 hours. Reference: {Topic.ErasureRequestId}.
+          - id: erasureCancelled
+            condition: =Topic.ErasureConfirmed = "cancelled"
+            actions:
+              - kind: SendMessage
+                message: Erasure request cancelled. Your data remains unchanged. Is there anything else I can help you with?
