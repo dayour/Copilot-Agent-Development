@@ -189,6 +189,79 @@ environment_variables:
       first day of each calendar month at midnight).
     default_value: "monthly"
 
+  - name: ErpOAuth2TokenUrl
+    display_name: ERP OAuth2 Token URL
+    type: string
+    description: >
+      OAuth2 client credentials token endpoint URL for the ERP connector.
+      Example for SAP: https://<tenant>.authentication.<region>.hana.ondemand.com/oauth/token
+      Example for Oracle: https://<instance>.oraclecloud.com/oauth2/v1/token
+    default_value: ""
+
+  - name: ErpOAuth2ClientId
+    display_name: ERP OAuth2 Client ID
+    type: string
+    description: >
+      OAuth2 client ID (application ID) registered in the ERP identity provider
+      for the Power Platform connector service account.
+    default_value: ""
+
+  - name: ErpOAuth2Scopes
+    display_name: ERP OAuth2 Scopes
+    type: string
+    description: >
+      Space-separated OAuth2 scopes required by the ERP connector.
+      Example: erp.purchaseorders.read erp.products.read erp.suppliers.read
+    default_value: ""
+
+  - name: PosOAuth2TokenUrl
+    display_name: POS OAuth2 Token URL
+    type: string
+    description: >
+      OAuth2 client credentials token endpoint URL for the POS connector.
+      Provided by the POS platform vendor or the internal API gateway.
+    default_value: ""
+
+  - name: PosOAuth2ClientId
+    display_name: POS OAuth2 Client ID
+    type: string
+    description: >
+      OAuth2 client ID (application ID) registered in the POS identity provider
+      for the Power Platform connector service account.
+    default_value: ""
+
+  - name: PosOAuth2Scopes
+    display_name: POS OAuth2 Scopes
+    type: string
+    description: >
+      Space-separated OAuth2 scopes required by the POS connector.
+      Example: pos.transactions.read pos.baskets.read pos.sales.read
+    default_value: ""
+
+  - name: AllocationOAuth2TokenUrl
+    display_name: Allocation OAuth2 Token URL
+    type: string
+    description: >
+      OAuth2 client credentials token endpoint URL for the Allocation System connector.
+      Provided by the allocation system vendor or the internal API gateway.
+    default_value: ""
+
+  - name: AllocationOAuth2ClientId
+    display_name: Allocation OAuth2 Client ID
+    type: string
+    description: >
+      OAuth2 client ID (application ID) registered in the Allocation identity provider
+      for the Power Platform connector service account.
+    default_value: ""
+
+  - name: AllocationOAuth2Scopes
+    display_name: Allocation OAuth2 Scopes
+    type: string
+    description: >
+      Space-separated OAuth2 scopes required by the Allocation System connector.
+      Example: allocation.plans.read allocation.inventory.read allocation.transfers.read
+    default_value: ""
+
 components:
   dataverse_tables:
     - name: SalesTransactions
@@ -1377,100 +1450,386 @@ components:
       trigger: flow_called_from_scheduled_report
       connector: microsoft_teams
 
-connections:
-  - connector: power_bi
-    display_name: Power BI
-  - connector: dataverse
-    display_name: Dataverse
-  - connector: microsoft_teams
-    display_name: Microsoft Teams
-  - connector: ai_builder
-    display_name: AI Builder
-  - connector: custom_pos_connector
-    display_name: POS Connector
-  - connector: custom_erp_connector
-    display_name: ERP Connector
-  - connector: custom_allocation_connector
-    display_name: Allocation Connector
-  - connector: dataverse
-    display_name: Microsoft Dataverse
+connection_references:
+  - name: cr_pos_clothing
+    display_name: POS Connector — Clothing
+    description: >
+      Solution-aware connection reference for the clothing POS custom connector.
+      Bind to a service account with POS API read access during solution import.
+    connector: PosConnector
+    required: true
+
+  - name: cr_erp_clothing
+    display_name: ERP Connector — Clothing
+    description: >
+      Solution-aware connection reference for the clothing ERP custom connector.
+      Bind to a service account with ERP API read access during solution import.
+    connector: ErpConnector
+    required: true
+
+  - name: cr_allocation_clothing
+    display_name: Allocation System Connector — Clothing
+    description: >
+      Solution-aware connection reference for the clothing allocation system custom connector.
+      Bind to a service account with Allocation API read access during solution import.
+    connector: AllocationConnector
+    required: true
+
+  - name: cr_powerbi_clothing
+    display_name: Power BI — Clothing
+    description: >
+      Connection reference for the Power BI connector used by KPI cache refresh
+      and analytical query flows.
+    connector: power_bi
+    required: true
+
+  - name: cr_dataverse_clothing
+    display_name: Dataverse — Clothing
+    description: >
+      Connection reference for the Microsoft Dataverse connector used by all
+      data sync, alert, saved analysis, and scheduled report flows.
+    connector: dataverse
+    required: true
+
+  - name: cr_teams_clothing
+    display_name: Microsoft Teams — Clothing
+    description: >
+      Connection reference for the Microsoft Teams connector used by anomaly
+      alert notifications, pipeline health alerts, and scheduled report delivery.
+    connector: microsoft_teams
+    required: true
+
+  - name: cr_aibuilder_clothing
+    display_name: AI Builder — Clothing
+    description: >
+      Connection reference for the AI Builder connector used by demand forecasting,
+      category classification, sentiment analysis, and document processing flows.
+    connector: ai_builder
+    required: true
 
 custom_connectors:
   - name: PosConnector
+    display_name: POS Connector (Clothing)
+    description: >
+      Custom connector for the clothing retailer point-of-sale system.
+      Provides read access to transactions, basket line items, hourly sales,
+      and tender type mix.
     source: openapi
+    definition_file: ../connectors/pos-connector.yaml
     base_url: "${PosApiBaseUrl}"
-    auth: oauth2
+    authentication:
+      type: oauth2
+      flow: client_credentials
+      token_url: "${PosOAuth2TokenUrl}"
+      client_id: "${PosOAuth2ClientId}"
+      client_secret_variable: PosOAuth2ClientSecret
+      scopes: "${PosOAuth2Scopes}"
+      token_expiry_buffer_seconds: 300
+      refresh_on_401: true
+    throttling:
+      calls_per_minute: 180
+      calls_per_day: 100000
+      burst_limit: 30
+      retry_after_header: Retry-After
+      policy: leaky_bucket
+    error_handling:
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+        retryable_status_codes: [429, 500, 502, 503, 504]
+      on_auth_failure: refresh_token_then_retry
+      on_rate_limit: respect_retry_after_header
     operations:
       - name: GetTransactions
-        description: Retrieves sales transactions changed after a given timestamp.
+        description: >
+          Retrieves sales transactions filtered by store, date range, channel,
+          and an incremental watermark timestamp for the daily batch sync pipeline.
         parameters:
+          - name: store_id
+            type: string
+          - name: from_date
+            type: string
+            format: date
+          - name: to_date
+            type: string
+            format: date
           - name: since_timestamp
             type: string
             format: datetime
+          - name: channel
+            type: string
           - name: page_size
             type: integer
             default: 1000
           - name: page_token
             type: string
       - name: GetBasketDetails
-        description: Retrieves basket line items for a set of transaction IDs.
+        description: Retrieves basket line items for a comma-separated set of transaction IDs (max 200).
+        parameters:
+          - name: transaction_ids
+            type: string
+            required: true
+          - name: page_size
+            type: integer
+            default: 1000
+          - name: page_token
+            type: string
+      - name: GetHourlySales
+        description: >
+          Returns the hourly sales breakdown (units sold, net sales, transaction count)
+          for a given store and date. Used by intraday sales analysis topics.
+        parameters:
+          - name: store_id
+            type: string
+            required: true
+          - name: date
+            type: string
+            format: date
+            required: true
+          - name: channel
+            type: string
       - name: GetTenderMix
-        description: Retrieves tender payment details for a set of transaction IDs.
+        description: >
+          Returns the payment method breakdown for a comma-separated set of transaction IDs.
+          Covers Cash, Card, Digital Wallet, Gift Card, and Loyalty Points.
+        parameters:
+          - name: transaction_ids
+            type: string
+            required: true
+          - name: page_size
+            type: integer
+            default: 1000
+          - name: page_token
+            type: string
       - name: GetHealthStatus
         description: Probe endpoint for connector health check.
         path: /health
+
   - name: ErpConnector
+    display_name: ERP Connector (Clothing)
+    description: >
+      Custom connector for the clothing retailer ERP system (SAP or Oracle).
+      Provides read access to purchase orders, supplier lead times, cost prices,
+      and open order pipeline data.
     source: openapi
+    definition_file: ../connectors/erp-connector.yaml
     base_url: "${ErpApiBaseUrl}"
-    auth: oauth2
+    authentication:
+      type: oauth2
+      flow: client_credentials
+      token_url: "${ErpOAuth2TokenUrl}"
+      client_id: "${ErpOAuth2ClientId}"
+      client_secret_variable: ErpOAuth2ClientSecret
+      scopes: "${ErpOAuth2Scopes}"
+      token_expiry_buffer_seconds: 300
+      refresh_on_401: true
+    throttling:
+      calls_per_minute: 120
+      calls_per_day: 50000
+      burst_limit: 20
+      retry_after_header: Retry-After
+      policy: leaky_bucket
+    error_handling:
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+        retryable_status_codes: [429, 500, 502, 503, 504]
+      on_auth_failure: refresh_token_then_retry
+      on_rate_limit: respect_retry_after_header
     operations:
-      - name: GetProductUpdates
-        description: Retrieves product catalog records modified after a given timestamp.
-        parameters:
-          - name: modified_since
-            type: string
-            format: datetime
-          - name: page_size
-            type: integer
-            default: 500
       - name: GetPurchaseOrders
-        description: Retrieves purchase order lines modified after a given timestamp.
+        description: >
+          Retrieves purchase order headers and lines filtered by date range,
+          supplier code, status, and modified timestamp for delta sync.
         parameters:
+          - name: from_date
+            type: string
+            format: date
+          - name: to_date
+            type: string
+            format: date
+          - name: supplier_code
+            type: string
+          - name: status
+            type: string
           - name: modified_since
             type: string
             format: datetime
           - name: page_size
             type: integer
             default: 500
+          - name: page_token
+            type: string
+      - name: GetSupplierLeadTime
+        description: >
+          Returns the current lead time in days for a given supplier and product category.
+          Used by the agent for replenishment urgency assessment and OTB planning topics.
+        parameters:
+          - name: supplier_code
+            type: string
+            required: true
+          - name: category
+            type: string
+          - name: season
+            type: string
+      - name: GetCostPrice
+        description: >
+          Returns the standard cost price for a given SKU, optionally for a specific
+          currency and effective date. Used for margin analysis and GMROI topics.
+        parameters:
+          - name: sku
+            type: string
+            required: true
+          - name: currency
+            type: string
+          - name: effective_date
+            type: string
+            format: date
+      - name: GetOpenOrders
+        description: >
+          Lists all open and partially received purchase orders.
+          Used to assess the incoming stock pipeline and open-to-buy position.
+        parameters:
+          - name: supplier_code
+            type: string
+          - name: category
+            type: string
+          - name: due_before
+            type: string
+            format: date
+          - name: page_size
+            type: integer
+            default: 500
+          - name: page_token
+            type: string
       - name: GetHealthStatus
         description: Probe endpoint for connector health check.
         path: /health
+
   - name: AllocationConnector
+    display_name: Allocation System Connector (Clothing)
+    description: >
+      Custom connector for the clothing retailer merchandise allocation system.
+      Provides read access to allocation plans, replenishment status, inventory snapshots,
+      stock movements, and transfer orders.
     source: openapi
+    definition_file: ../connectors/allocation-connector.yaml
     base_url: "${AllocationApiBaseUrl}"
-    auth: oauth2
+    authentication:
+      type: oauth2
+      flow: client_credentials
+      token_url: "${AllocationOAuth2TokenUrl}"
+      client_id: "${AllocationOAuth2ClientId}"
+      client_secret_variable: AllocationOAuth2ClientSecret
+      scopes: "${AllocationOAuth2Scopes}"
+      token_expiry_buffer_seconds: 300
+      refresh_on_401: true
+    throttling:
+      calls_per_minute: 120
+      calls_per_day: 75000
+      burst_limit: 20
+      retry_after_header: Retry-After
+      policy: leaky_bucket
+    error_handling:
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+        retryable_status_codes: [429, 500, 502, 503, 504]
+      on_auth_failure: refresh_token_then_retry
+      on_rate_limit: respect_retry_after_header
     operations:
+      - name: GetAllocationPlan
+        description: >
+          Retrieves the merchandise allocation plan for a given product category and season.
+          Returns planned vs actual distribution per store.
+        parameters:
+          - name: category
+            type: string
+          - name: season
+            type: string
+          - name: store_id
+            type: string
+          - name: page_size
+            type: integer
+            default: 500
+          - name: page_token
+            type: string
+      - name: GetReplenishmentStatus
+        description: >
+          Returns the current replenishment pipeline status including pending orders,
+          expected delivery dates, and quantities in transit for a given store.
+        parameters:
+          - name: store_id
+            type: string
+          - name: category
+            type: string
+          - name: due_within_days
+            type: integer
+          - name: page_size
+            type: integer
+            default: 500
+          - name: page_token
+            type: string
+      - name: GetTransferOrders
+        description: >
+          Lists inter-store and DC-to-store transfer orders filtered by source store,
+          destination store, SKU, status, and modified timestamp for incremental sync.
+        parameters:
+          - name: from_store_id
+            type: string
+          - name: to_store_id
+            type: string
+          - name: sku
+            type: string
+          - name: status
+            type: string
+          - name: modified_since
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 500
+          - name: page_token
+            type: string
       - name: GetInventorySnapshot
-        description: Retrieves the current full inventory snapshot for all stores and products.
+        description: >
+          Retrieves the current full inventory snapshot for all stores and products.
+          Used by AllocationDataSync for the full snapshot upsert strategy.
         parameters:
           - name: snapshot_date
             type: string
             format: date
+          - name: store_id
+            type: string
+          - name: page_size
+            type: integer
+            default: 1000
+          - name: page_token
+            type: string
       - name: GetStockMovements
-        description: Retrieves stock movements posted after a given timestamp.
+        description: >
+          Retrieves incremental stock movement records posted after a given timestamp.
+          Covers sales, returns, transfers, adjustments, and write-offs.
         parameters:
           - name: since_timestamp
             type: string
             format: datetime
+            required: true
+          - name: store_id
+            type: string
+          - name: movement_type
+            type: string
           - name: page_size
             type: integer
             default: 1000
-      - name: GetTransferOrders
-        description: Retrieves transfer orders modified after a given timestamp.
-        parameters:
-          - name: modified_since
+          - name: page_token
             type: string
-            format: datetime
       - name: GetHealthStatus
         description: Probe endpoint for connector health check.
         path: /health

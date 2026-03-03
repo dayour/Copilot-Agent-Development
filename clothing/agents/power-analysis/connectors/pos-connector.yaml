@@ -1,0 +1,252 @@
+# Custom Connector Definition — POS Connector (Clothing / Power Analysis)
+# Connects to the point-of-sale system for real-time transaction data,
+# basket composition, hourly sales, and tender type breakdown.
+# Import this file into Power Platform as a custom connector or reference it from the solution.
+
+connector:
+  name: PosConnector
+  display_name: POS Connector (Clothing)
+  description: >
+    Custom Power Platform connector for the clothing retailer point-of-sale system.
+    Provides read access to transactions, basket line items, hourly sales breakdowns,
+    and tender type mix for use by the Power Analysis agent data sync pipelines and
+    analytical topics.
+  publisher: Copilot Agent Development
+  icon_color: "#107C10"
+
+  base_url: "${PosApiBaseUrl}"
+
+  authentication:
+    type: oauth2
+    flow: client_credentials
+    token_url: "${PosOAuth2TokenUrl}"
+    client_id: "${PosOAuth2ClientId}"
+    client_secret_variable: PosOAuth2ClientSecret
+    scopes: "${PosOAuth2Scopes}"
+    token_expiry_buffer_seconds: 300
+    refresh_on_401: true
+
+  throttling:
+    calls_per_minute: 180
+    calls_per_day: 100000
+    burst_limit: 30
+    retry_after_header: Retry-After
+    policy: leaky_bucket
+
+  error_handling:
+    retry_policy:
+      max_retries: 3
+      initial_delay_seconds: 30
+      backoff_multiplier: 2
+      max_delay_seconds: 240
+      retryable_status_codes: [429, 500, 502, 503, 504]
+    circuit_breaker:
+      failure_threshold: 5
+      recovery_timeout_seconds: 60
+    on_auth_failure: refresh_token_then_retry
+    on_rate_limit: respect_retry_after_header
+
+  operations:
+
+    - id: GetTransactions
+      display_name: Get Transactions
+      description: >
+        Retrieves sales transactions from the POS system.
+        Supports filtering by store, date range, channel, and an incremental
+        watermark timestamp for the daily batch sync pipeline.
+      method: GET
+      path: /transactions
+      parameters:
+        - name: store_id
+          in: query
+          type: string
+          required: false
+          description: Filter results to a specific store by its POS store identifier.
+        - name: from_date
+          in: query
+          type: string
+          format: date
+          required: false
+          description: Start of the transaction date range in ISO 8601 date format (YYYY-MM-DD).
+        - name: to_date
+          in: query
+          type: string
+          format: date
+          required: false
+          description: End of the transaction date range in ISO 8601 date format (YYYY-MM-DD).
+        - name: since_timestamp
+          in: query
+          type: string
+          format: datetime
+          required: false
+          description: >
+            Return only transactions created or modified after this UTC timestamp (ISO 8601).
+            Used as the watermark for incremental batch sync.
+        - name: channel
+          in: query
+          type: string
+          required: false
+          description: "Filter by sales channel: InStore, Online, or Omnichannel."
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 1000
+          description: Maximum number of transaction records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: List of transaction records matching the filter criteria.
+        400:
+          description: Invalid filter parameters.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded. Retry after the interval in the Retry-After header.
+        500:
+          description: Internal POS system error.
+
+    - id: GetBasketDetails
+      display_name: Get Basket Details
+      description: >
+        Returns full basket composition (line items) for one or more transaction IDs.
+        Used by the POS data sync pipeline and by the agent's basket analysis topics.
+      method: GET
+      path: /transactions/basket-details
+      parameters:
+        - name: transaction_ids
+          in: query
+          type: string
+          required: true
+          description: >
+            Comma-separated list of transaction IDs for which to retrieve basket line items.
+            Maximum 200 IDs per request.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 1000
+          description: Maximum number of basket line items to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: Basket line items for the requested transaction IDs.
+        400:
+          description: Invalid or missing transaction IDs, or more than 200 IDs supplied.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal POS system error.
+
+    - id: GetHourlySales
+      display_name: Get Hourly Sales
+      description: >
+        Returns an hourly sales breakdown for a given store and date.
+        Each row contains total units sold, net sales amount, and transaction count
+        for each trading hour. Used by the agent's intraday sales analysis topics.
+      method: GET
+      path: /stores/{store_id}/hourly-sales
+      parameters:
+        - name: store_id
+          in: path
+          type: string
+          required: true
+          description: POS store identifier.
+        - name: date
+          in: query
+          type: string
+          format: date
+          required: true
+          description: The trading date for which to return hourly data (ISO 8601 date format YYYY-MM-DD).
+        - name: channel
+          in: query
+          type: string
+          required: false
+          description: "Filter by channel: InStore or Online. Returns combined totals if omitted."
+      responses:
+        200:
+          description: Hourly sales records for the requested store and date.
+        400:
+          description: Invalid store ID, date format, or channel value.
+        401:
+          description: Authentication token missing or expired.
+        404:
+          description: Store ID not found.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal POS system error.
+
+    - id: GetTenderMix
+      display_name: Get Tender Mix
+      description: >
+        Returns the payment method breakdown for one or more transaction IDs.
+        Provides a count and total amount per tender type (Cash, Card, Digital Wallet,
+        Gift Card, Loyalty Points). Used by the POS sync pipeline and basket analysis topics.
+      method: GET
+      path: /transactions/tender-mix
+      parameters:
+        - name: transaction_ids
+          in: query
+          type: string
+          required: true
+          description: >
+            Comma-separated list of transaction IDs for which to retrieve tender data.
+            Maximum 200 IDs per request.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 1000
+          description: Maximum number of tender records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: Tender mix records for the requested transaction IDs.
+        400:
+          description: Invalid or missing transaction IDs.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal POS system error.
+
+    - id: GetHealthStatus
+      display_name: Get Health Status
+      description: >
+        Probe endpoint used by the ConnectorHealthCheckScheduled flow to verify
+        that the POS API is reachable and the connector credentials are valid.
+      method: GET
+      path: /health
+      parameters: []
+      responses:
+        200:
+          description: POS API is healthy and the connection is authenticated.
+        401:
+          description: Authentication token missing or expired.
+        503:
+          description: POS API is temporarily unavailable.
+
+connection_reference:
+  name: cr_pos_clothing
+  display_name: POS Connector — Clothing
+  description: >
+    Solution-aware connection reference for the clothing POS custom connector.
+    Bind this to a service account with POS API read access during solution import.
+  connector: PosConnector
+  required: true

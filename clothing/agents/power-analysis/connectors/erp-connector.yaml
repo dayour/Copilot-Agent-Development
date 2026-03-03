@@ -1,0 +1,258 @@
+# Custom Connector Definition — ERP Connector (Clothing / Power Analysis)
+# Connects to SAP or Oracle ERP for purchase order data, supplier lead times, and cost prices.
+# Import this file into Power Platform as a custom connector or reference it from the solution.
+
+connector:
+  name: ErpConnector
+  display_name: ERP Connector (Clothing)
+  description: >
+    Custom Power Platform connector for the clothing retailer ERP system (SAP or Oracle).
+    Provides read access to purchase orders, supplier lead times, cost prices, and open orders
+    for use by the Power Analysis agent data sync pipelines and analytical topics.
+  publisher: Copilot Agent Development
+  icon_color: "#0070CC"
+
+  base_url: "${ErpApiBaseUrl}"
+
+  authentication:
+    type: oauth2
+    flow: client_credentials
+    token_url: "${ErpOAuth2TokenUrl}"
+    client_id: "${ErpOAuth2ClientId}"
+    client_secret_variable: ErpOAuth2ClientSecret
+    scopes: "${ErpOAuth2Scopes}"
+    token_expiry_buffer_seconds: 300
+    refresh_on_401: true
+
+  throttling:
+    calls_per_minute: 120
+    calls_per_day: 50000
+    burst_limit: 20
+    retry_after_header: Retry-After
+    policy: leaky_bucket
+
+  error_handling:
+    retry_policy:
+      max_retries: 3
+      initial_delay_seconds: 30
+      backoff_multiplier: 2
+      max_delay_seconds: 240
+      retryable_status_codes: [429, 500, 502, 503, 504]
+    circuit_breaker:
+      failure_threshold: 5
+      recovery_timeout_seconds: 60
+    on_auth_failure: refresh_token_then_retry
+    on_rate_limit: respect_retry_after_header
+
+  operations:
+
+    - id: GetPurchaseOrders
+      display_name: Get Purchase Orders
+      description: >
+        Retrieves purchase order headers and lines from the ERP system.
+        Supports filtering by date range, supplier code, and order status.
+        Used by the ErpDataSync pipeline and by the agent's open-to-buy analysis topics.
+      method: GET
+      path: /purchase-orders
+      parameters:
+        - name: from_date
+          in: query
+          type: string
+          format: date
+          required: false
+          description: Start of the order date range in ISO 8601 date format (YYYY-MM-DD).
+        - name: to_date
+          in: query
+          type: string
+          format: date
+          required: false
+          description: End of the order date range in ISO 8601 date format (YYYY-MM-DD).
+        - name: supplier_code
+          in: query
+          type: string
+          required: false
+          description: Filter results to a specific supplier by their ERP supplier code.
+        - name: status
+          in: query
+          type: string
+          required: false
+          description: "Filter by order status: Open, PartiallyReceived, Closed, or Cancelled."
+        - name: modified_since
+          in: query
+          type: string
+          format: datetime
+          required: false
+          description: Return only records modified after this UTC timestamp (ISO 8601). Used for delta sync.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 500
+          description: Maximum number of records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: List of purchase order records matching the filter criteria.
+        400:
+          description: Invalid filter parameters.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded. Retry after the interval specified in the Retry-After header.
+        500:
+          description: Internal ERP system error.
+
+    - id: GetSupplierLeadTime
+      display_name: Get Supplier Lead Time
+      description: >
+        Returns the current lead time in days for a given supplier and product category.
+        Used by the agent to assess replenishment urgency and open-to-buy planning.
+      method: GET
+      path: /suppliers/{supplier_code}/lead-times
+      parameters:
+        - name: supplier_code
+          in: path
+          type: string
+          required: true
+          description: ERP supplier code identifying the supplier.
+        - name: category
+          in: query
+          type: string
+          required: false
+          description: Product category to filter lead times (e.g., Outerwear, Denim, Footwear).
+        - name: season
+          in: query
+          type: string
+          required: false
+          description: Season identifier (e.g., SS25, AW25) to scope the lead time lookup.
+      responses:
+        200:
+          description: Lead time record(s) for the requested supplier and optional category filter.
+        400:
+          description: Invalid supplier code or category value.
+        401:
+          description: Authentication token missing or expired.
+        404:
+          description: Supplier code not found in ERP.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal ERP system error.
+
+    - id: GetCostPrice
+      display_name: Get Cost Price
+      description: >
+        Returns the current standard cost price for a given SKU from the ERP product master.
+        Used by the agent's margin analysis and GMROI calculation topics.
+      method: GET
+      path: /products/{sku}/cost-price
+      parameters:
+        - name: sku
+          in: path
+          type: string
+          required: true
+          description: Product SKU as defined in the ERP product master.
+        - name: currency
+          in: query
+          type: string
+          required: false
+          description: >
+            ISO 4217 currency code for the returned cost price (e.g., USD, GBP, EUR).
+            Defaults to the ERP base currency if not provided.
+        - name: effective_date
+          in: query
+          type: string
+          format: date
+          required: false
+          description: >
+            Return the cost price effective on this date (ISO 8601 date format).
+            Defaults to the current date if not provided.
+      responses:
+        200:
+          description: Cost price record for the requested SKU and optional date.
+        400:
+          description: Invalid SKU or currency code.
+        401:
+          description: Authentication token missing or expired.
+        404:
+          description: SKU not found in ERP product master.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal ERP system error.
+
+    - id: GetOpenOrders
+      display_name: Get Open Orders
+      description: >
+        Lists all open and partially received purchase orders.
+        Used by the agent to assess incoming stock pipeline and open-to-buy position.
+      method: GET
+      path: /purchase-orders/open
+      parameters:
+        - name: supplier_code
+          in: query
+          type: string
+          required: false
+          description: Filter to a specific supplier by ERP supplier code.
+        - name: category
+          in: query
+          type: string
+          required: false
+          description: Filter by product category.
+        - name: due_before
+          in: query
+          type: string
+          format: date
+          required: false
+          description: Return only orders with an expected delivery date on or before this date.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 500
+          description: Maximum number of records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: List of open and partially received purchase orders.
+        400:
+          description: Invalid filter parameters.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal ERP system error.
+
+    - id: GetHealthStatus
+      display_name: Get Health Status
+      description: >
+        Probe endpoint used by the ConnectorHealthCheckScheduled flow to verify
+        that the ERP API is reachable and the connector credentials are valid.
+      method: GET
+      path: /health
+      parameters: []
+      responses:
+        200:
+          description: ERP API is healthy and the connection is authenticated.
+        401:
+          description: Authentication token missing or expired.
+        503:
+          description: ERP API is temporarily unavailable.
+
+connection_reference:
+  name: cr_erp_clothing
+  display_name: ERP Connector — Clothing
+  description: >
+    Solution-aware connection reference for the clothing ERP custom connector.
+    Bind this to a service account with ERP API read access during solution import.
+  connector: ErpConnector
+  required: true

@@ -165,3 +165,172 @@
   description: >
     Tests that the agent handles a return rate comparison query with appropriate
     context about what a high return rate means.
+
+- id: clothing-pa-crit-005
+  tier: critical
+  query: "What are the open purchase orders for our denim supplier?"
+  expected_keywords:
+    - purchase
+    - order
+    - supplier
+    - denim
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent uses the ERP connector (GetOpenOrders and
+    GetPurchaseOrders operations) to retrieve open purchase orders from the
+    ERP system. The agent can filter by supplier and category.
+  description: >
+    Verifies that the agent handles an open purchase orders query using
+    ERP connector data and returns a response referencing purchase orders
+    and supplier context.
+
+- id: clothing-pa-crit-006
+  tier: critical
+  query: "What is the lead time for our outerwear supplier?"
+  expected_keywords:
+    - lead
+    - time
+    - supplier
+    - outerwear
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent uses the ERP connector GetSupplierLeadTime
+    operation to return lead times for a given supplier and product category.
+    Lead time is used to inform replenishment urgency and open-to-buy planning.
+  description: >
+    Verifies that the agent handles a supplier lead time query via the ERP
+    connector and returns a response referencing lead time and supplier context.
+
+- id: clothing-pa-crit-007
+  tier: critical
+  query: "What were the busiest hours for Store 12 last Saturday?"
+  expected_keywords:
+    - hourly
+    - sales
+    - store
+    - hours
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent uses the POS connector GetHourlySales operation
+    to return the intraday sales breakdown by hour for a given store and date.
+    The response should reference trading hours and sales volume distribution.
+  description: >
+    Verifies that the agent handles an intraday hourly sales query via the POS
+    connector and returns a response referencing hourly data and store context.
+
+- id: clothing-pa-crit-008
+  tier: critical
+  query: "What payment methods are customers using most at our flagship store?"
+  expected_keywords:
+    - payment
+    - tender
+    - card
+    - cash
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent uses the POS connector GetTenderMix operation
+    to return the breakdown of payment methods (cash, card, digital wallet,
+    gift card, loyalty points) for a given store or transaction set.
+  description: >
+    Verifies that the agent handles a tender mix query via the POS connector
+    and returns a response referencing payment methods and tender types.
+
+- id: clothing-pa-func-005
+  tier: functional
+  query: "What is the cost price for SKU JKT-WL-001 and how does our margin look compared to target?"
+  expected_keywords:
+    - cost
+    - price
+    - SKU
+    - margin
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent uses the ERP connector GetCostPrice operation to
+    retrieve the standard cost price for a given SKU. It then computes margin
+    against net sales from POS data. JKT-WL-001 is a wool jacket SKU.
+  description: >
+    Tests that the agent retrieves cost price data via the ERP connector
+    and provides a grounded margin analysis response.
+
+- id: clothing-pa-func-006
+  tier: functional
+  query: "What replenishment stock is coming into Store 5 this week?"
+  expected_keywords:
+    - replenishment
+    - stock
+    - store
+    - arriving
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent uses the Allocation System connector
+    GetReplenishmentStatus operation to return pending replenishment orders
+    and expected delivery dates for a given store. The response should
+    reference incoming stock quantities and expected arrival.
+  description: >
+    Tests that the agent handles a replenishment status query via the
+    Allocation System connector and returns a useful, grounded response.
+
+- id: clothing-pa-func-007
+  tier: functional
+  query: "Show me the allocation plan for outerwear this season and highlight any stores below target."
+  expected_keywords:
+    - allocation
+    - plan
+    - outerwear
+    - season
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent uses the Allocation System connector
+    GetAllocationPlan operation to retrieve the merchandise allocation plan
+    for a given category and season. The agent can compare planned vs actual
+    distribution and highlight stores performing below planned allocation.
+  description: >
+    Tests that the agent retrieves and interprets allocation plan data via
+    the Allocation System connector, identifying stores below target.
+
+- id: clothing-pa-func-008
+  tier: functional
+  query: "Are there any inter-store transfer orders pending for the North region?"
+  expected_keywords:
+    - transfer
+    - order
+    - store
+    - pending
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent uses the Allocation System connector
+    GetTransferOrders operation to list inter-store transfer orders filtered
+    by store or region and status. Pending transfers indicate stock in transit
+    that should be factored into inventory planning.
+  description: >
+    Tests that the agent handles a transfer order query via the Allocation
+    System connector and provides a grounded answer about pending transfers.

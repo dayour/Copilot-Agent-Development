@@ -108,7 +108,87 @@ Validate role mapping:
 1. Map Entra groups to roles.
 2. Test user-level data visibility in both Dataverse and flow outputs.
 
-### 4. Import the Solution
+### 4. Configure Custom Connectors
+
+Before importing the solution, register the three custom connectors and their OAuth2 client credentials.
+Connector definition files are in `connectors/`. Each connector uses the OAuth2 client credentials
+flow, so no user interaction is required at runtime.
+
+#### 4a. ERP Connector OAuth2 Registration
+
+1. Register an application in your ERP identity provider (SAP BTP or Oracle Identity Cloud Service):
+   - Application name: `PowerPlatformErpConnector`
+   - Grant type: `client_credentials`
+   - Scopes to grant: read access to purchase orders, products, and supplier data
+     (exact scope names vary by ERP vendor; see `connectors/erp-connector.yaml` for guidance)
+2. Note the **Client ID** and generate a **Client Secret**. Store the secret in Azure Key Vault.
+3. Set environment variables:
+   - `ErpApiBaseUrl` — base URL of the ERP REST API
+   - `ErpOAuth2TokenUrl` — OAuth2 token endpoint URL from the ERP identity provider
+   - `ErpOAuth2ClientId` — Client ID from step 2
+   - `ErpOAuth2Scopes` — space-separated scopes granted in step 1
+4. Store the Client Secret as a Power Platform environment secret named `ErpOAuth2ClientSecret`
+   (Settings -> Secrets in Power Platform Admin Center). Do not store secrets as plain-text
+   environment variables.
+
+#### 4b. POS Connector OAuth2 Registration
+
+1. Register an application in the POS identity provider or API gateway:
+   - Application name: `PowerPlatformPosConnector`
+   - Grant type: `client_credentials`
+   - Scopes to grant: read access to transactions, baskets, and sales data
+     (exact scope names vary by POS vendor; see `connectors/pos-connector.yaml` for guidance)
+2. Note the **Client ID** and generate a **Client Secret**. Store the secret in Azure Key Vault.
+3. Set environment variables:
+   - `PosApiBaseUrl` — base URL of the POS REST API
+   - `PosOAuth2TokenUrl` — OAuth2 token endpoint URL from the POS identity provider
+   - `PosOAuth2ClientId` — Client ID from step 2
+   - `PosOAuth2Scopes` — space-separated scopes granted in step 1
+4. Store the Client Secret as a Power Platform environment secret named `PosOAuth2ClientSecret`.
+
+#### 4c. Allocation System Connector OAuth2 Registration
+
+1. Register an application in the allocation system identity provider or API gateway:
+   - Application name: `PowerPlatformAllocationConnector`
+   - Grant type: `client_credentials`
+   - Scopes to grant: read access to allocation plans, replenishment, inventory, and transfers
+     (exact scope names vary by vendor; see `connectors/allocation-connector.yaml` for guidance)
+2. Note the **Client ID** and generate a **Client Secret**. Store the secret in Azure Key Vault.
+3. Set environment variables:
+   - `AllocationApiBaseUrl` — base URL of the Allocation System REST API
+   - `AllocationOAuth2TokenUrl` — OAuth2 token endpoint URL
+   - `AllocationOAuth2ClientId` — Client ID from step 2
+   - `AllocationOAuth2Scopes` — space-separated scopes granted in step 1
+4. Store the Client Secret as a Power Platform environment secret named `AllocationOAuth2ClientSecret`.
+
+#### 4d. Import Custom Connectors
+
+1. In [https://make.powerapps.com](https://make.powerapps.com), navigate to **Data** -> **Custom Connectors**.
+2. Select **New custom connector** -> **Import an OpenAPI file**.
+3. Import `connectors/erp-connector.yaml`. Name the connector `ErpConnector`.
+4. On the **Security** tab, confirm the OAuth2 client credentials flow and verify the token URL and scopes.
+5. Test the connector using the **Test** tab with the client credentials registered in step 4a.
+6. Repeat steps 2-5 for `connectors/pos-connector.yaml` (connector name: `PosConnector`)
+   and `connectors/allocation-connector.yaml` (connector name: `AllocationConnector`).
+
+#### 4e. Bind Connection References
+
+After solution import (step 5), bind each connection reference to the connector credentials created above:
+
+| Connection Reference | Connector | Bound Account |
+|---|---|---|
+| `cr_erp_clothing` | ErpConnector | Service account with ERP API read access |
+| `cr_pos_clothing` | PosConnector | Service account with POS API read access |
+| `cr_allocation_clothing` | AllocationConnector | Service account with Allocation API read access |
+| `cr_powerbi_clothing` | Power BI | Service account with Power BI workspace reader |
+| `cr_dataverse_clothing` | Dataverse | Service account with PowerAnalysis-AgentRuntime role |
+| `cr_teams_clothing` | Microsoft Teams | Service account with Teams posting permission |
+| `cr_aibuilder_clothing` | AI Builder | Service account with AI Builder model inference access |
+
+Verify each binding by running the connector test action from the **Custom Connectors** page before
+activating data sync flows.
+
+### 5. Import the Solution
 1. Go to **Solutions** -> **Import solution**.
 2. Upload `solution/solution-definition.yaml`.
 3. Map environment variables:
@@ -119,8 +199,17 @@ Validate role mapping:
    - `ScheduledReportsTeamsChannelId`
    - `ReportDefaultRecipients`
    - `PosApiBaseUrl`
+   - `PosOAuth2TokenUrl`
+   - `PosOAuth2ClientId`
+   - `PosOAuth2Scopes`
    - `ErpApiBaseUrl`
+   - `ErpOAuth2TokenUrl`
+   - `ErpOAuth2ClientId`
+   - `ErpOAuth2Scopes`
    - `AllocationApiBaseUrl`
+   - `AllocationOAuth2TokenUrl`
+   - `AllocationOAuth2ClientId`
+   - `AllocationOAuth2Scopes`
    - `SynapseWorkspaceUrl`
    - `DataLakeStorageAccountUrl`
    - `PosSyncLastSuccessfulTimestamp` (initial backfill start date)

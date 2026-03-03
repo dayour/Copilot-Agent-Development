@@ -102,6 +102,10 @@ Scheduled reports provision a Power Automate recurrence flow per report and supp
 power-analysis/
 ├── README.md
 ├── runbook.md
+├── connectors/
+│   ├── erp-connector.yaml
+│   ├── pos-connector.yaml
+│   └── allocation-connector.yaml
 ├── docs/
 │   └── data-sync-pipelines.md
 ├── templates/
@@ -109,6 +113,77 @@ power-analysis/
 └── solution/
     └── solution-definition.yaml
 ```
+
+## Custom Connectors
+
+Three custom Power Platform connectors integrate the agent with the retailer's core operational
+systems. All connectors use the OAuth2 client credentials flow (no user interaction required at
+runtime) and include rate limiting, exponential backoff retry, and circuit breaker policies.
+Full connector definitions including all parameters and response schemas are in the `connectors/`
+directory.
+
+### ERP Connector
+
+Connects to the SAP or Oracle ERP system for purchase order data, supplier lead times, and cost prices.
+
+| Operation | Description |
+|---|---|
+| `GetPurchaseOrders` | Retrieve POs by date range, supplier code, or status. Supports delta sync via `modified_since`. |
+| `GetSupplierLeadTime` | Get lead time in days by supplier code and optional product category or season. |
+| `GetCostPrice` | Get the standard cost price for a SKU with optional currency and effective date. |
+| `GetOpenOrders` | List all open and partially received purchase orders with optional supplier and category filters. |
+| `GetHealthStatus` | Health probe endpoint for the `ConnectorHealthCheckScheduled` flow. |
+
+Connection reference: `cr_erp_clothing`
+Definition file: `connectors/erp-connector.yaml`
+
+### POS Connector
+
+Connects to the point-of-sale system for transaction data, basket composition, hourly sales, and
+tender type breakdown.
+
+| Operation | Description |
+|---|---|
+| `GetTransactions` | Retrieve transactions by store, date range, channel, and incremental watermark timestamp. |
+| `GetBasketDetails` | Get full basket composition (line items) for a set of transaction IDs. |
+| `GetHourlySales` | Get hourly sales breakdown (units, net sales, transaction count) by store and date. |
+| `GetTenderMix` | Get payment method breakdown (Cash, Card, Digital Wallet, Gift Card, Loyalty Points) per transaction. |
+| `GetHealthStatus` | Health probe endpoint for the `ConnectorHealthCheckScheduled` flow. |
+
+Connection reference: `cr_pos_clothing`
+Definition file: `connectors/pos-connector.yaml`
+
+### Allocation System Connector
+
+Connects to the merchandise allocation system for planned vs actual stock distribution, replenishment
+pipeline status, and inter-store transfer orders.
+
+| Operation | Description |
+|---|---|
+| `GetAllocationPlan` | Retrieve allocation plan by category and season with planned vs actual distribution per store. |
+| `GetReplenishmentStatus` | Get replenishment pipeline status (pending orders, quantities in transit) by store. |
+| `GetTransferOrders` | List inter-store and DC-to-store transfer orders with incremental sync support. |
+| `GetInventorySnapshot` | Retrieve the full inventory snapshot for all stores and products (used for full upsert). |
+| `GetStockMovements` | Retrieve incremental stock movements (sales, returns, transfers, adjustments) by watermark. |
+| `GetHealthStatus` | Health probe endpoint for the `ConnectorHealthCheckScheduled` flow. |
+
+Connection reference: `cr_allocation_clothing`
+Definition file: `connectors/allocation-connector.yaml`
+
+### Connector Reliability
+
+All three connectors share the following cross-cutting policies:
+
+| Policy | Configuration |
+|---|---|
+| Authentication | OAuth2 client credentials; token cached and refreshed 5 minutes before expiry |
+| Retry policy | 3 retries with exponential backoff: 30 s, 60 s, 120 s (max 240 s) |
+| Retryable status codes | 429, 500, 502, 503, 504 |
+| Circuit breaker | Opens after 5 consecutive failures; 60-second recovery window |
+| Rate limit handling | Respects `Retry-After` response header on 429 responses |
+| Health monitoring | All connectors registered in `ConnectorHealthCheckScheduled` (15-minute probes) |
+
+See `runbook.md` step 4 for OAuth2 registration and credential setup instructions.
 
 ## AI Builder Integration
 
@@ -163,9 +238,11 @@ capabilities beyond rule-based analytics.
 ## Quick Start
 
 1. Provision Dataverse schema and security as documented in `runbook.md`.
-2. Import `solution/solution-definition.yaml` into the target Copilot Studio solution-aware environment.
-3. Configure sync pipelines for POS, ERP, allocation, and KPI cache as documented in `runbook.md` step 5 and `docs/data-sync-pipelines.md`.
-4. Configure and validate the Power Automate analytical flows referenced by the agent template.
-5. Publish to Teams or web channel and execute validation tests for decomposition and root-cause scenarios.
-6. Validate pipeline health by asking the agent: "Are all data feeds healthy?"
-6. Configure AI Builder models and bind `DemandForecastingModelId`, `CategoryClassificationModelId`, `SentimentAnalysisModelId`, and `DocumentProcessingModelId` environment variables as documented in `runbook.md`.
+2. Register OAuth2 client credentials for the ERP, POS, and Allocation connectors as documented in `runbook.md` step 4.
+3. Import custom connectors from the `connectors/` directory and bind connection references as documented in `runbook.md` step 4d and 4e.
+4. Import `solution/solution-definition.yaml` into the target Copilot Studio solution-aware environment.
+5. Configure sync pipelines for POS, ERP, allocation, and KPI cache as documented in `runbook.md` step 6 and `docs/data-sync-pipelines.md`.
+6. Configure and validate the Power Automate analytical flows referenced by the agent template.
+7. Publish to Teams or web channel and execute validation tests for decomposition and root-cause scenarios.
+8. Validate pipeline health by asking the agent: "Are all data feeds healthy?"
+9. Configure AI Builder models and bind `DemandForecastingModelId`, `CategoryClassificationModelId`, `SentimentAnalysisModelId`, and `DocumentProcessingModelId` environment variables as documented in `runbook.md`.

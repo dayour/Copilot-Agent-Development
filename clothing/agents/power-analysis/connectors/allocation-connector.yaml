@@ -1,0 +1,322 @@
+# Custom Connector Definition — Allocation System Connector (Clothing / Power Analysis)
+# Connects to the merchandise allocation system for planned vs actual stock distribution,
+# replenishment pipeline status, and inter-store transfer orders.
+# Import this file into Power Platform as a custom connector or reference it from the solution.
+
+connector:
+  name: AllocationConnector
+  display_name: Allocation System Connector (Clothing)
+  description: >
+    Custom Power Platform connector for the clothing retailer merchandise allocation system.
+    Provides read access to allocation plans, replenishment pipeline status, inventory snapshots,
+    stock movements, and transfer orders for use by the Power Analysis agent data sync pipelines
+    and inventory intelligence topics.
+  publisher: Copilot Agent Development
+  icon_color: "#881798"
+
+  base_url: "${AllocationApiBaseUrl}"
+
+  authentication:
+    type: oauth2
+    flow: client_credentials
+    token_url: "${AllocationOAuth2TokenUrl}"
+    client_id: "${AllocationOAuth2ClientId}"
+    client_secret_variable: AllocationOAuth2ClientSecret
+    scopes: "${AllocationOAuth2Scopes}"
+    token_expiry_buffer_seconds: 300
+    refresh_on_401: true
+
+  throttling:
+    calls_per_minute: 120
+    calls_per_day: 75000
+    burst_limit: 20
+    retry_after_header: Retry-After
+    policy: leaky_bucket
+
+  error_handling:
+    retry_policy:
+      max_retries: 3
+      initial_delay_seconds: 30
+      backoff_multiplier: 2
+      max_delay_seconds: 240
+      retryable_status_codes: [429, 500, 502, 503, 504]
+    circuit_breaker:
+      failure_threshold: 5
+      recovery_timeout_seconds: 60
+    on_auth_failure: refresh_token_then_retry
+    on_rate_limit: respect_retry_after_header
+
+  operations:
+
+    - id: GetAllocationPlan
+      display_name: Get Allocation Plan
+      description: >
+        Retrieves the merchandise allocation plan for a given product category and season.
+        Returns planned quantities per store and the planned vs actual distribution split.
+        Used by the agent to assess allocation efficiency and sell-through targets.
+      method: GET
+      path: /allocation-plans
+      parameters:
+        - name: category
+          in: query
+          type: string
+          required: false
+          description: Product category to filter the allocation plan (e.g., Outerwear, Denim, Footwear).
+        - name: season
+          in: query
+          type: string
+          required: false
+          description: Season identifier to scope the allocation plan (e.g., SS25, AW25).
+        - name: store_id
+          in: query
+          type: string
+          required: false
+          description: Filter allocation plan to a specific store.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 500
+          description: Maximum number of allocation plan records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: Allocation plan records for the requested category and season.
+        400:
+          description: Invalid filter parameters.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded. Retry after the interval in the Retry-After header.
+        500:
+          description: Internal allocation system error.
+
+    - id: GetReplenishmentStatus
+      display_name: Get Replenishment Status
+      description: >
+        Returns the current replenishment pipeline status for a given store.
+        Includes pending replenishment orders, expected delivery dates, and quantities
+        in transit. Used by the agent's inventory intelligence and replenishment topics.
+      method: GET
+      path: /replenishment/status
+      parameters:
+        - name: store_id
+          in: query
+          type: string
+          required: false
+          description: Filter replenishment status to a specific store.
+        - name: category
+          in: query
+          type: string
+          required: false
+          description: Filter by product category.
+        - name: due_within_days
+          in: query
+          type: integer
+          required: false
+          description: >
+            Return only replenishment orders with an expected delivery within this many days.
+            Useful for "what stock is arriving this week?" type queries.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 500
+          description: Maximum number of replenishment records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: Replenishment status records for the requested store and filters.
+        400:
+          description: Invalid filter parameters.
+        401:
+          description: Authentication token missing or expired.
+        404:
+          description: Store ID not found.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal allocation system error.
+
+    - id: GetTransferOrders
+      display_name: Get Transfer Orders
+      description: >
+        Lists inter-store and DC-to-store transfer orders.
+        Supports filtering by source store, destination store, product, and status.
+        Used by the AllocationDataSync pipeline and the agent's inventory intelligence topics.
+      method: GET
+      path: /transfer-orders
+      parameters:
+        - name: from_store_id
+          in: query
+          type: string
+          required: false
+          description: Filter to transfers originating from this store.
+        - name: to_store_id
+          in: query
+          type: string
+          required: false
+          description: Filter to transfers destined for this store.
+        - name: sku
+          in: query
+          type: string
+          required: false
+          description: Filter to transfers containing this SKU.
+        - name: status
+          in: query
+          type: string
+          required: false
+          description: "Filter by transfer status: Requested, Approved, InTransit, Received, or Cancelled."
+        - name: modified_since
+          in: query
+          type: string
+          format: datetime
+          required: false
+          description: Return only transfer orders modified after this UTC timestamp. Used for incremental sync.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 500
+          description: Maximum number of transfer order records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: Transfer order records matching the filter criteria.
+        400:
+          description: Invalid filter parameters.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal allocation system error.
+
+    - id: GetInventorySnapshot
+      display_name: Get Inventory Snapshot
+      description: >
+        Retrieves the current full inventory snapshot for all stores and products.
+        Used by the AllocationDataSync pipeline for the full snapshot upsert into Dataverse.
+      method: GET
+      path: /inventory/snapshot
+      parameters:
+        - name: snapshot_date
+          in: query
+          type: string
+          format: date
+          required: false
+          description: >
+            Date of the snapshot in ISO 8601 format (YYYY-MM-DD).
+            Defaults to the most recent available snapshot if not provided.
+        - name: store_id
+          in: query
+          type: string
+          required: false
+          description: Filter the snapshot to a specific store.
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 1000
+          description: Maximum number of inventory records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: Inventory snapshot records for the requested date.
+        400:
+          description: Invalid filter parameters.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal allocation system error.
+
+    - id: GetStockMovements
+      display_name: Get Stock Movements
+      description: >
+        Retrieves incremental stock movement records posted after a given timestamp.
+        Covers sales, returns, transfers, adjustments, and write-offs.
+        Used by the AllocationDataSync pipeline for incremental movement loads.
+      method: GET
+      path: /inventory/movements
+      parameters:
+        - name: since_timestamp
+          in: query
+          type: string
+          format: datetime
+          required: true
+          description: Return only movements posted after this UTC timestamp (ISO 8601). Used as the sync watermark.
+        - name: store_id
+          in: query
+          type: string
+          required: false
+          description: Filter movements to a specific store.
+        - name: movement_type
+          in: query
+          type: string
+          required: false
+          description: "Filter by movement type: Sale, Return, TransferIn, TransferOut, Adjustment, WriteOff."
+        - name: page_size
+          in: query
+          type: integer
+          required: false
+          default: 1000
+          description: Maximum number of movement records to return per page.
+        - name: page_token
+          in: query
+          type: string
+          required: false
+          description: Opaque pagination token returned by the previous response.
+      responses:
+        200:
+          description: Stock movement records posted after the requested timestamp.
+        400:
+          description: Invalid or missing since_timestamp.
+        401:
+          description: Authentication token missing or expired.
+        429:
+          description: Rate limit exceeded.
+        500:
+          description: Internal allocation system error.
+
+    - id: GetHealthStatus
+      display_name: Get Health Status
+      description: >
+        Probe endpoint used by the ConnectorHealthCheckScheduled flow to verify
+        that the Allocation API is reachable and the connector credentials are valid.
+      method: GET
+      path: /health
+      parameters: []
+      responses:
+        200:
+          description: Allocation API is healthy and the connection is authenticated.
+        401:
+          description: Authentication token missing or expired.
+        503:
+          description: Allocation API is temporarily unavailable.
+
+connection_reference:
+  name: cr_allocation_clothing
+  display_name: Allocation System Connector — Clothing
+  description: >
+    Solution-aware connection reference for the clothing allocation system custom connector.
+    Bind this to a service account with Allocation API read access during solution import.
+  connector: AllocationConnector
+  required: true
