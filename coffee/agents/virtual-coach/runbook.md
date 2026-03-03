@@ -73,9 +73,29 @@ This runbook defines deployment and operations for the Virtual Coach Copilot Stu
 
 ### 7. Configure Authentication and Channels
 1. Set authentication to Entra ID in Copilot Studio.
-2. Publish to Microsoft Teams for desk-based staff.
-3. Publish to custom website/mobile web chat for floor baristas.
-4. Validate role-trimmed responses based on SharePoint permissions.
+2. Set identity mode to delegated user identity. Do not use a service account for knowledge retrieval.
+3. Publish to Microsoft Teams for desk-based staff.
+4. Publish to custom website/mobile web chat for floor baristas.
+5. Validate role-trimmed responses based on SharePoint permissions.
+
+### 8. Configure Document Governance
+
+Complete all steps in `document-governance.md` before publishing to production. The critical path is:
+
+1. Provision Azure AD security groups (corporate, regional, store, ownership tiers).
+2. Apply SharePoint permissions inheritance and break inheritance where required for confidential libraries.
+3. Configure and publish Microsoft Purview sensitivity labels.
+4. Apply automatic labeling policies to the HR policy library for HR, disciplinary, and payroll content types.
+5. Configure Purview DLP policies for payroll restriction, disciplinary restriction, and franchise-corporate barrier.
+6. Configure Information Barriers for franchise and corporate ownership segments if `InformationBarriersEnabled` is set to true.
+7. Populate governance environment variables in the Copilot Studio environment:
+   - `CorporateHubSiteId`
+   - `InformationBarriersEnabled`
+   - `DlpComplianceOfficerEmail`
+   - `SensitivityLabelIdHrConfidential`
+   - `SensitivityLabelIdDisciplinary`
+   - `SensitivityLabelIdPayroll`
+8. Run the permission validation matrix defined in `document-governance.md` using test accounts for each persona.
 
 ## Power Automate Flow Reference
 
@@ -94,6 +114,13 @@ This runbook defines deployment and operations for the Virtual Coach Copilot Stu
 - [ ] Shift handover submissions create records in `shift-handover-list`.
 - [ ] Menu update requests resolve from `seasonal-menu-library`.
 - [ ] Teams and mobile web channels both return consistent grounded answers.
+- [ ] Barista test account cannot retrieve disciplinary or payroll content via the agent.
+- [ ] Store manager test account can retrieve disciplinary content but not payroll content.
+- [ ] Franchise staff test account cannot retrieve content from corporate-owned store libraries.
+- [ ] DLP policy tips display correctly when restricted content is accessed outside authorized groups.
+- [ ] Information Barriers (if enabled) prevent cross-segment content discovery in search results.
+- [ ] Sensitivity labels are present on all documents in `hr-policy-library` (verify in Purview Content Explorer).
+- [ ] Agent returns neutral fallback message (not permission error) when content is not accessible.
 
 ## Monitoring and Operations
 
@@ -104,6 +131,11 @@ This runbook defines deployment and operations for the Virtual Coach Copilot Stu
 | Review content approvals and stale drafts | Daily | Operations Governance Lead |
 | Re-sync knowledge sources after major updates | As needed | Platform Admin |
 | Audit list writeback success rates | Weekly | Power Platform Admin |
+| Review Entra ID security group membership accuracy | Quarterly | Identity and Access Management team |
+| Review DLP policy match reports in Purview | Monthly | Compliance Officer |
+| Validate sensitivity label coverage via Purview Content Explorer | Monthly | Information Protection Lead |
+| Validate Information Barrier policies are active (if enabled) | Quarterly | Compliance Officer |
+| Run agent permission validation matrix | Quarterly and after permission changes | Platform Admin |
 
 ## Rollback Procedure
 

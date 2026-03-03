@@ -38,6 +38,7 @@ Copilot Studio knowledge grounding is aligned to hub-associated libraries with m
 virtual-coach/
 |-- README.md
 |-- runbook.md
+|-- document-governance.md
 |-- templates/
 |   |-- agent-template.yaml
 `-- solution/
@@ -47,6 +48,7 @@ virtual-coach/
 ## Quick Start
 
 1. Review `runbook.md` for SharePoint and Copilot Studio prerequisites.
-2. Import `solution/solution-definition.yaml` into the target environment.
-3. Validate knowledge sources and list bindings against your hub-associated libraries.
-4. Publish to Teams and mobile web chat channels.
+2. Review `document-governance.md` for Azure AD security group design, SharePoint permissions, sensitivity labels, DLP policies, and Information Barriers configuration.
+3. Import `solution/solution-definition.yaml` into the target environment.
+4. Validate knowledge sources and list bindings against your hub-associated libraries.
+5. Publish to Teams and mobile web chat channels.

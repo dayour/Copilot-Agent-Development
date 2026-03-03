@@ -3,7 +3,7 @@
 solution:
   name: CoffeeVirtualCoach
   display_name: "Coffee - Virtual Coach"
-  version: "1.1.0"
+  version: "1.2.0"
   publisher: Copilot Agent Development
   description: >
     Production-ready SharePoint-centric solution for the Virtual Coach agent.
@@ -65,6 +65,55 @@ environment_variables:
     description: Teams channel ID for escalation notifications.
     default_value: ""
 
+  - name: CorporateHubSiteId
+    display_name: Corporate Hub Site ID
+    type: string
+    description: SharePoint site ID of the Corporate Root Hub used for governance scoping.
+    default_value: ""
+
+  - name: InformationBarriersEnabled
+    display_name: Information Barriers Enabled
+    type: bool
+    description: >
+      Set to true when Microsoft Purview Information Barriers are active for the tenant.
+      When enabled, the agent relies on search-level IB filtering to isolate franchise and
+      corporate content without additional application-layer filtering.
+    default_value: "false"
+
+  - name: DlpComplianceOfficerEmail
+    display_name: DLP Compliance Officer Email
+    type: string
+    description: >
+      Email address of the compliance officer who receives DLP incident reports for
+      cross-franchise-corporate sharing violations.
+    default_value: ""
+
+  - name: SensitivityLabelIdHrConfidential
+    display_name: Sensitivity Label ID - Confidential HR
+    type: string
+    description: >
+      Microsoft Purview sensitivity label GUID for the Confidential - HR label applied
+      to general HR policy documents. Used to verify label coverage during deployment
+      validation.
+    default_value: ""
+
+  - name: SensitivityLabelIdDisciplinary
+    display_name: Sensitivity Label ID - Confidential Disciplinary
+    type: string
+    description: >
+      Microsoft Purview sensitivity label GUID for the Confidential - Disciplinary label
+      applied to disciplinary procedure documents. Used to verify label coverage during
+      deployment validation.
+    default_value: ""
+
+  - name: SensitivityLabelIdPayroll
+    display_name: Sensitivity Label ID - Confidential Payroll
+    type: string
+    description: >
+      Microsoft Purview sensitivity label GUID for the Confidential - Payroll label applied
+      to payroll guides. Used to verify label coverage during deployment validation.
+    default_value: ""
+
 components:
   agents:
     - name: VirtualCoach
@@ -84,6 +133,8 @@ components:
             - PolicyType
             - StoreRegion
             - JobRole
+          permission_trimming: delegated_user_identity
+          sensitivity_label_enforcement: true
         - id: training-library
           type: sharepoint_library
           url: "${TrainingLibraryUrl}"
@@ -112,6 +163,96 @@ components:
       authentication:
         type: azure_ad
         tenant_restriction: true
+        identity_mode: delegated_user
+        service_account_knowledge_retrieval: false
+
+  governance_controls:
+    security_groups:
+      provisioning_source: entra_id_lifecycle_workflows
+      group_tiers:
+        - tier: corporate_function
+          pattern: "sg-coffee-corporate-{function}"
+          examples:
+            - sg-coffee-corporate-hr
+            - sg-coffee-corporate-finance
+            - sg-coffee-corporate-legal
+            - sg-coffee-corporate-ops
+            - sg-coffee-corporate-training
+            - sg-coffee-corporate-readonly
+        - tier: regional
+          pattern: "sg-coffee-region-{region-code}-{role}"
+          examples:
+            - sg-coffee-region-na-east-mgrs
+            - sg-coffee-region-na-east-ops
+            - sg-coffee-region-na-east-readonly
+        - tier: store
+          pattern: "sg-coffee-store-{store-number}-{role}"
+          examples:
+            - sg-coffee-store-00142-managers
+            - sg-coffee-store-00142-leads
+            - sg-coffee-store-00142-baristas
+        - tier: ownership
+          pattern: "sg-coffee-ownership-{type}"
+          examples:
+            - sg-coffee-ownership-franchise
+            - sg-coffee-ownership-corporate
+
+    information_barriers:
+      enabled: "${InformationBarriersEnabled}"
+      segments:
+        - name: CoffeeFranchise
+          group: sg-coffee-ownership-franchise
+        - name: CoffeeCorporate
+          group: sg-coffee-ownership-corporate
+      policies:
+        - name: Block-Franchise-Corporate
+          assigned_segment: CoffeeFranchise
+          segments_blocked:
+            - CoffeeCorporate
+        - name: Block-Corporate-Franchise
+          assigned_segment: CoffeeCorporate
+          segments_blocked:
+            - CoffeeFranchise
+
+    sensitivity_labels:
+      - label: Confidential - HR
+        label_id: "${SensitivityLabelIdHrConfidential}"
+        applied_to: hr-policy-library
+        content_types:
+          - HrPolicy
+      - label: Confidential - Disciplinary
+        label_id: "${SensitivityLabelIdDisciplinary}"
+        applied_to: hr-policy-library
+        content_types:
+          - DisciplinaryRecord
+      - label: Confidential - Payroll
+        label_id: "${SensitivityLabelIdPayroll}"
+        applied_to: hr-policy-library
+        content_types:
+          - PayrollGuide
+
+    dlp_policies:
+      - name: DLP-Coffee-PayrollContentRestriction
+        scope: sensitivity_label
+        label: Confidential - Payroll
+        action: block_access
+        authorized_groups:
+          - sg-coffee-corporate-finance
+          - sg-coffee-corporate-hr
+      - name: DLP-Coffee-DisciplinaryContentRestriction
+        scope: sensitivity_label
+        label: Confidential - Disciplinary
+        action: block_access
+        authorized_groups:
+          - sg-coffee-corporate-hr
+          - sg-coffee-corporate-legal
+          - store_managers_dynamic
+      - name: DLP-Coffee-FranchiseCorporateBarrier
+        scope: all_coffee_sites
+        action: block_sharing
+        incident_report_recipient: "${DlpComplianceOfficerEmail}"
+        override_allowed: true
+        override_requires_justification: true
 
   power_automate_flows:
     - name: SaveShiftHandoverToSharePoint
