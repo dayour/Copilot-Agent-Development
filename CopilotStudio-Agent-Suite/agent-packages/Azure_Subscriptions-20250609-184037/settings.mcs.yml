@@ -1,0 +1,25 @@
+displayName: Azure Subscriptions
+schemaName: cre44_azureSubscriptions
+accessControlPolicy: ChatbotReaders
+authenticationMode: Integrated
+authenticationTrigger: Always
+configuration:
+  settings:
+    GenerativeActionsEnabled: true
+
+  isAgentConnectable: true
+  gPTSettings:
+    defaultSchemaName: cre44_azureSubscriptions.gpt.default
+
+  aISettings:
+    useModelKnowledge: true
+    isFileAnalysisEnabled: true
+    isSemanticSearchEnabled: true
+    contentModeration: High
+    optInUseLatestModels: true
+
+  recognizer:
+    kind: GenerativeAIRecognizer
+
+template: default-2.1.0
+language: 1033
