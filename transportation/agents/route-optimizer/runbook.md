@@ -22,6 +22,9 @@ This runbook defines deployment, validation, monitoring, and rollback for the Ro
 - Telematics API access
   - Vehicle GPS position feed endpoint
   - API credentials
+- Order management system API access
+  - Delivery order and stop data endpoint
+  - API credentials
 - Hours of Service (HOS) system access
   - Driver HOS records endpoint
   - API credentials
@@ -45,11 +48,15 @@ This runbook defines deployment, validation, monitoring, and rollback for the Ro
 
 | Variable Name | Description | Example |
 |---|---|---|
+| RoutingApiUrl | Routing API base URL for route optimization and traffic | `https://atlas.microsoft.com/route` |
+| RoutingApiKey | Routing API key or token reference | `kv://routing/api-key` |
+| OrderManagementApiUrl | Order management system REST base URL | `https://api.ordermgmt.contoso.com/v1` |
+| TelematicsApiUrl | Telematics REST base URL | `https://api.telematicsvendor.com/v2` |
+| DispatchTeamsChannelId | Teams channel ID for dispatcher re-routing alerts | `19:abc123@thread.tacv2` |
 | MappingApiUrl | Mapping and routing API base URL | `https://atlas.microsoft.com/route` |
 | MappingApiKey | Mapping API key or token reference | `kv://mapping/api-key` |
 | TrafficApiUrl | Real-time traffic data API base URL | `https://atlas.microsoft.com/traffic` |
 | TrafficApiKey | Traffic API key or token reference | `kv://traffic/api-key` |
-| TelematicsApiUrl | Telematics REST base URL | `https://api.telematicsvendor.com/v2` |
 | TelematicsApiKey | Telematics API key or token reference | `kv://telematics/api-key` |
 | HosApiUrl | HOS system REST base URL | `https://api.hossystem.com/v1` |
 | HosApiKey | HOS system API key or token reference | `kv://hos/api-key` |

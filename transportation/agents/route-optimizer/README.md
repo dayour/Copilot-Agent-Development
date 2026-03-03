@@ -4,10 +4,10 @@
 
 **Agent Name:** Route Optimization Scheduler
 **Vertical:** Transportation
-**Primary Users:** Fleet managers, dispatchers, drivers
-**Target Channels:** Microsoft Teams, mobile web chat
+**Primary Users:** Dispatchers, route planners, operations managers
+**Target Channels:** Microsoft Teams, web dashboard
 
-Route Optimization Scheduler is a Copilot Studio agent that automates multi-stop route planning, real-time ETA tracking, and driver assignment for enterprise fleet operations. It enforces Hours of Service (HOS) constraints, respects driver certifications, and proactively re-routes when traffic delays exceed configured thresholds.
+Route Optimization Scheduler is a Copilot Studio agent that automates multi-stop route optimization, delivery scheduling, and constraint-based planning (time windows, vehicle capacity, driver hours) for enterprise fleet operations. It delivers real-time re-routing and ETA prediction, enforces Hours of Service (HOS) constraints, respects driver certifications, and proactively re-routes when traffic delays exceed configured thresholds.
 
 ## Business Goals
 
@@ -18,11 +18,13 @@ Route Optimization Scheduler is a Copilot Studio agent that automates multi-stop
 
 ## Core Topics
 
-- **Route Optimization**: Multi-stop route sequencing that respects time windows and minimizes travel time
-- **ETA Calculation**: Real-time arrival estimates using current vehicle position and live traffic data
-- **Re-routing Alert**: Proactive notification when a traffic delay exceeds the configured threshold
-- **HOS Compliance Check**: Validates driver hours before assigning additional routes to prevent over-hours scheduling
+- **Optimize Route**: Multi-stop route sequencing that respects time windows and minimizes total travel time
+- **Schedule Deliveries**: Assigns delivery orders to routes and driver schedules with time window and capacity constraints
+- **Check Constraints**: Validates route feasibility against vehicle capacity, driver hours, and time window constraints
+- **Re-Route**: Proactive notification and alternate routing when a traffic delay exceeds the configured threshold
+- **ETA Update**: Real-time arrival estimate updates for in-progress routes using current vehicle position and live traffic data
 - **Driver Assignment**: Matches drivers to routes based on availability, proximity, and required certifications
+- **Route History**: Retrieves historical route records including on-time performance and constraint violations
 
 ## Folder Structure
 

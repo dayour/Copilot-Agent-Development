@@ -5,11 +5,11 @@ agent:
   orchestration_mode: generative
   channels:
     - teams
-    - mobile_web_chat
+    - web_dashboard
   primary_users:
-    - fleet_manager
     - dispatcher
-    - driver
+    - route_planner
+    - operations_manager
   global_variables:
     - name: Global.UserRole
       type: string
@@ -18,6 +18,35 @@ agent:
     - name: Global.RerouteDelayThresholdMinutes
       type: number
       default: 30
+
+entities:
+  - name: RouteId
+    type: regex
+    pattern: "^RT-[0-9]{3,6}$"
+    description: Route identifier in the format RT-XXX.
+  - name: VehicleId
+    type: regex
+    pattern: "^[A-Z]{1,3}-[0-9]{3,6}$"
+    description: Vehicle identifier (for example T-501 or VAN-1042).
+  - name: DriverId
+    type: regex
+    pattern: "^DRV-[0-9]{3,6}$"
+    description: Driver identifier in the format DRV-XXX.
+  - name: OrderId
+    type: regex
+    pattern: "^ORD-[0-9]{4,8}$"
+    description: Delivery order identifier in the format ORD-XXXX.
+  - name: StopAddress
+    type: ml
+    description: A street address or named location used as a route stop.
+  - name: ConstraintType
+    type: closed_list
+    values:
+      - time_window
+      - vehicle_capacity
+      - driver_hours
+      - certification
+    description: Type of route constraint to check.
 
 topics:
   - name: Greeting
@@ -382,3 +411,197 @@ topics:
         else_actions:
           - type: message
             text: "No active routes found for vehicle {Topic.vehicle_id}. No re-routing required."
+
+  - name: Schedule Deliveries
+    description: Assigns delivery orders from the order management system to routes and driver schedules, respecting time window and vehicle capacity constraints.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - schedule deliveries for today
+        - assign delivery orders to routes
+        - schedule orders for dispatch
+        - create delivery schedule
+        - plan deliveries for tomorrow
+    inputs:
+      - name: schedule_date
+        type: string
+        required: false
+      - name: fleet_id
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askScheduleDate
+        prompt: "Which date should I schedule deliveries for? (Leave blank for today)"
+        variable: Topic.schedule_date
+        entity: Text
+      - type: tool
+        id: fetchOrders
+        tool_name: FetchPendingDeliveryOrders
+        input_mapping:
+          scheduleDate: =Topic.schedule_date
+          fleetId: =Global.DefaultFleet
+      - type: tool
+        id: buildSchedule
+        tool_name: BuildDeliverySchedule
+        input_mapping:
+          deliveryOrders: =Topic.PendingOrders
+          scheduleDate: =Topic.schedule_date
+      - type: message
+        text: |-
+          Delivery schedule for {Topic.schedule_date}:
+          - Orders scheduled: {Topic.ScheduledOrderCount}
+          - Routes created: {Topic.RoutesCreatedCount}
+          - Unscheduled orders (capacity or time window conflicts): {Topic.UnscheduledOrderCount}
+      - type: adaptive_card
+        title: Delivery Schedule Summary
+        body:
+          - text: "Schedule date: {Topic.schedule_date}"
+          - text: "Routes: {Topic.ScheduleSummaryTable}"
+          - text: "Unscheduled orders requiring manual review: {Topic.UnscheduledOrderIds}"
+
+  - name: Check Constraints
+    description: Validates a proposed route or assignment against vehicle capacity, driver hours, time window, and certification constraints before committing the change.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - check constraints for route
+        - validate route against constraints
+        - does this route fit within capacity
+        - check driver hours for route
+        - verify time windows for route
+    inputs:
+      - name: route_id
+        type: string
+        required: false
+      - name: constraint_type
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askRouteIdConstraint
+        prompt: "Which route ID should I validate constraints for?"
+        variable: Topic.route_id
+        entity: RouteId
+      - type: question
+        id: askConstraintType
+        prompt: "Which constraint type should I check? (time_window, vehicle_capacity, driver_hours, certification, or all)"
+        variable: Topic.constraint_type
+        entity: ConstraintType
+      - type: tool
+        id: checkConstraints
+        tool_name: ValidateRouteConstraints
+        input_mapping:
+          routeId: =Topic.route_id
+          constraintType: =Topic.constraint_type
+      - type: condition
+        id: constraintResult
+        branches:
+          - condition: =Topic.AllConstraintsPassed = true
+            actions:
+              - type: message
+                text: "Route {Topic.route_id} passes all {Topic.constraint_type} constraints. The route is feasible for dispatch."
+        else_actions:
+          - type: message
+            text: "Route {Topic.route_id} has constraint violations. Failed checks: {Topic.FailedConstraints}. Recommended actions: {Topic.ConstraintResolutionSuggestions}."
+          - type: adaptive_card
+            title: Constraint Validation Result
+            body:
+              - text: "Route: {Topic.route_id}"
+              - text: "Constraint violations: {Topic.ConstraintViolationTable}"
+              - text: "Resolution options: {Topic.ConstraintResolutionSuggestions}"
+
+  - name: ETA Update
+    description: Provides an updated estimated time of arrival for an in-progress route or specific stop, incorporating the latest GPS position and current traffic conditions.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - update eta for route
+        - get latest eta for delivery
+        - what is the current eta
+        - refresh eta for vehicle
+        - updated arrival time for order
+    inputs:
+      - name: route_id
+        type: string
+        required: false
+      - name: order_id
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askRouteIdEta
+        prompt: "Which route ID or order ID should I fetch the latest ETA for?"
+        variable: Topic.route_id
+        entity: RouteId
+      - type: tool
+        id: refreshEta
+        tool_name: RefreshRouteEta
+        input_mapping:
+          routeId: =Topic.route_id
+          orderId: =Topic.order_id
+      - type: message
+        text: |-
+          Updated ETA for route {Topic.route_id}:
+          - Vehicle current position: {Topic.CurrentPosition}
+          - Next stop: {Topic.NextStopName}
+          - Updated ETA at next stop: {Topic.UpdatedEtaNextStop}
+          - Final stop ETA: {Topic.UpdatedEtaFinalStop}
+          - Delay vs original schedule: {Topic.DelayMinutes} minutes
+      - type: adaptive_card
+        title: ETA Update
+        body:
+          - text: "Route: {Topic.route_id}"
+          - text: "Stop-by-stop updated ETAs: {Topic.StopEtaTable}"
+          - text: "Traffic conditions: {Topic.TrafficConditionSummary}"
+
+  - name: Route History
+    description: Retrieves historical route records for a date range, vehicle, or driver, including on-time performance metrics and constraint violation events.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - show route history
+        - past routes for driver
+        - route performance history
+        - completed routes for vehicle
+        - on-time delivery history
+    inputs:
+      - name: driver_id
+        type: string
+        required: false
+      - name: vehicle_id
+        type: string
+        required: false
+      - name: date_from
+        type: string
+        required: false
+      - name: date_to
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askHistoryScope
+        prompt: "Should I look up history by driver ID, vehicle ID, or date range? Please specify the relevant value."
+        variable: Topic.driver_id
+        entity: DriverId
+      - type: tool
+        id: fetchRouteHistory
+        tool_name: GetRouteHistory
+        input_mapping:
+          driverId: =Topic.driver_id
+          vehicleId: =Topic.vehicle_id
+          dateFrom: =Topic.date_from
+          dateTo: =Topic.date_to
+      - type: message
+        text: |-
+          Route history summary:
+          - Routes completed: {Topic.RoutesCompletedCount}
+          - On-time rate: {Topic.OnTimeRatePct}%
+          - Average delay: {Topic.AverageDelayMinutes} minutes
+          - Constraint violations: {Topic.ConstraintViolationCount}
+      - type: adaptive_card
+        title: Route History
+        body:
+          - text: "Period: {Topic.date_from} to {Topic.date_to}"
+          - text: "Route records: {Topic.RouteHistoryTable}"
+          - text: "Top delay causes: {Topic.TopDelayCauses}"

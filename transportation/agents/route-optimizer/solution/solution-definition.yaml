@@ -9,6 +9,30 @@ solution:
       minimum_version: "1.0.0.0"
 
 environment_variables:
+  - schema_name: RoutingApiUrl
+    display_name: Routing API URL
+    type: string
+    required: true
+    default_value: https://atlas.microsoft.com/route
+  - schema_name: RoutingApiKey
+    display_name: Routing API Key
+    type: secret
+    required: true
+  - schema_name: OrderManagementApiUrl
+    display_name: Order Management API URL
+    type: string
+    required: true
+    default_value: https://api.ordermgmt.contoso.com/v1
+  - schema_name: TelematicsApiUrl
+    display_name: Telematics API URL
+    type: string
+    required: true
+    default_value: https://api.telematicsvendor.com/v2
+  - schema_name: DispatchTeamsChannelId
+    display_name: Dispatch Teams Channel ID
+    type: string
+    required: true
+    default_value: ""
   - schema_name: MappingApiUrl
     display_name: Mapping API URL
     type: string
@@ -27,11 +51,6 @@ environment_variables:
     display_name: Traffic API Key
     type: secret
     required: true
-  - schema_name: TelematicsApiUrl
-    display_name: Telematics API URL
-    type: string
-    required: true
-    default_value: https://api.telematicsvendor.com/v2
   - schema_name: TelematicsApiKey
     display_name: Telematics API Key
     type: secret
@@ -275,7 +294,243 @@ dataverse:
           type: datetime
           behavior: user_local
 
+    - logical_name: crd_deliveryorders
+      display_name: DeliveryOrders
+      description: Delivery orders imported from the order management system, including stop address, time windows, and payload weight.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Order Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_order_id
+          display_name: order_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: false
+          max_length: 100
+        - name: crd_stop_address
+          display_name: stop_address
+          type: text
+          max_length: 500
+        - name: crd_time_window_start
+          display_name: time_window_start
+          type: datetime
+          behavior: user_local
+        - name: crd_time_window_end
+          display_name: time_window_end
+          type: datetime
+          behavior: user_local
+        - name: crd_payload_weight_kg
+          display_name: payload_weight_kg
+          type: decimal
+          precision: 8
+          scale: 2
+          required: false
+        - name: crd_status
+          display_name: status
+          type: choice
+          options:
+            - pending
+            - scheduled
+            - in_transit
+            - delivered
+            - failed
+        - name: crd_scheduled_date
+          display_name: scheduled_date
+          type: datetime
+          behavior: user_local
+      indexes:
+        - name: idx_orders_status_date
+          columns:
+            - crd_status
+            - crd_scheduled_date
+
+    - logical_name: crd_driverschedules
+      display_name: DriverSchedules
+      description: Driver availability and shift schedule records used for delivery assignment and HOS constraint enforcement.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Schedule Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_schedule_id
+          display_name: schedule_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: true
+          max_length: 50
+        - name: crd_shift_start
+          display_name: shift_start
+          type: datetime
+          behavior: user_local
+          required: true
+        - name: crd_shift_end
+          display_name: shift_end
+          type: datetime
+          behavior: user_local
+          required: true
+        - name: crd_available_hours
+          display_name: available_hours
+          type: decimal
+          precision: 5
+          scale: 2
+        - name: crd_assigned_route_id
+          display_name: assigned_route_id
+          type: text
+          max_length: 100
+          required: false
+        - name: crd_schedule_date
+          display_name: schedule_date
+          type: datetime
+          behavior: user_local
+      indexes:
+        - name: idx_schedules_driver_date
+          columns:
+            - crd_driver_id
+            - crd_schedule_date
+
+    - logical_name: crd_routeconstraints
+      display_name: RouteConstraints
+      description: Constraint definitions applied to routes, including time windows, vehicle capacity limits, and certification requirements.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Constraint Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_constraint_id
+          display_name: constraint_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_constraint_type
+          display_name: constraint_type
+          type: choice
+          options:
+            - time_window
+            - vehicle_capacity
+            - driver_hours
+            - certification
+        - name: crd_constraint_value
+          display_name: constraint_value
+          type: text
+          max_length: 500
+        - name: crd_is_hard_constraint
+          display_name: is_hard_constraint
+          type: boolean
+          default_value: true
+        - name: crd_violated
+          display_name: violated
+          type: boolean
+          default_value: false
+        - name: crd_violation_detail
+          display_name: violation_detail
+          type: multiline_text
+          max_length: 1000
+
+    - logical_name: crd_routehistory
+      display_name: RouteHistory
+      description: Historical route completion records with on-time performance metrics, constraint violations, and delay root cause data.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: History Record Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_history_id
+          display_name: history_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          max_length: 50
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          max_length: 50
+        - name: crd_completed_on
+          display_name: completed_on
+          type: datetime
+          behavior: user_local
+          required: true
+        - name: crd_on_time
+          display_name: on_time
+          type: boolean
+        - name: crd_delay_minutes
+          display_name: delay_minutes
+          type: whole_number
+          required: false
+        - name: crd_delay_cause
+          display_name: delay_cause
+          type: text
+          max_length: 500
+        - name: crd_stops_completed
+          display_name: stops_completed
+          type: whole_number
+        - name: crd_constraint_violations_count
+          display_name: constraint_violations_count
+          type: whole_number
+          default_value: 0
+        - name: crd_total_distance_miles
+          display_name: total_distance_miles
+          type: decimal
+          precision: 8
+          scale: 2
+      indexes:
+        - name: idx_history_driver_completed
+          columns:
+            - crd_driver_id
+            - crd_completed_on
+        - name: idx_history_vehicle_completed
+          columns:
+            - crd_vehicle_id
+            - crd_completed_on
+
 connectors:
+  - name: RoutingApiHttp
+    type: http
+    description: HTTP connector for route optimization and real-time traffic data (primary routing API).
+    configuration:
+      base_url_env_var: RoutingApiUrl
+      authentication: api_key
+      api_key_env_var: RoutingApiKey
+      api_key_header: subscription-key
+  - name: OrderManagementApiHttp
+    type: http
+    description: HTTP connector for fetching delivery orders and schedule data from the order management system.
+    configuration:
+      base_url_env_var: OrderManagementApiUrl
+      authentication: oauth2
   - name: MappingApiHttp
     type: http
     description: HTTP connector for route optimization and real-time traffic data.
@@ -627,12 +882,146 @@ flows:
           rerouting_initiated: true
           summary: "{reroutingStatusTable}"
 
+  - name: FetchPendingDeliveryOrders
+    trigger: instant_from_agent
+    description: Retrieves pending delivery orders from the order management system for a given schedule date and fleet.
+    inputs:
+      - scheduleDate
+      - fleetId
+    outputs:
+      - pendingOrders
+      - pendingOrderCount
+    steps:
+      - action: http_get
+        connector: OrderManagementApiHttp
+        path: /orders/pending
+        query_params:
+          date: "{scheduleDate}"
+          fleet: "{fleetId}"
+      - action: parse_json
+      - action: respond_to_agent
+
+  - name: BuildDeliverySchedule
+    trigger: instant_from_agent
+    description: Assigns pending delivery orders to routes and driver schedules, respecting time window, vehicle capacity, and HOS constraints.
+    inputs:
+      - deliveryOrders
+      - scheduleDate
+    outputs:
+      - scheduledOrderCount
+      - routesCreatedCount
+      - unscheduledOrderCount
+      - unscheduledOrderIds
+      - scheduleSummaryTable
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: DriverSchedules
+        filter: crd_schedule_date eq scheduleDate
+      - action: list_rows
+        connector: Dataverse
+        table: RouteConstraints
+      - action: assign_orders_to_schedules
+      - action: create_rows
+        connector: Dataverse
+        table: DeliveryOrders
+      - action: create_rows
+        connector: Dataverse
+        table: Routes
+      - action: respond_to_agent
+
+  - name: ValidateRouteConstraints
+    trigger: instant_from_agent
+    description: Validates a route against time window, vehicle capacity, driver hours, and certification constraints and returns a structured violation report.
+    inputs:
+      - routeId
+      - constraintType
+    outputs:
+      - allConstraintsPassed
+      - failedConstraints
+      - constraintViolationTable
+      - constraintResolutionSuggestions
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+        filter: crd_route_id eq routeId
+      - action: list_rows
+        connector: Dataverse
+        table: RouteConstraints
+        filter: crd_route_id eq routeId
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: evaluate_constraints
+        constraint_type: "{constraintType}"
+      - action: respond_to_agent
+
+  - name: RefreshRouteEta
+    trigger: instant_from_agent
+    description: Retrieves the latest vehicle GPS position and traffic data to recalculate and return updated stop-by-stop ETAs for an in-progress route.
+    inputs:
+      - routeId
+      - orderId
+    outputs:
+      - currentPosition
+      - nextStopName
+      - updatedEtaNextStop
+      - updatedEtaFinalStop
+      - delayMinutes
+      - stopEtaTable
+      - trafficConditionSummary
+    steps:
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/position
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: http_get
+        connector: TrafficApiHttp
+        path: /flow/segment
+      - action: recompute_eta_per_stop
+      - action: update_rows
+        connector: Dataverse
+        table: RouteStops
+      - action: respond_to_agent
+
+  - name: GetRouteHistory
+    trigger: instant_from_agent
+    description: Queries RouteHistory records for a driver, vehicle, or date range and returns aggregated on-time performance and delay analysis.
+    inputs:
+      - driverId
+      - vehicleId
+      - dateFrom
+      - dateTo
+    outputs:
+      - routesCompletedCount
+      - onTimeRatePct
+      - averageDelayMinutes
+      - constraintViolationCount
+      - routeHistoryTable
+      - topDelayCauses
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteHistory
+        filter: crd_driver_id eq driverId or crd_vehicle_id eq vehicleId
+      - action: filter_by_date_range
+        date_from: "{dateFrom}"
+        date_to: "{dateTo}"
+      - action: aggregate_performance_metrics
+      - action: respond_to_agent
+
 channels:
   - name: teams
     display_name: Microsoft Teams
     enabled: true
     authentication: entra_id_sso
-  - name: mobile_web
-    display_name: Mobile Web Chat
+  - name: web_dashboard
+    display_name: Web Dashboard
     enabled: true
-    authentication: oauth_or_anonymous_by_policy
+    authentication: entra_id_oauth
