@@ -1532,6 +1532,9 @@ custom_connectors:
       burst_limit: 30
       retry_after_header: Retry-After
       policy: leaky_bucket
+      note: >
+        Higher rate limit than ERP and Allocation (180 vs 120 rpm) to support
+        the daily batch sync of 500K to 1M transactions across all stores.
     error_handling:
       retry_policy:
         max_retries: 3

@@ -32,6 +32,10 @@ connector:
     burst_limit: 30
     retry_after_header: Retry-After
     policy: leaky_bucket
+    note: >
+      The POS connector allows 180 calls per minute (versus 120 for ERP and Allocation)
+      to accommodate the higher call frequency required during the daily batch sync
+      of 500K to 1M transactions across all stores.
 
   error_handling:
     retry_policy:
