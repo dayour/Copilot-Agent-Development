@@ -28,6 +28,14 @@ global_variables:
     type: string
   - name: Analysis.ContextSummary
     type: string
+  - name: AIBuilder.ForecastSKU
+    type: string
+  - name: AIBuilder.ForecastStore
+    type: string
+  - name: AIBuilder.DocumentType
+    type: string
+  - name: AIBuilder.SentimentCategory
+    type: string
   - name: Alert.RuleId
     type: string
   - name: Alert.HistoryId
@@ -64,6 +72,10 @@ topics:
       - Trend detection
       - What-if analysis
       - Anomaly alerts
+      - Demand forecasting
+      - Classify new arrivals
+      - Customer sentiment
+      - Process supplier document
       - Manage alert rules
       - Active alerts
       - Save this analysis
@@ -456,6 +468,207 @@ topics:
               Status: All data feeds are healthy.
 
               {pipeline_health_summary_table}
+  - name: Demand Forecasting
+    description: >
+      Uses an AI Builder prediction model trained on historical sales data to forecast
+      next-period demand by SKU and store, incorporating seasonality, promotions, and trend signals.
+      Surfaces predicted units, confidence interval, and key demand drivers.
+    trigger_phrases:
+      - what should I expect to sell next week
+      - forecast demand for {sku}
+      - predict sales for next period
+      - how much stock should I order for {store}
+      - demand forecast by sku
+    entities:
+      - name: sku
+        type: string
+        prompt: Specify SKU or product group (leave blank for all active SKUs).
+      - name: store
+        type: string
+        prompt: Specify store or region. Use All Stores for enterprise view.
+      - name: forecast_period
+        type: choice
+        options: [next week, next month, next quarter]
+        default: next week
+        prompt: Select the forecast horizon.
+    actions:
+      - type: set_variable
+        variable: AIBuilder.ForecastSKU
+        value: "{sku}"
+      - type: set_variable
+        variable: AIBuilder.ForecastStore
+        value: "{store}"
+      - type: power_automate_flow
+        flow_name: InvokeDemandForecastModel
+        input:
+          model_id: "${DemandForecastingModelId}"
+          sku: "{sku}"
+          store: "{store}"
+          forecast_period: "{forecast_period}"
+        output_message: >
+          Demand Forecast
+          Scope: SKU={sku}; Store={store}; Horizon={forecast_period}
+          - Predicted Units: {forecast_predicted_units}
+          - Confidence Interval: {forecast_confidence_low} to {forecast_confidence_high}
+          - Key Demand Drivers: {forecast_key_drivers}
+          - Seasonality Index: {forecast_seasonality_index}
+          - Promotion Impact: {forecast_promotion_impact}
+
+  - name: Category Classification
+    description: >
+      Uses an AI Builder classification model to automatically assign new products to
+      merchandising categories based on product attributes such as name, description,
+      material, and target demographic. Supports new product onboarding and catalog cleanup.
+    trigger_phrases:
+      - classify these new arrivals
+      - auto-classify product catalog
+      - what category does this product belong to
+      - classify product by attributes
+      - run category classification on new items
+    entities:
+      - name: product_ids
+        type: string
+        prompt: >
+          Enter comma-separated product IDs or describe the products to classify.
+          You can also say "all unclassified" to process pending items.
+      - name: confidence_threshold
+        type: number
+        default: 0.8
+        prompt: >
+          Enter minimum confidence score to accept classification (0 to 1).
+          Results below this threshold will be flagged for human review.
+    actions:
+      - type: power_automate_flow
+        flow_name: InvokeCategoryClassificationModel
+        input:
+          model_id: "${CategoryClassificationModelId}"
+          product_ids: "{product_ids}"
+          confidence_threshold: "{confidence_threshold}"
+      - type: message
+        text: >
+          Category Classification Results
+          Products Submitted: {classification_submitted_count}
+          - Auto-Classified: {classification_accepted_count}
+          - Flagged for Review: {classification_flagged_count}
+          - Category Assignments: {classification_assignments_summary}
+          Items flagged for review have been queued in the catalog management workspace.
+
+  - name: Sentiment Analysis
+    description: >
+      Uses an AI Builder sentiment model to analyze customer feedback from surveys,
+      reviews, and social media. Tracks sentiment trends over time by product category
+      and brand, and alerts on significant negative sentiment spikes.
+    trigger_phrases:
+      - what are customers saying about our new denim line
+      - analyze customer sentiment for {category}
+      - show sentiment trends for {brand}
+      - customer feedback sentiment report
+      - are there negative sentiment spikes
+    entities:
+      - name: category
+        type: string
+        prompt: Specify product category or brand to analyze sentiment for.
+      - name: period
+        type: choice
+        options: [last 7 days, last 30 days, last 90 days, year to date]
+        default: last 30 days
+        prompt: Select the analysis window.
+      - name: feedback_source
+        type: choice
+        options: [all, surveys, reviews, social media]
+        default: all
+        prompt: Select feedback source.
+    actions:
+      - type: set_variable
+        variable: AIBuilder.SentimentCategory
+        value: "{category}"
+      - type: power_automate_flow
+        flow_name: InvokeSentimentAnalysisModel
+        input:
+          model_id: "${SentimentAnalysisModelId}"
+          category: "{category}"
+          period: "{period}"
+          feedback_source: "{feedback_source}"
+          alert_threshold: "${SentimentAlertThreshold}"
+      - type: condition
+        expression: "{sentiment_negative_spike_detected} == true"
+        true_actions:
+          - type: power_automate_flow
+            flow_name: SendAnomalyAlertNotification
+            input:
+              teams_channel_id: "${AnalyticsTeamsChannelId}"
+              anomaly_summary: "{sentiment_spike_summary}"
+          - type: message
+            text: >
+              Customer Sentiment Analysis — {category} ({period})
+              Overall Sentiment Score: {sentiment_overall_score}
+              - Positive: {sentiment_positive_pct}
+              - Neutral: {sentiment_neutral_pct}
+              - Negative: {sentiment_negative_pct}
+              Top Positive Themes: {sentiment_top_positive_themes}
+              Top Negative Themes: {sentiment_top_negative_themes}
+              Alert: Significant negative sentiment spike detected. Notification posted to analytics channel.
+        false_actions:
+          - type: message
+            text: >
+              Customer Sentiment Analysis — {category} ({period})
+              Overall Sentiment Score: {sentiment_overall_score}
+              - Positive: {sentiment_positive_pct}
+              - Neutral: {sentiment_neutral_pct}
+              - Negative: {sentiment_negative_pct}
+              Top Positive Themes: {sentiment_top_positive_themes}
+              Top Negative Themes: {sentiment_top_negative_themes}
+              No significant negative sentiment spikes detected in this period.
+
+  - name: Document Processing
+    description: >
+      Uses an AI Builder document processing model to extract structured data from uploaded
+      supplier invoices, delivery notes, and competitor price sheets. Returns extracted
+      line items, costs, quantities, and discrepancies for downstream action.
+    trigger_phrases:
+      - process supplier invoice
+      - extract data from delivery note
+      - parse competitor price sheet
+      - upload document for processing
+      - extract invoice line items
+    entities:
+      - name: document_type
+        type: choice
+        options: [supplier invoice, delivery note, competitor price sheet]
+        prompt: Select the type of document you are uploading.
+      - name: document_file
+        type: file
+        prompt: >
+          Upload the document file (PDF or image). Supported formats: PDF, PNG, JPEG, TIFF.
+    actions:
+      - type: set_variable
+        variable: AIBuilder.DocumentType
+        value: "{document_type}"
+      - type: power_automate_flow
+        flow_name: InvokeDocumentProcessingModel
+        input:
+          model_id: "${DocumentProcessingModelId}"
+          document_type: "{document_type}"
+          document_content: "{document_file}"
+      - type: condition
+        expression: "{document_extraction_status} == 'success'"
+        true_actions:
+          - type: message
+            text: >
+              Document Processing Complete — {document_type}
+              Extracted Fields: {document_extracted_field_count}
+              - Supplier: {document_supplier_name}
+              - Document Date: {document_date}
+              - Line Items: {document_line_item_count}
+              - Total Value: {document_total_value}
+              - Discrepancies Detected: {document_discrepancy_count}
+              Extracted data has been written to Dataverse for review and approval.
+        false_actions:
+          - type: message
+            text: >
+              Document processing could not complete for the uploaded file.
+              Reason: {document_extraction_error}
+              Please verify the document format and try again, or contact your system administrator.
   - name: Create Alert Rule
     description: >
       Creates a new configurable alert rule so the agent notifies the user when
