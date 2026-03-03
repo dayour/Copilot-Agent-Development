@@ -1,0 +1,271 @@
+solution:
+  name: TransportationSharedDataverse
+  display_name: Transportation Shared Dataverse
+  version: 1.0.0.0
+  publisher: transportation-platform
+  managed: true
+  description: >
+    Base solution layer providing shared Dataverse tables used across all three
+    Transportation agents (Fleet Coordinator, Fuel Tracking, Route Optimization
+    Scheduler). Deploy this solution first. All three agent solutions take a
+    dependency on this solution to avoid duplicate table definitions and
+    schema conflicts.
+
+solution_layering:
+  deploy_order: 1
+  dependents:
+    - TransportationFleetCoordinator
+    - FuelTrackingSolution
+    - RouteOptimizationSchedulerSolution
+
+dataverse:
+  tables:
+    - logical_name: crd_vehiclemaster
+      display_name: VehicleMaster
+      description: >
+        Canonical vehicle registry shared across Fleet Coordinator, Fuel
+        Tracking, and Route Optimization Scheduler. All agent-specific tables
+        that reference a vehicle carry a lookup to this table.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Vehicle Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          required: true
+          max_length: 50
+          is_alternate_key: true
+        - name: crd_vehicle_type
+          display_name: vehicle_type
+          type: choice
+          options:
+            - class8_long_haul
+            - regional_delivery
+            - last_mile_van
+            - flatbed
+            - refrigerated
+            - tanker
+            - other
+          required: true
+        - name: crd_capacity_lbs
+          display_name: capacity_lbs
+          type: whole_number
+          required: false
+        - name: crd_fuel_type
+          display_name: fuel_type
+          type: choice
+          options:
+            - diesel
+            - gasoline
+            - compressed_natural_gas
+            - electric
+            - hydrogen
+          required: true
+        - name: crd_tank_capacity_gallons
+          display_name: tank_capacity_gallons
+          type: decimal
+          precision: 8
+          scale: 2
+          required: true
+        - name: crd_current_tank_level_pct
+          display_name: current_tank_level_pct
+          type: decimal
+          precision: 5
+          scale: 2
+          required: false
+        - name: crd_maintenance_status
+          display_name: maintenance_status
+          type: choice
+          options:
+            - operational
+            - preventive_maintenance_due
+            - critical_maintenance_hold
+            - out_of_service
+            - decommissioned
+          required: true
+          default_value: operational
+        - name: crd_maintenance_hold_reason
+          display_name: maintenance_hold_reason
+          type: text
+          max_length: 500
+          required: false
+        - name: crd_maintenance_hold_until
+          display_name: maintenance_hold_until
+          type: datetime
+          required: false
+        - name: crd_current_driver_id
+          display_name: current_driver_id
+          type: text
+          max_length: 50
+          required: false
+        - name: crd_fuel_card_number
+          display_name: fuel_card_number
+          type: text
+          max_length: 30
+          required: false
+        - name: crd_last_known_location_lat
+          display_name: last_known_location_lat
+          type: decimal
+          precision: 9
+          scale: 6
+          required: false
+        - name: crd_last_known_location_lon
+          display_name: last_known_location_lon
+          type: decimal
+          precision: 9
+          scale: 6
+          required: false
+        - name: crd_last_telematics_sync
+          display_name: last_telematics_sync
+          type: datetime
+          required: false
+        - name: crd_active
+          display_name: active
+          type: boolean
+          default_value: true
+      indexes:
+        - name: idx_vehiclemaster_vehicle_id
+          columns:
+            - crd_vehicle_id
+        - name: idx_vehiclemaster_maintenance_status
+          columns:
+            - crd_maintenance_status
+            - crd_active
+
+    - logical_name: crd_drivermaster
+      display_name: DriverMaster
+      description: >
+        Canonical driver registry shared across Fleet Coordinator, Fuel
+        Tracking, and Route Optimization Scheduler. All agent-specific tables
+        that reference a driver carry a lookup to this table.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Driver Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: true
+          max_length: 50
+          is_alternate_key: true
+        - name: crd_certifications
+          display_name: certifications
+          type: multiline_text
+          max_length: 1000
+          required: false
+        - name: crd_hos_status
+          display_name: hos_status
+          type: choice
+          options:
+            - available
+            - on_duty
+            - driving
+            - off_duty
+            - sleeper_berth
+            - personal_conveyance
+          required: true
+          default_value: off_duty
+        - name: crd_hours_remaining_today
+          display_name: hours_remaining_today
+          type: decimal
+          precision: 5
+          scale: 2
+          required: false
+        - name: crd_hours_remaining_this_week
+          display_name: hours_remaining_this_week
+          type: decimal
+          precision: 6
+          scale: 2
+          required: false
+        - name: crd_assigned_vehicle_id
+          display_name: assigned_vehicle_id
+          type: text
+          max_length: 50
+          required: false
+        - name: crd_fuel_card_number
+          display_name: fuel_card_number
+          type: text
+          max_length: 30
+          required: false
+        - name: crd_licence_expiry
+          display_name: licence_expiry
+          type: datetime
+          required: false
+        - name: crd_medical_cert_expiry
+          display_name: medical_cert_expiry
+          type: datetime
+          required: false
+        - name: crd_active
+          display_name: active
+          type: boolean
+          default_value: true
+      indexes:
+        - name: idx_drivermaster_driver_id
+          columns:
+            - crd_driver_id
+        - name: idx_drivermaster_hos_status_active
+          columns:
+            - crd_hos_status
+            - crd_active
+        - name: idx_drivermaster_assigned_vehicle
+          columns:
+            - crd_assigned_vehicle_id
+
+  relationships:
+    - name: fk_vehiclefuelprofiles_vehiclemaster
+      from_table: crd_vehiclefuelprofiles
+      from_column: crd_vehicle_id
+      to_table: crd_vehiclemaster
+      to_column: crd_vehicle_id
+      relationship_type: many_to_one
+    - name: fk_fueltransactions_vehiclemaster
+      from_table: crd_fueltransactions
+      from_column: crd_vehicle_id
+      to_table: crd_vehiclemaster
+      to_column: crd_vehicle_id
+      relationship_type: many_to_one
+    - name: fk_routes_vehiclemaster
+      from_table: crd_routes
+      from_column: crd_vehicle_id
+      to_table: crd_vehiclemaster
+      to_column: crd_vehicle_id
+      relationship_type: many_to_one
+    - name: fk_routes_drivermaster
+      from_table: crd_routes
+      from_column: crd_driver_id
+      to_table: crd_drivermaster
+      to_column: crd_driver_id
+      relationship_type: many_to_one
+    - name: fk_driverassignments_drivermaster
+      from_table: crd_driverassignments
+      from_column: crd_driver_id
+      to_table: crd_drivermaster
+      to_column: crd_driver_id
+      relationship_type: many_to_one
+    - name: fk_hosrecords_drivermaster
+      from_table: crd_hosrecords
+      from_column: crd_driver_id
+      to_table: crd_drivermaster
+      to_column: crd_driver_id
+      relationship_type: many_to_one
+    - name: fk_fuelcards_vehiclemaster
+      from_table: crd_fuelcards
+      from_column: crd_vehicle_id
+      to_table: crd_vehiclemaster
+      to_column: crd_vehicle_id
+      relationship_type: many_to_one
+    - name: fk_fuelcards_drivermaster
+      from_table: crd_fuelcards
+      from_column: crd_driver_id
+      to_table: crd_drivermaster
+      to_column: crd_driver_id
+      relationship_type: many_to_one
+
+channels: []

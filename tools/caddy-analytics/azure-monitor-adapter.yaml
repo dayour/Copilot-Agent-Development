@@ -1,0 +1,361 @@
+# Azure Monitor Adapter  -  Copilot Studio Agent Conversation Analytics
+#
+# This file configures Vector (https://vector.dev) as a log shipping sidecar
+# that reads the Caddy JSON access logs and forwards them to Azure Monitor
+# Logs (Log Analytics workspace) and, optionally, Application Insights.
+#
+# Vector is the recommended forwarder because it is lightweight, handles log
+# rotation gracefully, supports structured JSON transformations, and provides
+# reliable at-least-once delivery with a disk-backed buffer.
+#
+# Deployment topology:
+#
+#   [Caddy]  writes to  /var/log/caddy/agent-conversations.log
+#       |
+#   [Vector sidecar]  tails file, transforms, forwards to Azure
+#       |
+#   [Azure Monitor Logs]  Log Analytics workspace table: CaddyAgentAnalytics_CL
+#       |
+#   [Optional] Application Insights custom events via Data Collection Rule
+#
+# Environment variables required by Vector:
+#   AZURE_LOG_ANALYTICS_WORKSPACE_ID   Log Analytics workspace ID (GUID)
+#   AZURE_LOG_ANALYTICS_SHARED_KEY     Primary or secondary workspace key
+#   AZURE_APP_INSIGHTS_CONNECTION_STRING  (optional) App Insights conn string
+#   LOG_DIR                            Must match Caddy LOG_DIR (default: /var/log/caddy)
+#
+# To deploy:
+#   1. Install Vector: https://vector.dev/docs/setup/installation/
+#   2. Place this file at /etc/vector/vector.yaml (or the path Vector expects).
+#   3. Set the environment variables above.
+#   4. Start Vector: systemctl enable --now vector
+#
+# Verify forwarding:
+#   vector top                             -  live throughput counters
+#   vector validate --config /etc/vector/vector.yaml
+
+schemaVersion: "1.0.0"
+tool: vector
+toolVersion: ">=0.35"
+
+# ---------------------------------------------------------------------------
+# Vector configuration
+# ---------------------------------------------------------------------------
+vector_config:
+
+  # -------------------------------------------------------------------------
+  # Sources  -  read Caddy access logs from the rotating log file
+  # -------------------------------------------------------------------------
+  sources:
+    caddy_access_log:
+      type: file
+      # Glob matches the current log file and any rolled files not yet deleted.
+      include:
+        - "{$LOG_DIR:/var/log/caddy}/agent-conversations.log*"
+      # Read from the end of new files (do not reprocess historical lines on
+      # restart; Vector checkpoints are used for at-least-once delivery).
+      read_from: beginning
+      # Encoding is newline-delimited JSON as emitted by Caddy.
+      multiline: null
+      encoding:
+        codec: json
+
+  # -------------------------------------------------------------------------
+  # Transforms  -  enrich, validate, and sanitise log records
+  # -------------------------------------------------------------------------
+  transforms:
+
+    # Parse the Caddy JSON record into Vector's event model and add metadata.
+    parse_and_enrich:
+      type: remap
+      inputs:
+        - caddy_access_log
+      source: |
+        # Promote nested Caddy fields to top-level for easier querying.
+        .http_method     = string!(.request.method)
+        .http_uri        = string!(.request.uri)
+        .http_status     = int!(.status)
+        .duration_ms     = float!(.duration) * 1000.0
+        .response_bytes  = int!(.size)
+        .agent_domain    = string!(.request.host)
+        .user_agent      = string(.request.headers."User-Agent") ?? ""
+        .correlation_id  = string(.request.headers."X-Correlation-ID") ?? ""
+
+        # Extract the Direct Line conversation ID from the URI path.
+        # Example: /v3/directline/conversations/abc123/activities -> abc123
+        # For non-conversation endpoints (e.g. /api/messages, /health) the
+        # regex will not match and conversation_id is set to an empty string.
+        conversation_match = parse_regex(.http_uri,
+          r'^/v3/directline/conversations/(?P<id>[^/]+)')
+        if is_ok(conversation_match) {
+          .conversation_id = string!(get!(conversation_match, ["id"]))
+        } else {
+          # URI does not contain a conversation ID segment; this is expected
+          # for conversation_start (POST /v3/directline/conversations) and
+          # bot_framework_message requests.
+          .conversation_id = ""
+          # Emit a structured metadata field so downstream queries can
+          # distinguish "no ID expected" from "ID extraction failed".
+          .conversation_id_absent_reason = if match(.http_uri, r'^/v3/directline/conversations$') {
+            "conversation_start_request"
+          } else if match(.http_uri, r'^/api/messages') {
+            "bot_framework_endpoint"
+          } else {
+            "non_conversation_endpoint"
+          }
+        }
+
+        # Classify the endpoint type for request-count-per-agent-endpoint.
+        .endpoint_type = if match(.http_uri, r'^/v3/directline/conversations$') {
+          "conversation_start"
+        } else if match(.http_uri, r'^/v3/directline/conversations/[^/]+/activities$') {
+          "activity"
+        } else if match(.http_uri, r'^/v3/directline/conversations/[^/]+') {
+          "conversation_other"
+        } else if match(.http_uri, r'^/api/messages') {
+          "bot_framework_message"
+        } else if match(.http_uri, r'^/health') {
+          "health_probe"
+        } else {
+          "other"
+        }
+
+        # Classify the client channel from User-Agent.
+        .channel = if match(.user_agent, r'(?i)teams') {
+          "teams"
+        } else if match(.user_agent, r'(?i)okhttp|dalvik|cfnetwork|darwin') {
+          "mobile"
+        } else if match(.user_agent, r'(?i)mozilla|chrome|safari|firefox') {
+          "web"
+        } else {
+          "other"
+        }
+
+        # Classify the error category.
+        .error_category = if .http_status >= 500 {
+          "server_error"
+        } else if .http_status >= 400 {
+          "client_error"
+        } else {
+          "success"
+        }
+
+        # Remove raw request object to prevent accidental PII persistence.
+        # The promoted fields above contain only the analytics-safe values.
+        del(.request)
+        del(.resp_headers)
+
+    # Drop health probe log lines  -  they are not conversation events.
+    drop_health_probes:
+      type: filter
+      inputs:
+        - parse_and_enrich
+      condition: '.endpoint_type != "health_probe"'
+
+  # -------------------------------------------------------------------------
+  # Sinks  -  deliver to Azure Monitor Logs and optionally Application Insights
+  # -------------------------------------------------------------------------
+  sinks:
+
+    # Azure Monitor Logs (Log Analytics workspace)
+    # Records land in the custom table: CaddyAgentAnalytics_CL
+    azure_monitor_logs:
+      type: azure_monitor_logs
+      inputs:
+        - drop_health_probes
+      # Authentication via the Log Analytics HTTP Data Collector API.
+      customer_id: "${AZURE_LOG_ANALYTICS_WORKSPACE_ID}"
+      shared_key: "${AZURE_LOG_ANALYTICS_SHARED_KEY}"
+      log_type: CaddyAgentAnalytics
+      # Reliable delivery  -  buffer to disk before forwarding.
+      buffer:
+        type: disk
+        max_size: 1073741824   # 1 GiB
+        when_full: block
+      # Retry and backoff configuration.
+      request:
+        retry_attempts: 10
+        retry_initial_backoff_secs: 1
+        retry_max_duration_secs: 300
+      # Batch records to reduce API calls.
+      batch:
+        max_events: 500
+        timeout_secs: 10
+
+    # Application Insights custom events (optional)
+    # Provides correlated traces in the Application Insights portal.
+    # Set AZURE_APP_INSIGHTS_CONNECTION_STRING to enable this sink.
+    app_insights:
+      type: http
+      inputs:
+        - drop_health_probes
+      uri: "https://dc.services.visualstudio.com/v2/track"
+      method: post
+      auth: null
+      encoding:
+        codec: json
+      headers:
+        Content-Type: application/json
+      # Map each log record to an Application Insights custom event envelope.
+      # The transform below converts Vector events to the AI telemetry schema.
+      # Enable only when AZURE_APP_INSIGHTS_CONNECTION_STRING is set.
+      enabled: false
+
+    # Stdout sink  -  useful for local development and debugging.
+    stdout_debug:
+      type: console
+      inputs:
+        - drop_health_probes
+      encoding:
+        codec: json
+      # Disable in production by removing this sink or setting enabled: false.
+      enabled: false
+
+# ---------------------------------------------------------------------------
+# Log Analytics workspace table schema
+#
+# The CaddyAgentAnalytics_CL custom table is automatically created by the
+# Azure Monitor HTTP Data Collector API when the first record is ingested.
+# The columns below describe the schema that Vector will deliver.
+# ---------------------------------------------------------------------------
+log_analytics_schema:
+  table: CaddyAgentAnalytics_CL
+  columns:
+    - name: TimeGenerated
+      type: datetime
+      description: UTC timestamp of the request (mapped from Caddy ts field).
+
+    - name: AgentDomain_s
+      type: string
+      description: Agent domain (Host header value).
+
+    - name: HttpMethod_s
+      type: string
+      description: HTTP method (GET, POST, etc.).
+
+    - name: HttpUri_s
+      type: string
+      description: Request URI path including query string.
+
+    - name: HttpStatus_d
+      type: int
+      description: HTTP response status code.
+
+    - name: DurationMs_d
+      type: double
+      description: End-to-end request handling time in milliseconds.
+
+    - name: ResponseBytes_d
+      type: int
+      description: Response body size in bytes.
+
+    - name: EndpointType_s
+      type: string
+      description: >
+        Classified endpoint type: conversation_start, activity,
+        conversation_other, bot_framework_message, or other.
+
+    - name: ConversationId_s
+      type: string
+      description: >
+        Direct Line conversation ID extracted from the URI path.
+        Empty string for non-conversation requests.
+
+    - name: ConversationIdAbsentReason_s
+      type: string
+      description: >
+        Populated when conversation_id is empty.  Values: conversation_start_request
+        (POST to create a new conversation), bot_framework_endpoint (Bot Framework
+        messaging path), or non_conversation_endpoint.  Allows downstream queries to
+        distinguish expected absence from unexpected extraction failures.
+
+    - name: Channel_s
+      type: string
+      description: >
+        Client channel classification derived from User-Agent:
+        teams, web, mobile, or other.
+
+    - name: ErrorCategory_s
+      type: string
+      description: >
+        Request outcome classification: success, client_error, or server_error.
+
+    - name: UserAgent_s
+      type: string
+      description: Raw User-Agent string (non-PII).
+
+    - name: CorrelationId_s
+      type: string
+      description: X-Correlation-ID header value for end-to-end tracing.
+
+# ---------------------------------------------------------------------------
+# Azure Monitor workbook queries
+#
+# Paste these KQL queries into an Azure Monitor Workbook to build an
+# analytics dashboard without Grafana.
+# ---------------------------------------------------------------------------
+workbook_queries:
+
+  - name: ConversationsStartedPerHour
+    description: Hourly count of new Direct Line conversations.
+    kql: |
+      CaddyAgentAnalytics_CL
+      | where EndpointType_s == "conversation_start"
+      | summarize ConversationsStarted = count() by bin(TimeGenerated, 1h)
+      | render timechart
+
+  - name: ErrorRateOverTime
+    description: 5xx error rate as a percentage, calculated per 5-minute bucket.
+    kql: |
+      CaddyAgentAnalytics_CL
+      | summarize
+          TotalRequests = count(),
+          ServerErrors  = countif(HttpStatus_d >= 500)
+        by bin(TimeGenerated, 5m)
+      | extend ErrorRate = round(todouble(ServerErrors) / todouble(TotalRequests) * 100, 2)
+      | render timechart
+
+  - name: LatencyPercentiles
+    description: p50, p95, and p99 response latency per hour.
+    kql: |
+      CaddyAgentAnalytics_CL
+      | summarize
+          p50 = percentile(DurationMs_d, 50),
+          p95 = percentile(DurationMs_d, 95),
+          p99 = percentile(DurationMs_d, 99)
+        by bin(TimeGenerated, 1h)
+      | render timechart
+
+  - name: ActiveSessionsPerHour
+    description: Count of distinct conversation IDs per hour.
+    kql: |
+      CaddyAgentAnalytics_CL
+      | where ConversationId_s != ""
+      | summarize ActiveSessions = dcount(ConversationId_s)
+        by bin(TimeGenerated, 1h)
+      | render timechart
+
+  - name: ChannelDistribution
+    description: Request volume breakdown by client channel.
+    kql: |
+      CaddyAgentAnalytics_CL
+      | summarize Requests = count() by Channel_s
+      | render piechart
+
+  - name: TopEndpointsByVolume
+    description: Request count per endpoint type in the last 24 hours.
+    kql: |
+      CaddyAgentAnalytics_CL
+      | where TimeGenerated >= ago(24h)
+      | summarize Requests = count() by EndpointType_s
+      | order by Requests desc
+
+  - name: RecentServerErrors
+    description: Last 100 server errors with correlation IDs for investigation.
+    kql: |
+      CaddyAgentAnalytics_CL
+      | where HttpStatus_d >= 500
+      | project TimeGenerated, AgentDomain_s, HttpMethod_s, HttpUri_s,
+                HttpStatus_d, DurationMs_d, CorrelationId_s
+      | order by TimeGenerated desc
+      | take 100

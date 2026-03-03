@@ -1,0 +1,257 @@
+# Log Schema  -  Copilot Studio Agent Conversation Analytics
+#
+# This file documents every field emitted by the Caddy JSON access log
+# (see Caddyfile).  Use it as the source-of-truth when building Grafana
+# panels, Kusto queries, Power BI datasets, or Azure Monitor workbooks.
+#
+# Log records are newline-delimited JSON objects written to:
+#   {LOG_DIR}/agent-conversations.log
+
+schemaVersion: "1.0.0"
+description: >
+  Structured log schema for Copilot Studio agent conversation analytics.
+  All records are written by the Caddy reverse proxy in front of Direct Line
+  and Bot Framework endpoints.  No PII is stored - client IP addresses are
+  deleted at the proxy layer before the record is persisted.
+
+fields:
+  - name: ts
+    type: float
+    unit: unix_seconds
+    description: >
+      Unix epoch timestamp with sub-second precision at which Caddy finished
+      handling the request.
+    example: 1709500800.123456
+    analytics_use: >
+      Partition logs by time window for trend analysis.  Convert to ISO 8601
+      in downstream tooling.
+
+  - name: status
+    type: integer
+    description: >
+      HTTP response status code returned to the client.
+    example: 200
+    analytics_use: >
+      Derive error_rate by counting responses where status >= 500.
+      Track 4xx rates separately to distinguish client errors from server faults.
+    classifications:
+      - range: "200-299"
+        label: success
+      - range: "400-499"
+        label: client_error
+      - range: "500-599"
+        label: server_error
+
+  - name: duration
+    type: float
+    unit: seconds
+    description: >
+      Total request handling time in seconds, measured from the moment Caddy
+      accepted the connection to the moment the last response byte was sent.
+      This is the primary latency signal for "time to first bot response" when
+      applied to POST /v3/directline/conversations requests.
+    example: 0.341
+    analytics_use: >
+      Calculate p50, p95, and p99 percentiles per agent_endpoint to surface
+      latency regressions.
+
+  - name: size
+    type: integer
+    unit: bytes
+    description: >
+      Number of bytes in the response body.
+    example: 1024
+    analytics_use: >
+      Detect anomalous payload sizes; large responses may indicate Direct Line
+      token or error payloads rather than normal activity responses.
+
+  - name: request
+    type: object
+    description: Inbound request metadata.
+    properties:
+
+      - name: method
+        type: string
+        description: HTTP method of the request.
+        example: POST
+        analytics_use: >
+          POST to /v3/directline/conversations = conversation started.
+          POST to /v3/directline/conversations/{id}/activities = message sent.
+          GET  to /v3/directline/conversations/{id}/activities = polling.
+
+      - name: uri
+        type: string
+        description: >
+          Request URI path including query string.  Contains the conversation
+          ID for session-level analytics.
+        example: /v3/directline/conversations/abc123xyz/activities
+        analytics_use: >
+          Extract conversation_id via regex:
+            /v3/directline/conversations/([^/]+)
+          Count distinct conversation_ids to measure active sessions.
+          Count POST requests to /v3/directline/conversations (no trailing
+          path segment) to measure conversations started per time window.
+
+      - name: host
+        type: string
+        description: Host header value  -  identifies the agent domain.
+        example: agents.contoso.com
+        analytics_use: >
+          Use host to segment metrics by deployment when multiple agent domains
+          share one Caddy instance.
+
+      - name: headers
+        type: object
+        description: Selected inbound headers retained for analytics.
+        properties:
+
+          - name: User-Agent
+            type: string
+            description: >
+              Client user-agent string.  Used to classify traffic by channel.
+            example: "Microsoft Teams/1.0 (Windows)"
+            analytics_use: >
+              Classify by channel using pattern matching:
+                Teams:  contains "Teams"
+                Web:    contains "Mozilla" or "Chrome" or "Safari"
+                Mobile: contains "okhttp" or "Dalvik" or "CFNetwork"
+              Build user_agent_distribution metric from these buckets.
+            pii_classification: non_pii
+            note: >
+              User-Agent strings may include OS version information.  No
+              individual identification is possible from User-Agent alone.
+
+          - name: X-Correlation-ID
+            type: string
+            description: >
+              Correlation identifier assigned by Caddy or passed by the client.
+              Enables end-to-end tracing across Caddy, Direct Line, and Bot
+              Framework run history.
+            example: "7f3a2c1b-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+            analytics_use: >
+              Join with upstream service logs for root-cause analysis.
+            pii_classification: non_pii
+
+  - name: resp_headers
+    type: object
+    description: Selected response headers.
+    properties:
+
+      - name: Content-Type
+        type: string
+        description: MIME type of the response body.
+        example: application/json; charset=utf-8
+
+# ---------------------------------------------------------------------------
+# Derived metrics
+# ---------------------------------------------------------------------------
+derived_metrics:
+  - name: conversations_started
+    description: >
+      Count of POST requests to /v3/directline/conversations (exact path,
+      no trailing segment) in the selected time window.
+    source_field: request.uri
+    filter: >
+      method == "POST" AND uri matches ^/v3/directline/conversations$
+    aggregation: count
+
+  - name: request_count_per_endpoint
+    description: >
+      Request volume grouped by normalised endpoint pattern.  Strip the
+      dynamic conversation ID segment before grouping.
+    source_field: request.uri
+    normalisation: >
+      Replace conversation ID segment with {conversationId} placeholder:
+        s|/v3/directline/conversations/[^/]+|/v3/directline/conversations/{conversationId}|g
+    aggregation: count_by_normalised_uri
+
+  - name: response_latency_p50
+    description: Median end-to-end request latency in milliseconds.
+    source_field: duration
+    transformation: "duration * 1000"
+    aggregation: percentile_50
+
+  - name: response_latency_p95
+    description: 95th percentile end-to-end request latency in milliseconds.
+    source_field: duration
+    transformation: "duration * 1000"
+    aggregation: percentile_95
+
+  - name: response_latency_p99
+    description: 99th percentile end-to-end request latency in milliseconds.
+    source_field: duration
+    transformation: "duration * 1000"
+    aggregation: percentile_99
+
+  - name: error_rate
+    description: >
+      Fraction of requests that received a 5xx response from Direct Line.
+    formula: "count(status >= 500) / count(*)"
+    aggregation: ratio
+
+  - name: active_sessions
+    description: >
+      Count of distinct conversation IDs observed in the selected time window.
+      Approximates concurrent conversations when the window is narrow (e.g. 5
+      minutes).
+    source_field: request.uri
+    extraction: >
+      Regex capture group 1 from:
+        /v3/directline/conversations/([^/]+)
+    aggregation: count_distinct
+
+  - name: user_agent_distribution
+    description: >
+      Percentage breakdown of requests by client channel classification.
+    source_field: "request.headers.User-Agent"
+    classification_rules:
+      - label: teams
+        pattern: "Teams"
+      - label: web
+        pattern: "Mozilla|Chrome|Safari|Firefox"
+      - label: mobile
+        pattern: "okhttp|Dalvik|CFNetwork|Darwin"
+      - label: other
+        pattern: ".*"
+    aggregation: count_by_label
+
+# ---------------------------------------------------------------------------
+# Privacy classification summary
+# ---------------------------------------------------------------------------
+privacy:
+  stored_fields:
+    - ts
+    - status
+    - duration
+    - size
+    - request.method
+    - request.uri
+    - request.host
+    - request.headers.User-Agent
+    - request.headers.X-Correlation-ID
+
+  deleted_fields:
+    - request.remote_ip
+    - request.remote_port
+    - request.headers.Cookie
+    - request.headers.Authorization
+    - request.headers.X-Auth-Token
+    - request.body
+    - response.body
+
+  pii_risk_assessment: >
+    No stored field constitutes personal data as defined under GDPR Article 4(1)
+    in isolation.  The conversation ID in request.uri is a pseudonymous session
+    identifier (a random token issued by Direct Line) and is not linked to a
+    natural person in these logs.  User-Agent strings do not uniquely identify
+    individuals.  Geographic distribution analytics require a GeoIP lookup
+    performed at request time before the IP is deleted  -  see README.md.
+
+  retention:
+    policy: 30_days
+    mechanism: >
+      Caddy log rotation (roll_keep_for 720h) automatically deletes log files
+      older than 30 days.  For logs forwarded to Azure Monitor, configure a
+      Log Analytics workspace data retention of 30 days and enable purge policy.
+    review_frequency: quarterly
+    owner: Platform Engineering

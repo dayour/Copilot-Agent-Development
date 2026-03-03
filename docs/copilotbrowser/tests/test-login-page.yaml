@@ -1,0 +1,44 @@
+testName: Login Page Structure
+description: >
+  Verify that the Copilot Studio login page exposes the expected interactive
+  selectors so that automation runbooks can successfully sign in.
+page: login
+agentScoped: false
+
+navigation:
+  - action: navigate
+    target: "${COPILOT_STUDIO_URL}/"
+  - action: wait
+    waitMs: 2000
+
+snapshot:
+  filter: interactive
+
+assertions:
+  - ref: "input[type=email]"
+    description: Email address input field
+    required: true
+
+  - ref: "input[type=password]"
+    description: Password input field
+    required: true
+
+  - ref: "input[type=submit], button[type=submit]"
+    description: Primary sign-in submit button
+    required: true
+
+  - ref: "a[href*='login.microsoftonline.com'], a[href*='microsoftonline']"
+    description: Azure Active Directory redirect link
+    required: false
+
+  - ref: "form[action*='login'], form[action*='signin']"
+    description: Login form container
+    required: true
+
+  - ref: "input[name=loginfmt], input[id=i0116]"
+    description: Microsoft identity platform email field (AAD sign-in page)
+    required: false
+
+  - ref: "input[id=idSIButton9], button[id=idSIButton9]"
+    description: Microsoft identity platform next or sign-in button
+    required: false

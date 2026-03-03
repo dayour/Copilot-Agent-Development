@@ -249,18 +249,136 @@ topics:
         variable: Topic.route_id
         entity: Text
       - type: tool
-        id: findDriver
-        tool_name: AssignDriverToRoute
+        id: checkVehicleMaintenance
+        tool_name: CheckVehicleMaintenanceStatus
         input_mapping:
           routeId: =Topic.route_id
-          requiredCertification: =Topic.required_certification
       - type: condition
-        id: assignmentResult
+        id: maintenanceGate
         branches:
-          - condition: =Topic.AssignmentSuccess = true
+          - condition: =Topic.VehicleOnMaintenanceHold = true
             actions:
               - type: message
-                text: "✅ Driver {Topic.AssignedDriverId} assigned to route {Topic.route_id}. Certifications verified: {Topic.CertificationsVerified}. Estimated departure: {Topic.EstimatedDeparture}."
+                text: "Vehicle assigned to route {Topic.route_id} is currently on a maintenance hold: {Topic.MaintenanceHoldReason}. Route cannot be dispatched until the hold is lifted or the vehicle is reassigned."
+        else_actions:
+          - type: tool
+            id: findDriver
+            tool_name: AssignDriverToRoute
+            input_mapping:
+              routeId: =Topic.route_id
+              requiredCertification: =Topic.required_certification
+          - type: condition
+            id: assignmentResult
+            branches:
+              - condition: =Topic.AssignmentSuccess = true
+                actions:
+                  - type: message
+                    text: "Driver {Topic.AssignedDriverId} assigned to route {Topic.route_id}. Certifications verified: {Topic.CertificationsVerified}. Estimated departure: {Topic.EstimatedDeparture}."
+            else_actions:
+              - type: message
+                text: "No eligible driver found for route {Topic.route_id}. Reason: {Topic.AssignmentBlockedReason}. Please review driver availability and certification records."
+
+  - name: Fuel Route Correlation
+    description: Inserts cost-effective fuel stops into an active route when the vehicle's tank level is low, using price data from the Fuel Tracking agent.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - add fuel stop to route
+        - optimize route with fuel stops
+        - insert fueling stop for low tank
+        - fuel stop recommendation for route
+    inputs:
+      - name: route_id
+        type: string
+        required: true
+      - name: vehicle_id
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askRouteIdFuel
+        prompt: "Which route ID should I check for fuel stop insertion?"
+        variable: Topic.route_id
+        entity: Text
+      - type: tool
+        id: checkTankLevel
+        tool_name: GetVehicleTankLevel
+        input_mapping:
+          vehicleId: =Topic.vehicle_id
+      - type: condition
+        id: tankLevelGate
+        branches:
+          - condition: =Topic.TankLevelPct <= 25
+            actions:
+              - type: tool
+                id: getFuelStops
+                tool_name: GetFuelPricesForRoute
+                input_mapping:
+                  routeId: =Topic.route_id
+                  vehicleId: =Topic.vehicle_id
+                  tankLevelPct: =Topic.TankLevelPct
+              - type: tool
+                id: insertFuelStops
+                tool_name: InsertFuelStopsIntoRoute
+                input_mapping:
+                  routeId: =Topic.route_id
+                  fuelStopRecommendations: =Topic.FuelStopRecommendations
+              - type: message
+                text: "Tank level for vehicle {Topic.vehicle_id} is {Topic.TankLevelPct}%. {Topic.InsertedFuelStopCount} fuel stop(s) added to route {Topic.route_id}."
+              - type: adaptive_card
+                title: Fuel Stop Insertion Summary
+                body:
+                  - text: "Inserted stops: {Topic.FuelStopSummaryTable}"
+                  - text: "Estimated fuel cost savings vs market average: {Topic.EstimatedFuelCostSaving}"
+                  - text: "Time window impact: {Topic.TimeWindowImpactSummary}"
         else_actions:
           - type: message
-            text: "⚠️ No eligible driver found for route {Topic.route_id}. Reason: {Topic.AssignmentBlockedReason}. Please review driver availability and certification records."
+            text: "Tank level for vehicle {Topic.vehicle_id} is {Topic.TankLevelPct}%. No fuel stop insertion needed."
+
+  - name: Fleet Incident Escalation Handler
+    description: Handles incoming escalation notifications from Fleet Coordinator when a vehicle breakdown or maintenance hold affects active routes. Re-routes affected deliveries automatically.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - vehicle breakdown escalation
+        - handle fleet incident
+        - re-route after breakdown
+        - vehicle unavailable for active route
+    inputs:
+      - name: vehicle_id
+        type: string
+        required: true
+      - name: incident_type
+        type: string
+        required: true
+      - name: location
+        type: string
+        required: false
+    nodes:
+      - type: tool
+        id: findAffectedRoutes
+        tool_name: FindActiveRoutesForVehicle
+        input_mapping:
+          vehicleId: =Topic.vehicle_id
+      - type: condition
+        id: affectedRoutesCheck
+        branches:
+          - condition: =Topic.AffectedRouteCount > 0
+            actions:
+              - type: tool
+                id: rerouteAffected
+                tool_name: RerouteAffectedDeliveries
+                input_mapping:
+                  vehicleId: =Topic.vehicle_id
+                  affectedRoutes: =Topic.AffectedRoutes
+              - type: message
+                text: "{Topic.AffectedRouteCount} route(s) affected by {Topic.incident_type} for vehicle {Topic.vehicle_id}. Re-routing initiated for: {Topic.AffectedRouteIds}. Dispatcher has been notified."
+              - type: adaptive_card
+                title: Re-routing Summary
+                body:
+                  - text: "Affected routes: {Topic.AffectedRouteIds}"
+                  - text: "Re-routing status: {Topic.ReroutingStatusTable}"
+                  - text: "New ETAs: {Topic.NewEtaSummary}"
+        else_actions:
+          - type: message
+            text: "No active routes found for vehicle {Topic.vehicle_id}. No re-routing required."

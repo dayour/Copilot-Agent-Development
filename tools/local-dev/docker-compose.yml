@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+    volumes:
+      - ./Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile --watch
+    networks:
+      - agent-dev
+    depends_on:
+      - token-server
+      - web-chat
+
+  web-chat:
+    image: nginx:1-alpine
+    restart: unless-stopped
+    volumes:
+      - ./web-chat:/usr/share/nginx/html:ro
+    networks:
+      - agent-dev
+
+  token-server:
+    build: ./token-server
+    restart: unless-stopped
+    environment:
+      - DIRECT_LINE_SECRET=${DIRECT_LINE_SECRET}
+      - PORT=3000
+    networks:
+      - agent-dev
+
+networks:
+  agent-dev:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

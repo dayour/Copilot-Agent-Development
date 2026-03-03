@@ -1,0 +1,103 @@
+# Copilot Studio Solution Definition — A365 Orchestrator (Tech)
+# Import this into your Power Platform environment to deploy the orchestrator
+# alongside its three specialist agents.
+
+schemaVersion: "1.0"
+solutionName: TechA365Orchestrator
+publisher: Copilot Agent Development
+description: >
+  Reference solution for the A365 Orchestrator. Includes the orchestrator
+  routing agent, connections to the IT Help Desk, Calendar Manager, and
+  Knowledge Base specialist agents, environment variable declarations, and
+  shared infrastructure bindings.
+
+environmentVariables:
+  - name: OrchestratorBotId
+    displayName: Orchestrator Bot Application ID
+    type: string
+    description: Entra ID application (client) ID for the orchestrator bot.
+    defaultValue: ""
+
+  - name: OrchestratorBotSecret
+    displayName: Orchestrator Bot Client Secret
+    type: secret
+    description: Entra ID client secret for the orchestrator bot.
+    defaultValue: ""
+
+  - name: TenantId
+    displayName: Azure AD Tenant ID
+    type: string
+    description: Azure AD tenant where the orchestrator and specialist agents reside.
+    defaultValue: ""
+
+  - name: ItHelpDeskEnvironmentId
+    displayName: IT Help Desk Environment ID
+    type: string
+    description: Power Platform environment ID that hosts the IT Help Desk agent.
+    defaultValue: ""
+
+  - name: ItHelpDeskSchemaName
+    displayName: IT Help Desk Schema Name
+    type: string
+    description: Copilot Studio schema name for the IT Help Desk agent.
+    defaultValue: "cr123_itHelpDesk"
+
+  - name: CalendarManagerEnvironmentId
+    displayName: Calendar Manager Environment ID
+    type: string
+    description: Power Platform environment ID that hosts the Calendar Manager agent.
+    defaultValue: ""
+
+  - name: CalendarManagerSchemaName
+    displayName: Calendar Manager Schema Name
+    type: string
+    description: Copilot Studio schema name for the Calendar Manager agent.
+    defaultValue: "dystudio_calendarManager"
+
+  - name: KnowledgeBaseEnvironmentId
+    displayName: Knowledge Base Environment ID
+    type: string
+    description: Power Platform environment ID that hosts the Knowledge Base agent.
+    defaultValue: ""
+
+  - name: KnowledgeBaseSchemaName
+    displayName: Knowledge Base Schema Name
+    type: string
+    description: Copilot Studio schema name for the Knowledge Base agent.
+    defaultValue: "cr123_knowledgeBase"
+
+  - name: AppInsightsConnectionString
+    displayName: Application Insights Connection String
+    type: secret
+    description: Connection string for the Application Insights resource used for telemetry.
+    defaultValue: ""
+
+  - name: KeyVaultUri
+    displayName: Key Vault URI
+    type: string
+    description: URI of the Azure Key Vault used to store runtime secrets.
+    defaultValue: ""
+
+components:
+  agents:
+    - name: A365Orchestrator
+      templateFile: ../templates/agent-template.yaml
+      orchestrationMode: generative
+      authentication:
+        type: azure_ad
+        tenantRestriction: true
+      connectedAgents:
+        - name: IT Help Desk
+          environmentId: "${ItHelpDeskEnvironmentId}"
+          schemaName: "${ItHelpDeskSchemaName}"
+        - name: Calendar Manager
+          environmentId: "${CalendarManagerEnvironmentId}"
+          schemaName: "${CalendarManagerSchemaName}"
+        - name: Knowledge Base
+          environmentId: "${KnowledgeBaseEnvironmentId}"
+          schemaName: "${KnowledgeBaseSchemaName}"
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    requireAdminApproval: false

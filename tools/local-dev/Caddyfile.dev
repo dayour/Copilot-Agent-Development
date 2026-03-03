@@ -1,0 +1,20 @@
+{
+  local_certs
+  admin 0.0.0.0:2019
+}
+
+localhost {
+  tls internal
+
+  handle /health {
+    respond "OK" 200
+  }
+
+  handle /token* {
+    reverse_proxy token-server:3000
+  }
+
+  handle {
+    reverse_proxy web-chat:80
+  }
+}
