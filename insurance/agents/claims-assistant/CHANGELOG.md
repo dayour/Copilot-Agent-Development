@@ -5,6 +5,24 @@ All notable changes to the Claims Assistant agent will be documented in this fil
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [3.0.0] - 2026-03-03
+
+### Changed
+
+- Replaced invented YAML schema with realistic Copilot Studio code-first artifacts (.mcs.yml format).
+- Agent definition now uses `agent.mcs.yml` with GenerativeAIRecognizer and integrated auth.
+- Agent instructions and persona moved to `settings.mcs.yml` with GptComponentMetadata schema.
+- Topics rewritten as AdaptiveDialog YAML with real node kinds (Question, ConditionGroup, InvokeFlowAction, SendActivity).
+- Power Automate integrations defined as TaskDialog action files with InvokeFlowTaskAction.
+- Knowledge sources defined as KnowledgeSourceConfiguration files.
+- Environment variables and connection references moved to `deployment/deployment-settings.json` (PAC CLI format).
+
+### Removed
+
+- Deleted `solution/solution-definition.yaml` (fictional schema).
+- Deleted `templates/agent-template.yaml` (fictional schema).
+- Removed invented properties: `audience`, `visibility: internal_only`, `trigger: copilot_studio_topic_action`.
+
 ## [2.0.0] - 2026-03-02
 
 ### Added

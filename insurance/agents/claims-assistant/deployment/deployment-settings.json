@@ -1,0 +1,47 @@
+{
+  "$schema": "https://aka.ms/power-platform-deployment-settings-schema",
+  "comment": "Deployment settings for Claims Assistant solution. Generated with: pac solution create-settings",
+  "EnvironmentVariables": [
+    {
+      "SchemaName": "contoso_ClaimsManagementApiBaseUrl",
+      "Value": ""
+    },
+    {
+      "SchemaName": "contoso_ClaimsManagementApiClientId",
+      "Value": ""
+    },
+    {
+      "SchemaName": "contoso_DocumentStorageBaseUrl",
+      "Value": ""
+    },
+    {
+      "SchemaName": "contoso_PaymentGatewayApiBaseUrl",
+      "Value": ""
+    },
+    {
+      "SchemaName": "contoso_HandlerEscalationQueueEmail",
+      "Value": ""
+    },
+    {
+      "SchemaName": "contoso_StateComplianceDefaultTimezone",
+      "Value": "America/Chicago"
+    }
+  ],
+  "ConnectionReferences": [
+    {
+      "LogicalName": "contoso_shared_commondataserviceforapps",
+      "ConnectionId": "",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+    },
+    {
+      "LogicalName": "contoso_shared_sharepointonline",
+      "ConnectionId": "",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+    },
+    {
+      "LogicalName": "contoso_shared_office365",
+      "ConnectionId": "",
+      "ConnectorId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+    }
+  ]
+}

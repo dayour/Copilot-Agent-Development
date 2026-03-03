@@ -48,20 +48,50 @@ This solution includes a state-driven compliance engine backed by Dataverse rule
 
 ## Repository Structure
 
+This project uses the **Copilot Studio code-first format** compatible with the
+[VS Code extension](https://learn.microsoft.com/microsoft-copilot-studio/visual-studio-code-extension-overview).
+
 ```text
 claims-assistant/
+├── agent.mcs.yml                          # Agent definition (auth, recognizer, AI settings)
+├── settings.mcs.yml                       # Instructions, persona, conversation starters
 ├── README.md
+├── CHANGELOG.md
 ├── runbook.md
-├── templates/
-│   └── agent-template.yaml
-└── solution/
-    └── solution-definition.yaml
+├── topics/
+│   ├── greeting.mcs.yml                   # Welcome and routing
+│   ├── fnol.mcs.yml                       # First notice of loss intake
+│   ├── claim-status.mcs.yml              # Claim status lookup
+│   ├── document-submission.mcs.yml       # Document upload
+│   ├── escalate.mcs.yml                  # Handoff to human handler
+│   └── fallback.mcs.yml                  # Unrecognized input handling
+├── actions/
+│   ├── create-claim-flow.mcs.yml         # Power Automate: create claim
+│   ├── get-claim-status-flow.mcs.yml     # Power Automate: get status
+│   └── calculate-fraud-score.mcs.yml     # Power Automate: fraud scoring
+├── knowledge/
+│   ├── claims-policy-site.mcs.yml        # SharePoint policy documents
+│   └── claims-faq-site.mcs.yml           # Public FAQ site
+└── deployment/
+    └── deployment-settings.json           # Environment variables and connection refs
 ```
 
 ## Quick Start
 
 1. Complete environment and integration prerequisites in `runbook.md`.
-2. Import `solution/solution-definition.yaml` into the target Dataverse solution.
-3. Configure environment variables, connections, and state compliance rules.
-4. Validate FNOL, compliance, fraud, and escalation scenarios.
-5. Publish to the external web portal and internal Teams channel.
+2. Open the project in VS Code with the Copilot Studio extension installed.
+3. Clone or sync the agent to your target Copilot Studio environment.
+4. Update `deployment/deployment-settings.json` with environment-specific values.
+5. Replace placeholder flow GUIDs in topic and action files with actual Power Automate flow IDs.
+6. Configure authentication (Azure AD B2C for external, Azure AD for internal) in Copilot Studio settings.
+7. Validate FNOL, status, document, and escalation scenarios.
+8. Publish to the external web portal and internal Teams channel.
+
+## Key References
+
+- [Copilot Studio VS Code extension](https://learn.microsoft.com/microsoft-copilot-studio/visual-studio-code-extension-overview)
+- [Topic authoring](https://learn.microsoft.com/microsoft-copilot-studio/authoring-create-edit-topics)
+- [Agent flows (Power Automate)](https://learn.microsoft.com/microsoft-copilot-studio/advanced-flow-create)
+- [Generative orchestration](https://learn.microsoft.com/microsoft-copilot-studio/advanced-generative-actions)
+- [Knowledge sources](https://learn.microsoft.com/microsoft-copilot-studio/knowledge-copilot-studio)
+- [Solutions and ALM](https://learn.microsoft.com/microsoft-copilot-studio/authoring-solutions-overview)

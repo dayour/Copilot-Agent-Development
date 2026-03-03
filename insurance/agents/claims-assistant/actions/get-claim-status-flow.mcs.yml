@@ -1,0 +1,34 @@
+# Action: Get Claim Status Flow
+# Invokes Power Automate flow to retrieve claim status from the claims management system.
+# Flow must use "When an agent calls the flow" trigger and "Respond to the agent" action.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/advanced-flow-create
+
+kind: TaskDialog
+displayName: Get Claim Status
+
+outputs:
+  - propertyName: claimStatus
+    displayName: Claim Status
+  - propertyName: paymentStatus
+    displayName: Payment Status
+  - propertyName: paymentDate
+    displayName: Expected Payment Date
+  - propertyName: adjusterName
+    displayName: Adjuster Name
+  - propertyName: adjusterPhone
+    displayName: Adjuster Phone
+  - propertyName: adjusterEmail
+    displayName: Adjuster Email
+  - propertyName: nextSteps
+    displayName: Next Steps
+
+inputs:
+  - propertyName: claimNumber
+    displayName: Claim Number
+
+action:
+  kind: InvokeFlowTaskAction
+  # Replace with actual Power Automate flow GUID after deployment
+  flowId: 00000000-0000-0000-0000-000000000002
+
+outputMode: All

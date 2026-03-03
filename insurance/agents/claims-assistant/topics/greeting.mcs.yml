@@ -1,0 +1,33 @@
+# Topic: Greeting
+# Introduces the assistant and offers quick routing options.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/authoring-create-edit-topics
+
+kind: AdaptiveDialog
+modelDescription: |-
+  Greet the user and help them navigate to the right capability:
+  filing a new claim, checking claim status, submitting documents,
+  or connecting with a human claims handler.
+
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Greeting
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - Hello
+      - Hi
+      - I need help with a claim
+      - Good morning
+
+  actions:
+    - kind: SendActivity
+      id: welcome
+      activity: |-
+        Welcome to Claims Assistant. I can help you with:
+        • **Report a new claim** — file a first notice of loss
+        • **Check claim status** — look up an existing claim
+        • **Submit documents** — upload police reports, estimates, or photos
+        • **Talk to a representative** — connect with a claims handler
+
+        What would you like to do?

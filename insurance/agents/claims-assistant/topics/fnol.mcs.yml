@@ -1,0 +1,222 @@
+# Topic: First Notice of Loss (FNOL)
+# Collects structured FNOL intake for auto, property, and casualty lines.
+# Creates claim via Power Automate flow and returns claim number.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/authoring-create-edit-topics
+
+kind: AdaptiveDialog
+modelDescription: |-
+  Handle first notice of loss (FNOL) intake for auto, property, and casualty
+  insurance claims. Collect policy number, loss details, line-specific fields,
+  display state-required fraud disclosure, create claim via backend flow,
+  and return the new claim number and next steps to the policyholder.
+
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: First Notice of Loss
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - file a claim
+      - report an accident
+      - start a new claim
+      - first notice of loss
+      - I need to report damage
+      - I want to report a loss
+
+  actions:
+    - kind: SendActivity
+      id: intro
+      activity: I can help you file a new claim. I will collect the required information.
+
+    # --- Common intake fields ---
+
+    - kind: Question
+      id: q_policy
+      variable: init:Topic.PolicyNumber
+      prompt: What is your policy number?
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: q_state
+      variable: init:Topic.StateCode
+      prompt: In which state did the loss occur?
+      entity: StatePrebuiltEntity
+
+    - kind: Question
+      id: q_lob
+      variable: init:Topic.LineOfBusiness
+      prompt: Is this an auto, property, or casualty claim?
+      entity:
+        kind: EmbeddedEntity
+        definition:
+          kind: ClosedListEntity
+          items:
+            - displayName: Auto
+              values:
+                - auto
+            - displayName: Property
+              values:
+                - property
+            - displayName: Casualty
+              values:
+                - casualty
+
+    - kind: Question
+      id: q_incident_date
+      variable: init:Topic.IncidentDate
+      prompt: What date did the incident occur?
+      entity: DateTimePrebuiltEntity
+
+    - kind: Question
+      id: q_location
+      variable: init:Topic.IncidentLocation
+      prompt: Where did the incident occur? Please provide the address or general location.
+      entity: StringPrebuiltEntity
+
+    - kind: Question
+      id: q_description
+      variable: init:Topic.IncidentDescription
+      prompt: Please describe what happened.
+      entity: StringPrebuiltEntity
+
+    # --- Line-specific branches ---
+
+    - kind: ConditionGroup
+      id: lob_branch
+      conditions:
+        - id: auto_branch
+          condition: =Topic.LineOfBusiness = "auto"
+          actions:
+            - kind: Question
+              id: q_other_vehicle
+              variable: init:Topic.OtherVehicleDetails
+              prompt: Please provide the other vehicle details if available (plate, make, model, driver name).
+              entity: StringPrebuiltEntity
+
+            - kind: Question
+              id: q_police_report
+              variable: init:Topic.PoliceReportNumber
+              prompt: Do you have a police report number? If not, type "none."
+              entity: StringPrebuiltEntity
+
+            - kind: Question
+              id: q_injuries
+              variable: init:Topic.InjuriesReported
+              prompt: Were any injuries reported?
+              entity: BooleanPrebuiltEntity
+
+        - id: property_branch
+          condition: =Topic.LineOfBusiness = "property"
+          actions:
+            - kind: Question
+              id: q_damage_area
+              variable: init:Topic.DamageArea
+              prompt: Which part of the property was damaged?
+              entity: StringPrebuiltEntity
+
+            - kind: Question
+              id: q_emergency_services
+              variable: init:Topic.EmergencyServicesCalled
+              prompt: Were emergency services called?
+              entity: BooleanPrebuiltEntity
+
+            - kind: Question
+              id: q_habitable
+              variable: init:Topic.PropertyHabitable
+              prompt: Is the property currently habitable?
+              entity: BooleanPrebuiltEntity
+
+        - id: casualty_branch
+          condition: =Topic.LineOfBusiness = "casualty"
+          actions:
+            - kind: Question
+              id: q_injury_desc
+              variable: init:Topic.InjuryDescription
+              prompt: Please describe the injury or alleged injury.
+              entity: StringPrebuiltEntity
+
+            - kind: Question
+              id: q_medical_provider
+              variable: init:Topic.MedicalProvider
+              prompt: Which medical provider or facility was involved, if known?
+              entity: StringPrebuiltEntity
+
+            - kind: Question
+              id: q_attorney
+              variable: init:Topic.AttorneyInvolved
+              prompt: Is an attorney currently involved?
+              entity: BooleanPrebuiltEntity
+
+    # --- Attorney escalation guard ---
+
+    - kind: ConditionGroup
+      id: attorney_check
+      conditions:
+        - id: attorney_escalate
+          condition: =Topic.AttorneyInvolved = true
+          actions:
+            - kind: SendActivity
+              id: attorney_msg
+              activity: Because an attorney is involved, I need to connect you with a claims handler who can assist further.
+            - kind: BeginDialog
+              id: goto_escalate
+              dialog: escalate
+
+    # --- Injury escalation guard ---
+
+    - kind: ConditionGroup
+      id: injury_check
+      conditions:
+        - id: injury_escalate
+          condition: =Topic.InjuriesReported = true
+          actions:
+            - kind: SendActivity
+              id: injury_msg
+              activity: Since injuries were reported, a licensed adjuster will be assigned to your claim with priority handling.
+
+    # --- Create claim via Power Automate flow ---
+
+    - kind: InvokeFlowAction
+      id: create_claim
+      input:
+        binding:
+          policyNumber: =Topic.PolicyNumber
+          stateCode: =Topic.StateCode
+          lineOfBusiness: =Topic.LineOfBusiness
+          incidentDate: =Text(Topic.IncidentDate, "yyyy-MM-dd")
+          incidentLocation: =Topic.IncidentLocation
+          incidentDescription: =Topic.IncidentDescription
+          injuriesReported: =Topic.InjuriesReported
+      output:
+        binding:
+          claimNumber: Topic.ClaimNumber
+          fraudDisclosureText: Topic.FraudDisclosureText
+          nextSteps: Topic.NextSteps
+      flowId: 00000000-0000-0000-0000-000000000001
+
+    # --- State-required fraud disclosure ---
+
+    - kind: SendActivity
+      id: fraud_disclosure
+      activity: |-
+        **Required disclosure for your state:**
+        {Topic.FraudDisclosureText}
+
+    # --- Confirmation ---
+
+    - kind: SendActivity
+      id: confirmation
+      activity: |-
+        Your claim has been created.
+
+        **Claim number:** {Topic.ClaimNumber}
+        **Line of business:** {Topic.LineOfBusiness}
+        **State:** {Topic.StateCode}
+
+        **Next steps:** {Topic.NextSteps}
+
+        You can check your claim status anytime by providing your claim number.
+
+    - kind: EndDialog
+      id: end_fnol

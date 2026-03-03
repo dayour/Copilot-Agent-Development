@@ -1,0 +1,42 @@
+# Action: Create Claim Flow
+# Invokes Power Automate flow to create a claim record in the claims management system.
+# Flow must use "When an agent calls the flow" trigger and "Respond to the agent" action.
+# Flow must respond within 100 seconds.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/advanced-flow-create
+
+kind: TaskDialog
+displayName: Create Claim Record
+
+outputs:
+  - propertyName: claimNumber
+    displayName: Claim Number
+    description: The generated claim reference number.
+  - propertyName: fraudDisclosureText
+    displayName: Fraud Disclosure Text
+    description: State-required fraud warning disclosure text.
+  - propertyName: nextSteps
+    displayName: Next Steps
+    description: Next steps message for the policyholder.
+
+inputs:
+  - propertyName: policyNumber
+    displayName: Policy Number
+  - propertyName: stateCode
+    displayName: State Code
+  - propertyName: lineOfBusiness
+    displayName: Line of Business
+  - propertyName: incidentDate
+    displayName: Incident Date
+  - propertyName: incidentLocation
+    displayName: Incident Location
+  - propertyName: incidentDescription
+    displayName: Incident Description
+  - propertyName: injuriesReported
+    displayName: Injuries Reported
+
+action:
+  kind: InvokeFlowTaskAction
+  # Replace with actual Power Automate flow GUID after deployment
+  flowId: 00000000-0000-0000-0000-000000000001
+
+outputMode: All

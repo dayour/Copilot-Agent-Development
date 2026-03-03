@@ -1,0 +1,72 @@
+# Topic: Claim Status
+# Looks up an existing claim and returns status, adjuster, payment, and next steps.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/authoring-create-edit-topics
+
+kind: AdaptiveDialog
+modelDescription: |-
+  Look up claim status by claim number. Return current claim status,
+  payment status, assigned adjuster contact information, and next
+  required action. Do not fabricate any status information.
+
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Claim Status
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - check claim status
+      - where is my claim
+      - claim update
+      - what is happening with my claim
+      - claim progress
+
+  actions:
+    - kind: Question
+      id: q_claim
+      variable: init:Topic.ClaimNumber
+      prompt: Please provide your claim number.
+      entity: StringPrebuiltEntity
+
+    - kind: InvokeFlowAction
+      id: get_status
+      input:
+        binding:
+          claimNumber: =Topic.ClaimNumber
+      output:
+        binding:
+          claimStatus: Topic.ClaimStatus
+          paymentStatus: Topic.PaymentStatus
+          paymentDate: Topic.PaymentDate
+          adjusterName: Topic.AdjusterName
+          adjusterPhone: Topic.AdjusterPhone
+          adjusterEmail: Topic.AdjusterEmail
+          nextSteps: Topic.NextSteps
+      flowId: 00000000-0000-0000-0000-000000000002
+
+    - kind: ConditionGroup
+      id: status_check
+      conditions:
+        - id: not_found
+          condition: =IsBlank(Topic.ClaimStatus)
+          actions:
+            - kind: SendActivity
+              id: not_found_msg
+              activity: I was not able to find a claim with that number. Please verify and try again.
+            - kind: EndDialog
+              id: end_not_found
+
+    - kind: SendActivity
+      id: status_response
+      activity: |-
+        **Claim {Topic.ClaimNumber}**
+        • Status: {Topic.ClaimStatus}
+        • Payment status: {Topic.PaymentStatus}
+        • Expected payment date: {Topic.PaymentDate}
+        • Assigned adjuster: {Topic.AdjusterName}
+        • Phone: {Topic.AdjusterPhone}
+        • Email: {Topic.AdjusterEmail}
+        • Next steps: {Topic.NextSteps}
+
+    - kind: EndDialog
+      id: end_status
