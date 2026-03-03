@@ -1,0 +1,53 @@
+testName: Test Chat Panel
+description: >
+  Verify that the test chat panel exposes the chat input field, send button,
+  response area, and reset conversation button so that runbook automation can
+  drive end-to-end conversation tests.
+page: chat-panel
+agentScoped: true
+
+navigation:
+  - action: navigate
+    target: "${COPILOT_STUDIO_URL}/environments/${COPILOT_ENV_ID}/bots/${COPILOT_TEST_AGENT_ID}/canvas"
+  - action: wait
+    waitMs: 4000
+  - action: click
+    target: "button[aria-label*='Test'], button[data-testid*='test-bot'], [aria-label*='Test your agent']"
+  - action: wait
+    waitMs: 2000
+
+snapshot:
+  filter: interactive
+
+assertions:
+  - ref: "textarea[aria-label*='chat'], input[aria-label*='chat'], [data-testid='webchat-sendbox-input'], [aria-label*='Type your message']"
+    description: Chat message input field
+    required: true
+
+  - ref: "button[aria-label*='Send'], button[data-testid*='send'], [data-testid='webchat-sendbox-button']"
+    description: Send message button
+    required: true
+
+  - ref: "[data-testid='webchat-bubble-content'], [role='log'], [aria-label*='chat transcript'], [class*='chatTranscript']"
+    description: Chat response or transcript area
+    required: true
+
+  - ref: "button[aria-label*='Reset'], button[aria-label*='Start over'], button[data-testid*='reset'], button[aria-label*='Clear conversation']"
+    description: Reset or clear conversation button
+    required: true
+
+  - ref: "[data-testid='test-pane'], [aria-label*='Test pane'], [class*='testPane'], [role='complementary'][aria-label*='Test']"
+    description: Test panel container
+    required: true
+
+  - ref: "button[aria-label*='Close'], button[aria-label*='close test'], [data-testid*='close-test-pane']"
+    description: Close test panel button
+    required: false
+
+  - ref: "[data-testid*='activity'], [role='listitem'][aria-label*='Bot said'], [class*='activity']"
+    description: Individual chat activity or message bubble
+    required: false
+
+  - ref: "button[aria-label*='Microphone'], button[aria-label*='voice'], [data-testid*='microphone']"
+    description: Voice or microphone input button
+    required: false
