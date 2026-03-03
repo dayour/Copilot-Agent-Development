@@ -1,0 +1,90 @@
+# Topic: Document Submission
+# Accepts claim documentation and confirms receipt.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/authoring-create-edit-topics
+
+kind: AdaptiveDialog
+modelDescription: |-
+  Accept document uploads for an existing claim. Confirm receipt and
+  provide upload status. Supported document types include police reports,
+  repair estimates, medical records, and photos.
+
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Document Submission
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - submit documents
+      - upload police report
+      - upload repair estimate
+      - send claim files
+      - I have documents for my claim
+
+  actions:
+    - kind: Question
+      id: q_claim
+      variable: init:Topic.ClaimNumber
+      prompt: Please provide the claim number for the document upload.
+      entity: StringPrebuiltEntity
+
+    - kind: SendActivity
+      id: upload_instructions
+      activity: |-
+        Please upload your document. Accepted file types: PDF, JPG, PNG.
+        Maximum size: 15 MB per file.
+
+        Common document types:
+        • Police report
+        • Repair estimate
+        • Medical records
+        • Photos of damage
+
+    - kind: Question
+      id: q_doc_type
+      variable: init:Topic.DocumentType
+      prompt: What type of document are you submitting?
+      entity:
+        kind: EmbeddedEntity
+        definition:
+          kind: ClosedListEntity
+          items:
+            - displayName: Police report
+              values:
+                - police report
+            - displayName: Repair estimate
+              values:
+                - repair estimate
+            - displayName: Medical records
+              values:
+                - medical records
+            - displayName: Photos
+              values:
+                - photos
+                - photo
+            - displayName: Other
+              values:
+                - other
+
+    - kind: InvokeFlowAction
+      id: upload_doc
+      input:
+        binding:
+          claimNumber: =Topic.ClaimNumber
+          documentType: =Topic.DocumentType
+      output:
+        binding:
+          documentId: Topic.DocumentId
+          uploadStatus: Topic.UploadStatus
+      flowId: 00000000-0000-0000-0000-000000000003
+
+    - kind: SendActivity
+      id: upload_confirmation
+      activity: |-
+        Document received and attached to claim {Topic.ClaimNumber}.
+        • Document ID: {Topic.DocumentId}
+        • Type: {Topic.DocumentType}
+        • Status: {Topic.UploadStatus}
+
+    - kind: EndDialog
+      id: end_doc

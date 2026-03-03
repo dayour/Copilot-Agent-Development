@@ -1,0 +1,25 @@
+# Name: Subscription Governance
+# Domain-specific topic for Azure_Subscriptions
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Subscription Governance
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - governance
+      - subscription governance
+      - policies
+      - management groups
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I can assist with subscription governance. Are you setting up policies, organizing management groups, or implementing compliance frameworks?
+        speak:
+          - I can assist with subscription governance. Are you setting up policies, organizing management groups, or implementing compliance frameworks?
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end

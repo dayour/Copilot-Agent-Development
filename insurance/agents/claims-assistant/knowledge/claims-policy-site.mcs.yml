@@ -1,0 +1,10 @@
+# Knowledge Source: Claims Policy SharePoint Site
+# Grounding knowledge from the enterprise claims policy document library.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/knowledge-copilot-studio
+
+kind: KnowledgeSourceConfiguration
+source:
+  kind: SharePointSource
+  # Replace with actual SharePoint site URL after deployment.
+  # The connection must use a connection reference with appropriate permissions.
+  site: https://contoso.sharepoint.com/sites/ClaimsPolicies

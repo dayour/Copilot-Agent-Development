@@ -1,0 +1,24 @@
+# Topic: Fallback
+# Handles unrecognized input with graceful recovery.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/authoring-create-edit-topics
+
+kind: AdaptiveDialog
+modelDescription: |-
+  Handle unrecognized user input. Offer to retry, suggest available
+  capabilities, or escalate to a human claims handler.
+
+beginDialog:
+  kind: OnUnknownIntent
+  id: main
+
+  actions:
+    - kind: SendActivity
+      id: fallback_msg
+      activity: |-
+        I was not able to understand that request. I can help you with:
+        • Filing a new claim
+        • Checking claim status
+        • Submitting documents
+        • Connecting you to a claims handler
+
+        Would you like to try again or speak to a representative?

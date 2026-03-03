@@ -1,0 +1,15 @@
+{
+  "AgentName": "Azure_Subscriptions",
+  "RequiredFiles": [
+    "agent.mcs.yml",
+    "settings.mcs.yml",
+    "Readme.md",
+    "icon.png",
+    "topics\\*.mcs.yml",
+    ".mcs\\*.json",
+    ".mcs\\*.txt"
+  ],
+  "PackageVersion": "1.0.0",
+  "CreatedDate": "2025-06-09 18:40:37",
+  "PackageType": "CopilotStudioAgent"
+}
