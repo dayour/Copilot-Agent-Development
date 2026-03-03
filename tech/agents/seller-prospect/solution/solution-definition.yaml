@@ -3,7 +3,7 @@ solution:
   name: SellerProspectSolution
   displayName: Seller Prospect
   publisher: TechSalesPlatform
-  version: 1.0.0
+  version: "1.1.0"
   managed: false
   description: >
     Copilot Studio solution for internal seller enablement and external prospect engagement with Salesforce CRM integration.
