@@ -48,6 +48,20 @@ global_variables:
     type: string
   - name: User.IsAdmin
     type: boolean
+  - name: Orchestration.SessionId
+    type: string
+  - name: Orchestration.Pattern
+    type: string
+  - name: Orchestration.SpokeResults
+    type: string
+  - name: Orchestration.PipelineStage
+    type: string
+  - name: Orchestration.BusinessReviewPayload
+    type: string
+  - name: Orchestration.ConsensusRequest
+    type: string
+  - name: Orchestration.ConsensusResults
+    type: string
 
 topics:
 
@@ -80,6 +94,9 @@ topics:
       - Active alerts
       - Save this analysis
       - Schedule a report
+      - Spoke analysis
+      - Prepare weekly business review
+      - Should we markdown this category
 
   - name: Sales Performance
     description: >
@@ -1156,3 +1173,747 @@ topics:
       - type: message
         text: >
           Scheduled report "{report_name}" has been cancelled and will no longer run.
+
+  # ---------------------------------------------------------------------------
+  # Multi-Agent Orchestration — Hub-and-Spoke Pattern
+  # ---------------------------------------------------------------------------
+
+  - name: Hub Routing
+    description: >
+      Central orchestration entry point for the hub-and-spoke pattern.
+      Classifies the user intent and dispatches the request to the appropriate
+      specialized spoke topic: Sales Analyst, Inventory Analyst, Customer Analyst,
+      or Operations Analyst. Manages context handoff and session tracking via
+      the AgentOrchestrationSessions Dataverse table.
+    trigger_phrases:
+      - run spoke analysis
+      - dispatch to specialist
+      - analyze with specialist agent
+      - route my question to the right analyst
+      - spoke analysis for {store}
+    entities:
+      - name: question
+        type: string
+        prompt: What would you like to analyze? Describe your question and the agent will route it to the right specialist.
+      - name: store
+        type: string
+        prompt: Specify the store, region, or use All Stores.
+      - name: period
+        type: choice
+        options: [this week, last week, this month, last month, quarter to date, year to date]
+        default: this month
+        prompt: Select the analysis period.
+    actions:
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionCreate
+        input:
+          pattern: hub_and_spoke
+          question: "{question}"
+          store: "{store}"
+          period: "{period}"
+          owner_entra_id: "{User.EntraId}"
+        output_variable: session_id
+      - type: set_variable
+        variable: Orchestration.SessionId
+        value: "{session_id}"
+      - type: set_variable
+        variable: Orchestration.Pattern
+        value: hub_and_spoke
+      - type: set_variable
+        variable: Analysis.Store
+        value: "{store}"
+      - type: set_variable
+        variable: Analysis.Period
+        value: "{period}"
+      - type: set_variable
+        variable: Analysis.Question
+        value: "{question}"
+      - type: redirect_to_topic
+        target_topic: Sales Analyst Spoke
+      - type: redirect_to_topic
+        target_topic: Inventory Analyst Spoke
+      - type: redirect_to_topic
+        target_topic: Customer Analyst Spoke
+      - type: redirect_to_topic
+        target_topic: Operations Analyst Spoke
+      - type: redirect_to_topic
+        target_topic: Hub and Spoke Synthesis
+
+  - name: Sales Analyst Spoke
+    description: >
+      Spoke agent specializing in revenue and target queries, comparable-store
+      sales, and category performance. Invoked by Hub Routing as part of the
+      hub-and-spoke orchestration pattern. Appends its result to
+      Orchestration.SpokeResults for synthesis by Hub and Spoke Synthesis.
+    actions:
+      - type: power_automate_flow
+        flow_name: SalesAnalystQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          store: "{Analysis.Store}"
+          period: "{Analysis.Period}"
+          question: "{Analysis.Question}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: sales_spoke_result
+      - type: condition
+        expression: "{sales_spoke_result.status} == 'success'"
+        true_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|sales:{sales_spoke_result.summary}"
+        false_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|sales:unavailable(${SpokeFallbackMessage})"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: sales
+          result: "{sales_spoke_result.summary}"
+          status: "{sales_spoke_result.status}"
+
+  - name: Inventory Analyst Spoke
+    description: >
+      Spoke agent specializing in stock levels, replenishment triggers,
+      allocation recommendations, and weeks of cover analysis. Invoked by
+      Hub Routing as part of the hub-and-spoke orchestration pattern.
+      Appends its result to Orchestration.SpokeResults for synthesis.
+    actions:
+      - type: power_automate_flow
+        flow_name: InventoryAnalystQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          store: "{Analysis.Store}"
+          period: "{Analysis.Period}"
+          question: "{Analysis.Question}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: inventory_spoke_result
+      - type: condition
+        expression: "{inventory_spoke_result.status} == 'success'"
+        true_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|inventory:{inventory_spoke_result.summary}"
+        false_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|inventory:unavailable(${SpokeFallbackMessage})"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: inventory
+          result: "{inventory_spoke_result.summary}"
+          status: "{inventory_spoke_result.status}"
+
+  - name: Customer Analyst Spoke
+    description: >
+      Spoke agent specializing in customer segment analysis, loyalty metrics,
+      basket composition, and transaction frequency analysis. Invoked by
+      Hub Routing as part of the hub-and-spoke orchestration pattern.
+      Appends its result to Orchestration.SpokeResults for synthesis.
+    actions:
+      - type: power_automate_flow
+        flow_name: CustomerAnalystQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          store: "{Analysis.Store}"
+          period: "{Analysis.Period}"
+          question: "{Analysis.Question}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: customer_spoke_result
+      - type: condition
+        expression: "{customer_spoke_result.status} == 'success'"
+        true_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|customer:{customer_spoke_result.summary}"
+        false_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|customer:unavailable(${SpokeFallbackMessage})"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: customer
+          result: "{customer_spoke_result.summary}"
+          status: "{customer_spoke_result.status}"
+
+  - name: Operations Analyst Spoke
+    description: >
+      Spoke agent specializing in labour scheduling efficiency, shrinkage analysis,
+      and store operations KPIs such as conversion rate, transactions per hour,
+      and units per transaction. Invoked by Hub Routing as part of the
+      hub-and-spoke orchestration pattern. Appends its result to
+      Orchestration.SpokeResults for synthesis.
+    actions:
+      - type: power_automate_flow
+        flow_name: OperationsAnalystQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          store: "{Analysis.Store}"
+          period: "{Analysis.Period}"
+          question: "{Analysis.Question}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: operations_spoke_result
+      - type: condition
+        expression: "{operations_spoke_result.status} == 'success'"
+        true_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|operations:{operations_spoke_result.summary}"
+        false_actions:
+          - type: set_variable
+            variable: Orchestration.SpokeResults
+            value: "{Orchestration.SpokeResults}|operations:unavailable(${SpokeFallbackMessage})"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: operations
+          result: "{operations_spoke_result.summary}"
+          status: "{operations_spoke_result.status}"
+
+  - name: Hub and Spoke Synthesis
+    description: >
+      Final synthesis step for the hub-and-spoke pattern. Combines results from
+      all four spoke agents (Sales, Inventory, Customer, Operations) into a
+      unified analytical response. Surfaces the most relevant insights given
+      the original question and flags any spokes that returned unavailable data.
+    actions:
+      - type: prompt
+        prompt_name: HubAndSpokeSynthesisPrompt
+        input:
+          question: "{Analysis.Question}"
+          store: "{Analysis.Store}"
+          period: "{Analysis.Period}"
+          spoke_results: "{Orchestration.SpokeResults}"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          stage: synthesis
+          final_result: "{hub_synthesis_response}"
+          status: completed
+      - type: message
+        text: >
+          Hub-and-Spoke Analysis — {Analysis.Store} ({Analysis.Period})
+          Question: {Analysis.Question}
+
+          {hub_synthesis_response}
+
+          Data sourced from: Sales Analyst, Inventory Analyst, Customer Analyst, Operations Analyst.
+          Session ID: {Orchestration.SessionId}
+
+  # ---------------------------------------------------------------------------
+  # Multi-Agent Orchestration — Pipeline Pattern (Weekly Business Review)
+  # ---------------------------------------------------------------------------
+
+  - name: Weekly Business Review
+    description: >
+      Entry point for the pipeline orchestration pattern. Prepares a weekly
+      business review by chaining four sequential stages: data collection,
+      insight generation, narrative construction, and delivery. Handles partial
+      failures at each stage and falls back gracefully.
+    trigger_phrases:
+      - prepare my weekly business review
+      - run the weekly business review
+      - generate weekly business review
+      - start the weekly review pipeline
+      - create weekly performance pack
+    entities:
+      - name: period
+        type: string
+        prompt: >
+          Enter the week to review (for example 2026-W09). Leave blank to use the most recently completed week.
+      - name: delivery_format
+        type: choice
+        options: [teams, powerpoint, email]
+        default: teams
+        prompt: How should the completed review be delivered?
+      - name: recipients
+        type: string
+        prompt: Enter Teams channel, email addresses, or leave blank to use the default recipients.
+    actions:
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionCreate
+        input:
+          pattern: pipeline
+          pipeline_name: WeeklyBusinessReview
+          period: "{period}"
+          delivery_format: "{delivery_format}"
+          recipients: "{recipients}"
+          owner_entra_id: "{User.EntraId}"
+        output_variable: session_id
+      - type: set_variable
+        variable: Orchestration.SessionId
+        value: "{session_id}"
+      - type: set_variable
+        variable: Orchestration.Pattern
+        value: pipeline
+      - type: set_variable
+        variable: Analysis.Period
+        value: "{period}"
+      - type: message
+        text: >
+          Starting weekly business review for {period}.
+          Pipeline: Data Collection -> Insight Generation -> Narrative Construction -> Delivery.
+          Session ID: {Orchestration.SessionId}
+      - type: redirect_to_topic
+        target_topic: Business Review - Data Collection
+
+  - name: Business Review - Data Collection
+    description: >
+      Stage 1 of the weekly business review pipeline. Queries all KPIs from
+      Dataverse and Power BI across sales, inventory, labour, and customer
+      dimensions. Passes a structured payload to the next stage. If this
+      stage fails, the pipeline halts and reports the failure.
+    actions:
+      - type: set_variable
+        variable: Orchestration.PipelineStage
+        value: data_collection
+      - type: power_automate_flow
+        flow_name: BusinessReviewDataCollection
+        input:
+          session_id: "{Orchestration.SessionId}"
+          period: "{Analysis.Period}"
+          dataset_id: "${PowerBiDatasetId}"
+          kpi_scopes:
+            - sales_summary
+            - inventory_summary
+            - labour_summary
+            - customer_summary
+        output_variable: data_collection_result
+      - type: condition
+        expression: "{data_collection_result.status} == 'success'"
+        true_actions:
+          - type: set_variable
+            variable: Orchestration.BusinessReviewPayload
+            value: "{data_collection_result.payload}"
+          - type: power_automate_flow
+            flow_name: OrchestrationSessionUpdate
+            input:
+              session_id: "{Orchestration.SessionId}"
+              stage: data_collection
+              status: completed
+          - type: redirect_to_topic
+            target_topic: Business Review - Insight Generation
+        false_actions:
+          - type: power_automate_flow
+            flow_name: OrchestrationSessionUpdate
+            input:
+              session_id: "{Orchestration.SessionId}"
+              stage: data_collection
+              status: failed
+              error: "{data_collection_result.error}"
+          - type: message
+            text: >
+              Weekly business review could not complete. Data collection failed for period {Analysis.Period}.
+              Error: {data_collection_result.error}
+              The partial results have been saved to session {Orchestration.SessionId}.
+              Please retry or contact your data operations team if the issue persists.
+
+  - name: Business Review - Insight Generation
+    description: >
+      Stage 2 of the weekly business review pipeline. Identifies notable KPI
+      changes, anomalies, and trends from the collected data payload. Produces
+      a structured list of insights ranked by business impact. Passes results
+      to narrative construction.
+    actions:
+      - type: set_variable
+        variable: Orchestration.PipelineStage
+        value: insight_generation
+      - type: power_automate_flow
+        flow_name: BusinessReviewInsightGeneration
+        input:
+          session_id: "{Orchestration.SessionId}"
+          period: "{Analysis.Period}"
+          data_payload: "{Orchestration.BusinessReviewPayload}"
+          anomaly_zscore_threshold: 2
+        output_variable: insight_result
+      - type: condition
+        expression: "{insight_result.status} == 'success'"
+        true_actions:
+          - type: set_variable
+            variable: Orchestration.BusinessReviewPayload
+            value: "{Orchestration.BusinessReviewPayload}|insights:{insight_result.insights_json}"
+          - type: power_automate_flow
+            flow_name: OrchestrationSessionUpdate
+            input:
+              session_id: "{Orchestration.SessionId}"
+              stage: insight_generation
+              status: completed
+          - type: redirect_to_topic
+            target_topic: Business Review - Narrative Construction
+        false_actions:
+          - type: power_automate_flow
+            flow_name: OrchestrationSessionUpdate
+            input:
+              session_id: "{Orchestration.SessionId}"
+              stage: insight_generation
+              status: failed
+              error: "{insight_result.error}"
+          - type: message
+            text: >
+              Insight generation encountered an error for period {Analysis.Period}.
+              Error: {insight_result.error}
+              Proceeding to narrative construction with available data.
+          - type: redirect_to_topic
+            target_topic: Business Review - Narrative Construction
+
+  - name: Business Review - Narrative Construction
+    description: >
+      Stage 3 of the weekly business review pipeline. Builds an executive
+      summary with key callouts using the collected KPIs and generated insights.
+      Formats the narrative according to the delivery target (Teams, PowerPoint,
+      or email). Passes the final narrative to the delivery stage.
+    actions:
+      - type: set_variable
+        variable: Orchestration.PipelineStage
+        value: narrative_construction
+      - type: prompt
+        prompt_name: BusinessReviewNarrativePrompt
+        input:
+          period: "{Analysis.Period}"
+          data_payload: "{Orchestration.BusinessReviewPayload}"
+      - type: power_automate_flow
+        flow_name: BusinessReviewNarrativeConstruction
+        input:
+          session_id: "{Orchestration.SessionId}"
+          period: "{Analysis.Period}"
+          narrative_text: "{business_review_narrative}"
+          data_payload: "{Orchestration.BusinessReviewPayload}"
+        output_variable: narrative_result
+      - type: set_variable
+        variable: Orchestration.BusinessReviewPayload
+        value: "{Orchestration.BusinessReviewPayload}|narrative:{narrative_result.narrative_json}"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          stage: narrative_construction
+          status: completed
+      - type: redirect_to_topic
+        target_topic: Business Review - Delivery
+
+  - name: Business Review - Delivery
+    description: >
+      Stage 4 and final stage of the weekly business review pipeline. Delivers
+      the completed review to the specified Teams channel or generates a PowerPoint
+      deck via the Microsoft Graph API. Confirms successful delivery or reports
+      any delivery failure.
+    actions:
+      - type: set_variable
+        variable: Orchestration.PipelineStage
+        value: delivery
+      - type: power_automate_flow
+        flow_name: BusinessReviewDelivery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          period: "{Analysis.Period}"
+          review_payload: "{Orchestration.BusinessReviewPayload}"
+          delivery_format: "{delivery_format}"
+          recipients: "{recipients}"
+          teams_channel_id: "${BusinessReviewTeamsChannelId}"
+          powerpoint_template_id: "${BusinessReviewPowerPointTemplateId}"
+        output_variable: delivery_result
+      - type: condition
+        expression: "{delivery_result.status} == 'success'"
+        true_actions:
+          - type: power_automate_flow
+            flow_name: OrchestrationSessionUpdate
+            input:
+              session_id: "{Orchestration.SessionId}"
+              stage: delivery
+              status: completed
+          - type: message
+            text: >
+              Weekly Business Review for {Analysis.Period} has been delivered.
+              Format: {delivery_format}
+              Recipients: {recipients}
+              Delivery reference: {delivery_result.reference}
+              Session ID: {Orchestration.SessionId}
+        false_actions:
+          - type: power_automate_flow
+            flow_name: OrchestrationSessionUpdate
+            input:
+              session_id: "{Orchestration.SessionId}"
+              stage: delivery
+              status: failed
+              error: "{delivery_result.error}"
+          - type: message
+            text: >
+              Weekly business review content is ready but delivery failed.
+              Error: {delivery_result.error}
+              The narrative is available in session {Orchestration.SessionId}.
+              Please retry delivery or contact your Teams administrator.
+
+  # ---------------------------------------------------------------------------
+  # Multi-Agent Orchestration — Consensus Pattern (Markdown Recommendation)
+  # ---------------------------------------------------------------------------
+
+  - name: Markdown Recommendation
+    description: >
+      Entry point for the consensus orchestration pattern. Evaluates whether
+      to markdown a category by querying five analytical perspectives: sales
+      velocity, inventory position, margin analysis, competitive intelligence,
+      and historical precedent. Synthesizes a balanced recommendation with
+      a confidence level and supporting evidence.
+    trigger_phrases:
+      - should we markdown this category
+      - recommend a markdown for {category}
+      - should I run a promotion on {category}
+      - markdown decision for {category}
+      - evaluate markdown for {category}
+    entities:
+      - name: category
+        type: string
+        prompt: Which product category or sub-category is under consideration?
+      - name: brand
+        type: string
+        prompt: Specify a brand within the category, or leave blank for all brands.
+      - name: proposed_markdown_pct
+        type: number
+        prompt: What markdown percentage are you considering? Enter a number such as 20 for 20%.
+        default: 20
+      - name: period
+        type: choice
+        options: [this week, last week, this month, last month, quarter to date]
+        default: this month
+        prompt: Select the reference period for the analysis.
+    actions:
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionCreate
+        input:
+          pattern: consensus
+          pipeline_name: MarkdownRecommendation
+          category: "{category}"
+          brand: "{brand}"
+          proposed_markdown_pct: "{proposed_markdown_pct}"
+          period: "{period}"
+          owner_entra_id: "{User.EntraId}"
+        output_variable: session_id
+      - type: set_variable
+        variable: Orchestration.SessionId
+        value: "{session_id}"
+      - type: set_variable
+        variable: Orchestration.Pattern
+        value: consensus
+      - type: set_variable
+        variable: Analysis.Category
+        value: "{category}"
+      - type: set_variable
+        variable: Analysis.Brand
+        value: "{brand}"
+      - type: set_variable
+        variable: Analysis.Period
+        value: "{period}"
+      - type: set_variable
+        variable: Orchestration.ConsensusRequest
+        value: "markdown:{category}:{brand}:{proposed_markdown_pct}:{period}"
+      - type: message
+        text: >
+          Gathering analytical perspectives to evaluate a {proposed_markdown_pct}% markdown
+          on {category} ({brand}) for {period}.
+          Querying: Sales Velocity, Inventory Position, Margin Analysis,
+          Competitive Intelligence, Historical Precedent.
+      - type: redirect_to_topic
+        target_topic: Consensus - Sales Velocity
+      - type: redirect_to_topic
+        target_topic: Consensus - Inventory Position
+      - type: redirect_to_topic
+        target_topic: Consensus - Margin Analysis
+      - type: redirect_to_topic
+        target_topic: Consensus - Competitive Intelligence
+      - type: redirect_to_topic
+        target_topic: Consensus - Historical Precedent
+      - type: redirect_to_topic
+        target_topic: Consensus - Recommendation Synthesis
+
+  - name: Consensus - Sales Velocity
+    description: >
+      Consensus perspective 1 of 5. Evaluates whether the category is selling
+      fast enough relative to its historical rate and plan. Contributes a
+      sell_fast or sell_slow signal with supporting metrics to the consensus result set.
+    actions:
+      - type: power_automate_flow
+        flow_name: MarkdownConsensusQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          perspective: sales_velocity
+          category: "{Analysis.Category}"
+          brand: "{Analysis.Brand}"
+          period: "{Analysis.Period}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: sales_velocity_result
+      - type: set_variable
+        variable: Orchestration.ConsensusResults
+        value: "{Orchestration.ConsensusResults}|sales_velocity:{sales_velocity_result.summary}:{sales_velocity_result.signal}"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: sales_velocity
+          result: "{sales_velocity_result.summary}"
+          signal: "{sales_velocity_result.signal}"
+
+  - name: Consensus - Inventory Position
+    description: >
+      Consensus perspective 2 of 5. Assesses weeks of cover remaining and
+      overstock risk for the category. Contributes a high_cover or low_cover
+      signal to the consensus result set. High weeks of cover supports a markdown.
+    actions:
+      - type: power_automate_flow
+        flow_name: MarkdownConsensusQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          perspective: inventory_position
+          category: "{Analysis.Category}"
+          brand: "{Analysis.Brand}"
+          period: "{Analysis.Period}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: inventory_position_result
+      - type: set_variable
+        variable: Orchestration.ConsensusResults
+        value: "{Orchestration.ConsensusResults}|inventory_position:{inventory_position_result.summary}:{inventory_position_result.signal}"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: inventory_position
+          result: "{inventory_position_result.summary}"
+          signal: "{inventory_position_result.signal}"
+
+  - name: Consensus - Margin Analysis
+    description: >
+      Consensus perspective 3 of 5. Compares current gross margin against the
+      target margin and projects the post-markdown margin impact. Contributes
+      a margin_healthy or margin_at_risk signal to the consensus result set.
+    actions:
+      - type: power_automate_flow
+        flow_name: MarkdownConsensusQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          perspective: margin_analysis
+          category: "{Analysis.Category}"
+          brand: "{Analysis.Brand}"
+          period: "{Analysis.Period}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: margin_analysis_result
+      - type: set_variable
+        variable: Orchestration.ConsensusResults
+        value: "{Orchestration.ConsensusResults}|margin_analysis:{margin_analysis_result.summary}:{margin_analysis_result.signal}"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: margin_analysis
+          result: "{margin_analysis_result.summary}"
+          signal: "{margin_analysis_result.signal}"
+
+  - name: Consensus - Competitive Intelligence
+    description: >
+      Consensus perspective 4 of 5. Reviews competitor pricing and promotional
+      activity for the category using available market intelligence data. Contributes
+      a competitive_pressure or no_pressure signal to the consensus result set.
+    actions:
+      - type: power_automate_flow
+        flow_name: MarkdownConsensusQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          perspective: competitive_intelligence
+          category: "{Analysis.Category}"
+          brand: "{Analysis.Brand}"
+          period: "{Analysis.Period}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: competitive_intel_result
+      - type: condition
+        expression: "{competitive_intel_result.status} == 'success'"
+        true_actions:
+          - type: set_variable
+            variable: Orchestration.ConsensusResults
+            value: "{Orchestration.ConsensusResults}|competitive_intelligence:{competitive_intel_result.summary}:{competitive_intel_result.signal}"
+        false_actions:
+          - type: set_variable
+            variable: Orchestration.ConsensusResults
+            value: "{Orchestration.ConsensusResults}|competitive_intelligence:unavailable:unknown"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: competitive_intelligence
+          result: "{competitive_intel_result.summary}"
+          signal: "{competitive_intel_result.signal}"
+
+  - name: Consensus - Historical Precedent
+    description: >
+      Consensus perspective 5 of 5. Examines outcomes of previous markdowns on
+      comparable categories and periods, including the resulting uplift, margin
+      impact, and inventory clearance rate. Contributes a precedent_supports or
+      precedent_cautions signal to the consensus result set.
+    actions:
+      - type: power_automate_flow
+        flow_name: MarkdownConsensusQuery
+        input:
+          session_id: "{Orchestration.SessionId}"
+          perspective: historical_precedent
+          category: "{Analysis.Category}"
+          brand: "{Analysis.Brand}"
+          period: "{Analysis.Period}"
+          dataset_id: "${PowerBiDatasetId}"
+        output_variable: historical_precedent_result
+      - type: set_variable
+        variable: Orchestration.ConsensusResults
+        value: "{Orchestration.ConsensusResults}|historical_precedent:{historical_precedent_result.summary}:{historical_precedent_result.signal}"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          spoke: historical_precedent
+          result: "{historical_precedent_result.summary}"
+          signal: "{historical_precedent_result.signal}"
+
+  - name: Consensus - Recommendation Synthesis
+    description: >
+      Final synthesis step for the consensus pattern. Aggregates the five
+      analytical signals and produces a balanced markdown recommendation with
+      a confidence level (high, medium, or low) and supporting evidence.
+      Records the recommendation in Dataverse for audit and recall.
+    actions:
+      - type: prompt
+        prompt_name: ConsensusRecommendationSynthesisPrompt
+        input:
+          category: "{Analysis.Category}"
+          brand: "{Analysis.Brand}"
+          period: "{Analysis.Period}"
+          proposed_markdown_pct: "{proposed_markdown_pct}"
+          consensus_results: "{Orchestration.ConsensusResults}"
+      - type: power_automate_flow
+        flow_name: OrchestrationSessionUpdate
+        input:
+          session_id: "{Orchestration.SessionId}"
+          stage: synthesis
+          final_result: "{consensus_recommendation}"
+          confidence_level: "{consensus_confidence_level}"
+          status: completed
+      - type: message
+        text: >
+          Markdown Recommendation — {Analysis.Category} ({Analysis.Brand}) | {Analysis.Period}
+          Proposed markdown: {proposed_markdown_pct}%
+
+          Recommendation: {consensus_recommendation}
+          Confidence Level: {consensus_confidence_level}
+
+          Analytical Perspectives:
+          - Sales Velocity: {consensus_sales_velocity_signal}
+          - Inventory Position: {consensus_inventory_position_signal}
+          - Margin Analysis: {consensus_margin_analysis_signal}
+          - Competitive Intelligence: {consensus_competitive_intelligence_signal}
+          - Historical Precedent: {consensus_historical_precedent_signal}
+
+          Supporting Evidence:
+          {consensus_supporting_evidence}
+
+          Session ID: {Orchestration.SessionId}

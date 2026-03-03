@@ -165,3 +165,111 @@
   description: >
     Tests that the agent handles a return rate comparison query with appropriate
     context about what a high return rate means.
+
+# ---------------------------------------------------------------------------
+# Multi-Agent Orchestration Test Cases
+# ---------------------------------------------------------------------------
+
+- id: clothing-pa-orch-001
+  tier: critical
+  query: "Run spoke analysis for Store 42 last month"
+  expected_keywords:
+    - spoke
+    - analysis
+    - store
+    - analyst
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Power Analysis agent supports a hub-and-spoke orchestration pattern.
+    When a user requests spoke analysis, the agent creates an orchestration session
+    and routes the request to Sales Analyst, Inventory Analyst, Customer Analyst,
+    and Operations Analyst spokes before synthesizing a unified response.
+  description: >
+    Verifies that the agent acknowledges and initiates the hub-and-spoke
+    orchestration pattern when the user asks for a spoke analysis.
+
+- id: clothing-pa-orch-002
+  tier: critical
+  query: "Prepare my weekly business review for last week"
+  expected_keywords:
+    - weekly
+    - business
+    - review
+    - pipeline
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Power Analysis agent supports a four-stage pipeline orchestration pattern
+    for preparing the weekly business review. The pipeline stages are: data collection,
+    insight generation, narrative construction, and delivery.
+  description: >
+    Verifies that the agent acknowledges and initiates the weekly business review
+    pipeline when the user requests a business review.
+
+- id: clothing-pa-orch-003
+  tier: critical
+  query: "Should we markdown the outerwear category this month?"
+  expected_keywords:
+    - markdown
+    - category
+    - recommendation
+    - outerwear
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Power Analysis agent supports a consensus orchestration pattern for markdown
+    decisions. It queries five analytical perspectives: sales velocity, inventory
+    position, margin analysis, competitive intelligence, and historical precedent.
+    It then synthesizes a balanced recommendation with a confidence level.
+  description: >
+    Verifies that the agent acknowledges and initiates the markdown consensus
+    pattern when the user asks whether to markdown a category.
+
+- id: clothing-pa-orch-004
+  tier: functional
+  query: "I need a full performance summary for the North region this quarter using all available analysts"
+  expected_keywords:
+    - performance
+    - region
+    - north
+    - summary
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The Power Analysis hub-and-spoke pattern dispatches to four specialized spoke agents
+    that each cover a different domain: sales, inventory, customer, and operations.
+    The hub synthesizes all results into a unified response. A broad performance
+    summary question should trigger the hub-and-spoke route.
+  description: >
+    Tests that the agent provides a grounded, complete response to a broad
+    multi-domain performance summary request routed through the hub-and-spoke pattern.
+
+- id: clothing-pa-orch-005
+  tier: functional
+  query: "What is the confidence level for marking down the denim category by 25%?"
+  expected_keywords:
+    - confidence
+    - markdown
+    - denim
+    - recommendation
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The Power Analysis consensus pattern evaluates markdown decisions by querying
+    sales velocity, inventory position, margin analysis, competitive intelligence,
+    and historical precedent perspectives. It returns a recommendation with a
+    confidence level of high, medium, or low.
+  description: >
+    Tests that the agent provides a recommendation with explicit confidence level
+    framing for a markdown decision query using the consensus pattern.

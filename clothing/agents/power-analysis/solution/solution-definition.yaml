@@ -5,7 +5,7 @@
 solution:
   name: ClothingPowerAnalysis
   display_name: "Clothing — Power Analysis"
-  version: "2.2.0"
+  version: "3.0.0"
   publisher: Copilot Agent Development
   description: >
     Deep reasoning analytics solution for the Power Analysis agent in the
@@ -188,6 +188,38 @@ environment_variables:
       (e.g., "monthly", "weekly") or a cron expression (e.g., "0 0 1 * *" for the
       first day of each calendar month at midnight).
     default_value: "monthly"
+
+  - name: OrchestratorTimeoutSeconds
+    display_name: Orchestrator Timeout (Seconds)
+    type: integer
+    description: >
+      Maximum number of seconds to wait for each spoke or pipeline stage before
+      recording a timeout and falling back gracefully. Default is 30 seconds.
+    default_value: "30"
+
+  - name: SpokeFallbackMessage
+    display_name: Spoke Fallback Message
+    type: string
+    description: >
+      Message inserted into the synthesis response when a spoke agent fails or
+      times out. Shown to the user alongside any successfully returned spoke results.
+    default_value: "Data temporarily unavailable. Please retry or contact your data operations team."
+
+  - name: BusinessReviewTeamsChannelId
+    display_name: Business Review Teams Channel ID
+    type: string
+    description: >
+      Microsoft Teams channel ID used to post the completed weekly business review.
+      Required when the pipeline delivery format is Teams.
+    default_value: ""
+
+  - name: BusinessReviewPowerPointTemplateId
+    display_name: Business Review PowerPoint Template ID
+    type: string
+    description: >
+      SharePoint file ID of the PowerPoint template used to generate the weekly
+      business review deck via the Microsoft Graph API.
+    default_value: ""
 
 components:
   dataverse_tables:
@@ -783,6 +815,50 @@ components:
         - name: NextRunAt
           type: datetime
 
+    - name: AgentOrchestrationSessions
+      display_name: Agent Orchestration Sessions
+      description: >
+        Tracks every multi-agent orchestration session across hub-and-spoke,
+        pipeline, and consensus patterns. Used for context handoff between
+        topics, timeout tracking, and analytics on agent interaction quality.
+      primary_key: SessionId
+      columns:
+        - name: SessionId
+          type: string
+        - name: Pattern
+          type: choice
+          options: [hub_and_spoke, pipeline, consensus]
+          description: "Orchestration pattern used for this session."
+        - name: PipelineName
+          type: string
+          description: "Name of the specific pipeline or consensus workflow."
+        - name: Status
+          type: choice
+          options: [in_progress, completed, failed, timed_out]
+          default: in_progress
+        - name: StartedAt
+          type: datetime
+        - name: CompletedAt
+          type: datetime
+        - name: OwnerEntraId
+          type: string
+        - name: InputParameters
+          type: string
+          description: JSON serialization of the session input parameters.
+        - name: SpokeResults
+          type: string
+          description: Pipe-delimited spoke result summaries for hub-and-spoke and consensus sessions.
+        - name: FinalResult
+          type: string
+          description: Synthesized final response or recommendation.
+        - name: ConfidenceLevel
+          type: choice
+          options: [high, medium, low]
+          description: Confidence level for consensus recommendations.
+        - name: ErrorDetails
+          type: string
+          description: JSON error details if the session failed or partially failed.
+
   relationships:
     - from_table: SalesTransactions
       from_column: StoreId
@@ -1376,6 +1452,123 @@ components:
         Triggered by each report's individual recurrence flow.
       trigger: flow_called_from_scheduled_report
       connector: microsoft_teams
+
+    - name: OrchestrationSessionCreate
+      description: >
+        Creates a new AgentOrchestrationSessions record in Dataverse at the start
+        of any multi-agent orchestration run. Returns the generated SessionId for
+        use by subsequent spoke, stage, and synthesis topics.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+
+    - name: OrchestrationSessionUpdate
+      description: >
+        Updates an existing AgentOrchestrationSessions record with spoke results,
+        stage completion status, error details, or the final synthesized result.
+        Called by each spoke topic and by synthesis topics.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+
+    - name: SalesAnalystQuery
+      description: >
+        Spoke flow for the Sales Analyst in the hub-and-spoke pattern. Executes
+        revenue, comparable-store sales, and category performance queries against
+        the Power BI semantic model. Returns a structured summary and appends
+        results to the orchestration session.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+      fallback_on_timeout: true
+
+    - name: InventoryAnalystQuery
+      description: >
+        Spoke flow for the Inventory Analyst in the hub-and-spoke pattern.
+        Queries stock levels, replenishment triggers, allocation positions, and
+        weeks of cover from the Power BI semantic model. Returns a structured
+        summary and appends results to the orchestration session.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+      fallback_on_timeout: true
+
+    - name: CustomerAnalystQuery
+      description: >
+        Spoke flow for the Customer Analyst in the hub-and-spoke pattern.
+        Queries customer segment metrics, loyalty programme KPIs, and basket
+        analysis data from the Power BI semantic model. Returns a structured
+        summary and appends results to the orchestration session.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+      fallback_on_timeout: true
+
+    - name: OperationsAnalystQuery
+      description: >
+        Spoke flow for the Operations Analyst in the hub-and-spoke pattern.
+        Queries labour scheduling efficiency, shrinkage rates, and store operations
+        KPIs from the Power BI semantic model. Returns a structured summary and
+        appends results to the orchestration session.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+      fallback_on_timeout: true
+
+    - name: BusinessReviewDataCollection
+      description: >
+        Stage 1 flow for the weekly business review pipeline. Queries all KPI
+        scopes (sales, inventory, labour, customer) from Dataverse and the Power
+        BI semantic model, assembles a structured JSON payload, and returns it
+        to the pipeline topic for passing to stage 2. Writes stage outcome to
+        the AgentOrchestrationSessions record.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+
+    - name: BusinessReviewInsightGeneration
+      description: >
+        Stage 2 flow for the weekly business review pipeline. Applies anomaly
+        detection and trend analysis to the data payload from stage 1.
+        Returns a ranked list of insights and notable changes for narrative
+        construction. Writes stage outcome to the AgentOrchestrationSessions record.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+
+    - name: BusinessReviewNarrativeConstruction
+      description: >
+        Stage 3 flow for the weekly business review pipeline. Formats the
+        executive narrative and structured callout sections from stage 2 insights.
+        Prepares output in the target delivery format (Teams adaptive card,
+        PowerPoint slide data, or email body). Writes stage outcome to the
+        AgentOrchestrationSessions record.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+
+    - name: BusinessReviewDelivery
+      description: >
+        Stage 4 and final flow for the weekly business review pipeline. Posts
+        the formatted review to the configured Teams channel or generates a
+        PowerPoint deck via Microsoft Graph API and delivers via email. Records
+        the delivery reference and writes final stage status to the
+        AgentOrchestrationSessions record.
+      trigger: copilot_studio_topic_action
+      connector: microsoft_teams
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+
+    - name: MarkdownConsensusQuery
+      description: >
+        Reusable flow invoked by each consensus perspective topic (Sales Velocity,
+        Inventory Position, Margin Analysis, Competitive Intelligence, Historical
+        Precedent). Accepts a perspective parameter and routes to the appropriate
+        DAX query template. Returns a signal and summary for synthesis. Writes
+        the spoke result to the AgentOrchestrationSessions record.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      timeout_seconds: "${OrchestratorTimeoutSeconds}"
+      fallback_on_timeout: true
 
 connections:
   - connector: power_bi

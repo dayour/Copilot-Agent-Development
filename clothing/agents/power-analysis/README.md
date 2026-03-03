@@ -103,7 +103,8 @@ power-analysis/
 ├── README.md
 ├── runbook.md
 ├── docs/
-│   └── data-sync-pipelines.md
+│   ├── data-sync-pipelines.md
+│   └── multi-agent-orchestration.md
 ├── templates/
 │   └── agent-template.yaml
 └── solution/
@@ -169,3 +170,51 @@ capabilities beyond rule-based analytics.
 5. Publish to Teams or web channel and execute validation tests for decomposition and root-cause scenarios.
 6. Validate pipeline health by asking the agent: "Are all data feeds healthy?"
 6. Configure AI Builder models and bind `DemandForecastingModelId`, `CategoryClassificationModelId`, `SentimentAnalysisModelId`, and `DocumentProcessingModelId` environment variables as documented in `runbook.md`.
+
+## Multi-Agent Orchestration
+
+Version 3.0 adds three multi-agent orchestration patterns that coordinate specialized analytical agents to answer complex retail questions. All sessions are tracked in the `AgentOrchestrationSessions` Dataverse table for auditability and analytics. See `docs/multi-agent-orchestration.md` for full design details.
+
+### Hub-and-Spoke Pattern
+
+Power Analysis acts as the central hub and dispatches to four specialist spoke topics:
+
+| Spoke | Specialization | Example Queries |
+|-------|---------------|-----------------|
+| Sales Analyst | Revenue, comparable-store sales, category performance | "How is the North region tracking vs target?" |
+| Inventory Analyst | Stock levels, replenishment, allocation, weeks of cover | "Which categories are over-stocked?" |
+| Customer Analyst | Segment analysis, loyalty metrics, basket analysis | "What is the average basket size in our flagship stores?" |
+| Operations Analyst | Labour scheduling, shrinkage, store operations KPIs | "Where is labour inefficiency highest?" |
+
+The hub creates an orchestration session, dispatches all four spokes, then routes to Hub and Spoke Synthesis to produce a unified response. Each spoke records its result to `AgentOrchestrationSessions`. Spokes that fail or time out contribute a fallback message configured by `SpokeFallbackMessage` so the synthesis can proceed with available data.
+
+**Entry phrase:** "Run spoke analysis" or "Analyze with specialist agent"
+
+### Pipeline Pattern
+
+For complex requests such as "Prepare my weekly business review", the agent chains four sequential stages:
+
+1. **Data Collection** -- queries all KPIs from Dataverse and Power BI across sales, inventory, labour, and customer dimensions.
+2. **Insight Generation** -- identifies notable KPI changes, anomalies, and trends from the collected payload.
+3. **Narrative Construction** -- builds an executive summary with key callouts formatted for the target delivery channel.
+4. **Delivery** -- posts to a Teams channel or generates a PowerPoint deck via Microsoft Graph API.
+
+Each stage passes a structured payload to the next. If data collection fails, the pipeline halts and reports the error. If insight generation fails, the pipeline falls back gracefully and continues to narrative construction with available data. All stages write their status to `AgentOrchestrationSessions`.
+
+**Entry phrase:** "Prepare my weekly business review"
+
+### Consensus Pattern
+
+For decisions such as "Should we markdown this category?", the agent queries five analytical perspectives and synthesizes a balanced recommendation:
+
+| Perspective | Question Answered | Signal |
+|-------------|------------------|--------|
+| Sales Velocity | Is the category selling fast enough? | sell_fast / sell_slow |
+| Inventory Position | How many weeks of cover remain? | high_cover / low_cover |
+| Margin Analysis | What is the current vs target margin? | margin_healthy / margin_at_risk |
+| Competitive Intelligence | What are competitors doing? | competitive_pressure / no_pressure |
+| Historical Precedent | What happened in comparable past markdowns? | precedent_supports / precedent_cautions |
+
+The Consensus - Recommendation Synthesis topic aggregates all five signals and produces a recommendation (proceed / hold / partial markdown) with a confidence level (high, medium, or low) and supporting evidence.
+
+**Entry phrase:** "Should we markdown this category?" or "Recommend a markdown for {category}"
