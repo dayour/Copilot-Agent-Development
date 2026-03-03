@@ -5,6 +5,14 @@ All notable changes to the Claims Assistant agent will be documented in this fil
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] - 2026-03-03
+
+### Fixed
+
+- Merge pull request #156 from dayour/copilot/realistic-claims-assistant-artifacts
+- Enhance README, add monowiki, redact sensitive data, add new assets
+- Replace fictional claims assistant YAML with realistic Copilot Studio code-first artifacts
+
 ## [3.0.0] - 2026-03-03
 
 ### Changed
