@@ -248,7 +248,7 @@ topics:
 
   - name: Prospect Chat
     description: >
-      External-only topic for product, pricing guidance, and case-study questions using public knowledge sources.
+      External-only topic for product, pricing guidance, FAQ answers, and case-study questions using public knowledge sources.
       Does not expose internal strategy or competitive battlecards.
     triggerPhrases:
       - tell me about your product
@@ -265,6 +265,8 @@ topics:
               - kind: GenerativeAnswer
                 knowledgeSources:
                   - public-product-library
+                  - faq-collection
+                  - case-studies
                 citationMode: required
       - kind: SendMessage
         message: >
