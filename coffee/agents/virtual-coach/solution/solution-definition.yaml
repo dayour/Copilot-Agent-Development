@@ -3,7 +3,7 @@
 solution:
   name: CoffeeVirtualCoach
   display_name: "Coffee - Virtual Coach"
-  version: "1.1.0"
+  version: "1.2.0"
   publisher: Copilot Agent Development
   description: >
     Production-ready SharePoint-centric solution for the Virtual Coach agent.
@@ -64,6 +64,42 @@ environment_variables:
     type: string
     description: Teams channel ID for escalation notifications.
     default_value: ""
+
+  - name: TrainingLeadEmail
+    display_name: Training Lead Email
+    type: string
+    description: Email address of the Training Lead who reviews recipe approval requests.
+    default_value: ""
+
+  - name: LegalTeamEmail
+    display_name: Legal Team Email
+    type: string
+    description: Email address of the Legal team reviewer for policy update approvals.
+    default_value: ""
+
+  - name: ComplianceTeamEmail
+    display_name: Compliance Team Email
+    type: string
+    description: Email address of the Compliance team sign-off for policy update approvals.
+    default_value: ""
+
+  - name: RegionalManagerEmail
+    display_name: Regional Manager Email
+    type: string
+    description: Email address of the Regional Manager who approves training materials.
+    default_value: ""
+
+  - name: CopilotStudioAdminEmail
+    display_name: Copilot Studio Admin Email
+    type: string
+    description: Email address of the Copilot Studio administrator notified on bulk content changes.
+    default_value: ""
+
+  - name: BulkChangeThreshold
+    display_name: Bulk Change Threshold
+    type: integer
+    description: Number of content items changed within one hour that triggers an admin notification for manual knowledge source validation.
+    default_value: 5
 
 components:
   agents:
@@ -131,6 +167,115 @@ components:
       notifications:
         - connector: microsoft_teams
         - connector: office365_outlook
+
+    - name: RecipeApprovalFlow
+      description: >
+        Manages the recipe approval lifecycle. When an author creates or updates a document
+        in recipes-library with approval status Pending, the flow sends an approval request
+        to the Training Lead. On approval, the document status is set to Approved and the
+        Copilot Studio knowledge source for recipes-library is refreshed. On rejection,
+        the author is notified with reviewer comments. Maintains version history in SharePoint
+        major/minor versioning. Triggers an admin notification when five or more recipe items
+        change approval status within one hour.
+      trigger: sharepoint_when_file_created_or_modified
+      library: "${RecipeLibraryUrl}"
+      connector: sharepoint_online
+      approval_steps:
+        - step: 1
+          reviewer_env_var: TrainingLeadEmail
+          role: Training Lead
+          action_on_approve: publish_major_version
+          action_on_reject: notify_author_with_comments
+      post_approval_actions:
+        - type: refresh_knowledge_source
+          knowledge_source_id: recipes-library
+        - type: update_content_metadata
+          field: ApprovalStatus
+          value: Approved
+      version_tracking:
+        enabled: true
+        strategy: sharepoint_major_minor_versioning
+      bulk_change_notification:
+        threshold_env_var: BulkChangeThreshold
+        window_minutes: 60
+        notify_env_var: CopilotStudioAdminEmail
+        connector: office365_outlook
+
+    - name: PolicyUpdateFlow
+      description: >
+        Manages the policy update approval lifecycle. When HR submits a new or revised
+        document to hr-policy-library, the flow routes an approval request to Legal. On
+        Legal approval, a second approval request is sent to the Compliance team. Only after
+        both approvals does the flow promote the document to a major version, set approval
+        status to Approved, and auto-refresh the Copilot Studio knowledge source for
+        hr-policy-library. Rejection at either stage notifies the author with comments.
+        Maintains full version history. Triggers an admin notification when five or more
+        policy items change approval status within one hour.
+      trigger: sharepoint_when_file_created_or_modified
+      library: "${HrPolicyLibraryUrl}"
+      connector: sharepoint_online
+      approval_steps:
+        - step: 1
+          reviewer_env_var: LegalTeamEmail
+          role: Legal
+          action_on_approve: proceed_to_next_step
+          action_on_reject: notify_author_with_comments
+        - step: 2
+          reviewer_env_var: ComplianceTeamEmail
+          role: Compliance
+          action_on_approve: publish_major_version
+          action_on_reject: notify_author_with_comments
+      post_approval_actions:
+        - type: refresh_knowledge_source
+          knowledge_source_id: hr-policy-library
+        - type: update_content_metadata
+          field: ApprovalStatus
+          value: Approved
+      version_tracking:
+        enabled: true
+        strategy: sharepoint_major_minor_versioning
+      bulk_change_notification:
+        threshold_env_var: BulkChangeThreshold
+        window_minutes: 60
+        notify_env_var: CopilotStudioAdminEmail
+        connector: office365_outlook
+
+    - name: TrainingMaterialFlow
+      description: >
+        Manages the training material approval lifecycle. When an author submits a new or
+        updated document to training-library, the flow sends an approval request to the
+        Regional Manager. On approval, the document is promoted to a major version, tagged
+        with the appropriate JobRole and StoreRegion metadata for role-based delivery, and
+        the Copilot Studio knowledge source for training-library is refreshed. On rejection,
+        the author is notified with comments. Maintains version history. Triggers an admin
+        notification when five or more training items change approval status within one hour.
+      trigger: sharepoint_when_file_created_or_modified
+      library: "${TrainingLibraryUrl}"
+      connector: sharepoint_online
+      approval_steps:
+        - step: 1
+          reviewer_env_var: RegionalManagerEmail
+          role: Regional Manager
+          action_on_approve: publish_major_version
+          action_on_reject: notify_author_with_comments
+      post_approval_actions:
+        - type: refresh_knowledge_source
+          knowledge_source_id: training-library
+        - type: update_content_metadata
+          field: ApprovalStatus
+          value: Approved
+        - type: apply_role_based_tags
+          metadata_fields:
+            - JobRole
+            - StoreRegion
+      version_tracking:
+        enabled: true
+        strategy: sharepoint_major_minor_versioning
+      bulk_change_notification:
+        threshold_env_var: BulkChangeThreshold
+        window_minutes: 60
+        notify_env_var: CopilotStudioAdminEmail
+        connector: office365_outlook
 
 connections:
   - connector: sharepoint_online

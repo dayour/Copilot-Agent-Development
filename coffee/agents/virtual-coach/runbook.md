@@ -71,7 +71,27 @@ This runbook defines deployment and operations for the Virtual Coach Copilot Stu
    - SharePoint file approval notifications for recipe/policy content updates.
 3. Confirm least-privilege access for service accounts.
 
-### 7. Configure Authentication and Channels
+### 7. Configure Content Approval Workflows
+
+See `workflows/content-approval-workflows.md` for full details on each flow.
+
+1. Populate the following environment variables before enabling the approval flows:
+   - `TrainingLeadEmail` - reviewer for recipe approvals.
+   - `LegalTeamEmail` - first reviewer for policy approvals.
+   - `ComplianceTeamEmail` - second reviewer for policy approvals.
+   - `RegionalManagerEmail` - reviewer for training material approvals.
+   - `CopilotStudioAdminEmail` - recipient for bulk change notifications.
+   - `BulkChangeThreshold` - number of approvals within 60 minutes that triggers an admin notification (default: 5).
+2. For each of `recipes-library`, `hr-policy-library`, and `training-library`:
+   - Enable both major and minor versioning in library settings.
+   - Enable content approval (moderated content).
+   - Confirm the `ApprovalStatus` column is present.
+   - Grant the Power Automate service account `Approve` permission on the library.
+3. On `training-library`, confirm that `JobRole` and `StoreRegion` managed metadata columns are present and required for submission.
+4. Verify that `RecipeApprovalFlow`, `PolicyUpdateFlow`, and `TrainingMaterialFlow` are enabled and show as running in Power Automate.
+5. Submit a test document to each library and complete an end-to-end approval to confirm the Copilot Studio knowledge source refreshes correctly.
+
+### 8. Configure Authentication and Channels
 1. Set authentication to Entra ID in Copilot Studio.
 2. Publish to Microsoft Teams for desk-based staff.
 3. Publish to custom website/mobile web chat for floor baristas.
@@ -84,6 +104,9 @@ This runbook defines deployment and operations for the Virtual Coach Copilot Stu
 | SaveShiftHandoverToSharePoint | Copilot Studio topic action | Create item in `shift-handover-list` |
 | QueryStoreDirectory | Copilot Studio topic action | Get items from `store-directory-list` |
 | NotifyContentApprovalPending | SharePoint file created or modified | Post approval notification to Teams/Email when status is Pending |
+| RecipeApprovalFlow | SharePoint file created or modified in `recipes-library` | Single-step approval via Training Lead; promotes to major version and refreshes knowledge source on approval |
+| PolicyUpdateFlow | SharePoint file created or modified in `hr-policy-library` | Two-step approval via Legal then Compliance; promotes to major version and refreshes knowledge source on dual approval |
+| TrainingMaterialFlow | SharePoint file created or modified in `training-library` | Single-step approval via Regional Manager; applies role-based tags and refreshes knowledge source on approval |
 
 ## Post-Deployment Validation
 

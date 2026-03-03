@@ -38,6 +38,9 @@ Copilot Studio knowledge grounding is aligned to hub-associated libraries with m
 virtual-coach/
 |-- README.md
 |-- runbook.md
+|-- CHANGELOG.md
+|-- workflows/
+|   `-- content-approval-workflows.md
 |-- templates/
 |   |-- agent-template.yaml
 `-- solution/
@@ -49,4 +52,5 @@ virtual-coach/
 1. Review `runbook.md` for SharePoint and Copilot Studio prerequisites.
 2. Import `solution/solution-definition.yaml` into the target environment.
 3. Validate knowledge sources and list bindings against your hub-associated libraries.
-4. Publish to Teams and mobile web chat channels.
+4. Configure content approval workflows by following `workflows/content-approval-workflows.md`.
+5. Publish to Teams and mobile web chat channels.
