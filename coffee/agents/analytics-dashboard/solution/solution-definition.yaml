@@ -1,0 +1,458 @@
+# Copilot Studio Solution Definition - Analytics Dashboard (Coffee Virtual Coach)
+
+solution:
+  name: CoffeeVirtualCoachAnalytics
+  display_name: "Coffee - Virtual Coach Analytics Dashboard"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    SharePoint-hosted reporting solution for Virtual Coach agent analytics.
+    Includes a Power Automate scheduled flow that reads from the Copilot Studio
+    analytics API and writes to a SharePoint list and a Dataverse table,
+    a Power BI report embedded in a SharePoint site page,
+    and a Copilot Studio agent for natural-language analytics queries.
+    Role-based views filter data by store, region, or corporate scope using
+    Entra ID group membership and Power BI row-level security.
+
+environment_variables:
+  - name: CopilotStudioEnvironmentId
+    display_name: Copilot Studio Environment ID
+    type: string
+    description: Dataverse environment GUID where the Virtual Coach agent is deployed.
+    default_value: ""
+
+  - name: VirtualCoachAgentId
+    display_name: Virtual Coach Agent ID
+    type: string
+    description: Agent identifier used when querying the Copilot Studio analytics API.
+    default_value: ""
+
+  - name: AnalyticsSiteUrl
+    display_name: Analytics SharePoint Site URL
+    type: string
+    description: Root URL of the dedicated Virtual Coach Analytics SharePoint site.
+    default_value: ""
+
+  - name: AnalyticsListUrl
+    display_name: Analytics Data List URL
+    type: string
+    description: Full URL of the AnalyticsData SharePoint list that stores daily snapshots.
+    default_value: ""
+
+  - name: PowerBiWorkspaceId
+    display_name: Power BI Workspace ID
+    type: string
+    description: GUID of the Power BI workspace where the analytics report is published.
+    default_value: ""
+
+  - name: PowerBiReportId
+    display_name: Power BI Report ID
+    type: string
+    description: GUID of the published Virtual Coach analytics Power BI report.
+    default_value: ""
+
+  - name: CorporateGroupId
+    display_name: Corporate Analytics Group ID
+    type: string
+    description: Entra ID object ID for the VirtualCoach-Analytics-Corporate group.
+    default_value: ""
+
+  - name: RegionGroupPrefix
+    display_name: Regional Analytics Group Prefix
+    type: string
+    description: >
+      Prefix of the Entra ID group names for regional directors.
+      Example: VirtualCoach-Analytics-Region-
+    default_value: "VirtualCoach-Analytics-Region-"
+
+  - name: StoreGroupPrefix
+    display_name: Store Analytics Group Prefix
+    type: string
+    description: >
+      Prefix of the Entra ID group names for store managers.
+      Example: VirtualCoach-Analytics-Store-
+    default_value: "VirtualCoach-Analytics-Store-"
+
+  - name: AnalyticsAdminTeamsChannelId
+    display_name: Analytics Admin Teams Channel ID
+    type: string
+    description: Teams channel ID for analytics data issue escalation notifications.
+    default_value: ""
+
+  - name: SyncFlowScheduleHour
+    display_name: Sync Flow Schedule Hour (UTC)
+    type: number
+    description: Hour of day in UTC at which the analytics sync flow runs. Default is 2 (02:00 UTC).
+    default_value: "2"
+
+components:
+  agents:
+    - name: AnalyticsDashboard
+      template_file: ../templates/agent-template.yaml
+      data_sources:
+        - id: VirtualCoachAnalytics
+          type: dataverse_table
+          table: VirtualCoachAnalytics
+          description: >
+            Dataverse table storing aggregated Virtual Coach analytics snapshots
+            written by the SyncVirtualCoachAnalytics scheduled flow.
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  dataverse_tables:
+    - name: VirtualCoachAnalytics
+      display_name: Virtual Coach Analytics
+      description: >
+        Long-term analytics data store for Virtual Coach conversation metrics.
+        Records are written daily by the SyncVirtualCoachAnalytics flow.
+      ownership: organization
+      columns:
+        - name: SnapshotDate
+          display_name: Snapshot Date
+          type: datetime
+          required: true
+        - name: StoreNumber
+          display_name: Store Number
+          type: string
+          max_length: 20
+          required: true
+        - name: Region
+          display_name: Region
+          type: string
+          max_length: 100
+          required: true
+        - name: ConversationCount
+          display_name: Conversation Count
+          type: integer
+          required: true
+        - name: TopicName
+          display_name: Topic Name
+          type: string
+          max_length: 200
+          required: true
+        - name: TopicQueryCount
+          display_name: Topic Query Count
+          type: integer
+          required: true
+        - name: UnresolvedCount
+          display_name: Unresolved Count
+          type: integer
+          required: true
+        - name: PeakUsageHour
+          display_name: Peak Usage Hour
+          type: integer
+          description: Hour of day (0-23) with highest session count in the snapshot period.
+          required: false
+        - name: UniqueUsers
+          display_name: Unique Users
+          type: integer
+          required: true
+        - name: UserRole
+          display_name: User Role
+          type: string
+          max_length: 100
+          required: false
+
+  sharepoint_lists:
+    - name: AnalyticsData
+      display_name: Analytics Data
+      site_url: "${AnalyticsSiteUrl}"
+      description: >
+        SharePoint list receiving daily analytics snapshot records from the
+        SyncVirtualCoachAnalytics Power Automate flow.
+      columns:
+        - name: Title
+          type: single_line_of_text
+        - name: SnapshotDate
+          type: date_and_time
+        - name: StoreNumber
+          type: single_line_of_text
+        - name: Region
+          type: single_line_of_text
+        - name: ConversationCount
+          type: number
+        - name: TopicName
+          type: single_line_of_text
+        - name: TopicQueryCount
+          type: number
+        - name: UnresolvedCount
+          type: number
+        - name: PeakUsageHour
+          type: number
+        - name: UniqueUsers
+          type: number
+        - name: UserRole
+          type: single_line_of_text
+
+  power_automate_flows:
+    - name: SyncVirtualCoachAnalytics
+      display_name: Sync Virtual Coach Analytics
+      description: >
+        Scheduled daily flow that calls the Copilot Studio analytics API for the
+        Virtual Coach agent and writes conversation volume, topic breakdown,
+        unresolved query, peak usage, and adoption metrics to both the
+        AnalyticsData SharePoint list and the VirtualCoachAnalytics Dataverse table.
+      trigger: recurrence
+      recurrence:
+        frequency: day
+        interval: 1
+        start_time: "02:00:00"
+        time_zone: UTC
+      steps:
+        - name: GetConversationAnalytics
+          action: copilot_studio_get_analytics
+          inputs:
+            environment_id: "${CopilotStudioEnvironmentId}"
+            agent_id: "${VirtualCoachAgentId}"
+            metric_types:
+              - conversation_count
+              - topic_query_count
+              - unresolved_count
+              - peak_usage_hour
+              - unique_users_by_role
+            granularity: daily
+            lookback_days: 1
+        - name: WriteToSharePointList
+          action: sharepoint_create_item
+          for_each: "@body('GetConversationAnalytics')?['records']"
+          inputs:
+            site_url: "${AnalyticsSiteUrl}"
+            list_name: AnalyticsData
+            fields:
+              Title: "@{items('WriteToSharePointList')?['storeNumber']}_@{items('WriteToSharePointList')?['snapshotDate']}"
+              SnapshotDate: "@{items('WriteToSharePointList')?['snapshotDate']}"
+              StoreNumber: "@{items('WriteToSharePointList')?['storeNumber']}"
+              Region: "@{items('WriteToSharePointList')?['region']}"
+              ConversationCount: "@{items('WriteToSharePointList')?['conversationCount']}"
+              TopicName: "@{items('WriteToSharePointList')?['topicName']}"
+              TopicQueryCount: "@{items('WriteToSharePointList')?['topicQueryCount']}"
+              UnresolvedCount: "@{items('WriteToSharePointList')?['unresolvedCount']}"
+              PeakUsageHour: "@{items('WriteToSharePointList')?['peakUsageHour']}"
+              UniqueUsers: "@{items('WriteToSharePointList')?['uniqueUsers']}"
+              UserRole: "@{items('WriteToSharePointList')?['userRole']}"
+        - name: WriteToDataverse
+          action: dataverse_create_record
+          for_each: "@body('GetConversationAnalytics')?['records']"
+          inputs:
+            environment_id: "${CopilotStudioEnvironmentId}"
+            table: VirtualCoachAnalytics
+            fields:
+              SnapshotDate: "@{items('WriteToDataverse')?['snapshotDate']}"
+              StoreNumber: "@{items('WriteToDataverse')?['storeNumber']}"
+              Region: "@{items('WriteToDataverse')?['region']}"
+              ConversationCount: "@{items('WriteToDataverse')?['conversationCount']}"
+              TopicName: "@{items('WriteToDataverse')?['topicName']}"
+              TopicQueryCount: "@{items('WriteToDataverse')?['topicQueryCount']}"
+              UnresolvedCount: "@{items('WriteToDataverse')?['unresolvedCount']}"
+              PeakUsageHour: "@{items('WriteToDataverse')?['peakUsageHour']}"
+              UniqueUsers: "@{items('WriteToDataverse')?['uniqueUsers']}"
+              UserRole: "@{items('WriteToDataverse')?['userRole']}"
+      connectors:
+        - copilot_studio_analytics
+        - sharepoint_online
+        - dataverse
+      error_handling:
+        retry_policy: exponential
+        max_retries: 3
+        notify_on_failure:
+          connector: microsoft_teams
+          channel: "${AnalyticsAdminTeamsChannelId}"
+          message: "SyncVirtualCoachAnalytics flow failed. Check Power Automate run history."
+
+    - name: NotifyHighUnresolvedRate
+      display_name: Notify High Unresolved Query Rate
+      description: >
+        Monitors the VirtualCoachAnalytics Dataverse table daily and sends a Teams
+        notification when any topic's unresolved query rate exceeds 15 percent.
+        Alerts are sent to the analytics admin channel for review and content action.
+      trigger: recurrence
+      recurrence:
+        frequency: day
+        interval: 1
+        start_time: "06:00:00"
+        time_zone: UTC
+      steps:
+        - name: QueryHighUnresolvedTopics
+          action: dataverse_list_records
+          inputs:
+            environment_id: "${CopilotStudioEnvironmentId}"
+            table: VirtualCoachAnalytics
+            filter: >
+              SnapshotDate ge @{addDays(utcNow(), -1)} and
+              TopicQueryCount gt 0 and
+              (UnresolvedCount div TopicQueryCount) ge 0.15
+            select:
+              - TopicName
+              - StoreNumber
+              - Region
+              - UnresolvedCount
+              - TopicQueryCount
+        - name: SendAlertIfResults
+          action: condition
+          condition: "@greater(length(body('QueryHighUnresolvedTopics')?['value']), 0)"
+          if_true:
+            - name: SendTeamsAlert
+              action: microsoft_teams_post_message
+              inputs:
+                channel: "${AnalyticsAdminTeamsChannelId}"
+                message: >
+                  High unresolved query rate detected in Virtual Coach.
+                  Topics exceeding 15 percent unresolved rate:
+                  @{body('QueryHighUnresolvedTopics')?['value']}.
+                  Review corresponding SharePoint knowledge libraries for content gaps.
+      connectors:
+        - dataverse
+        - microsoft_teams
+
+  power_bi:
+    - name: VirtualCoachAnalyticsReport
+      display_name: Virtual Coach Analytics Report
+      workspace_id: "${PowerBiWorkspaceId}"
+      report_id: "${PowerBiReportId}"
+      description: >
+        Power BI report with five pages: Conversation Volume, Topic Breakdown,
+        Unresolved Queries, Peak Usage, and Employee Adoption.
+        Connected to the VirtualCoachAnalytics Dataverse table via DirectQuery
+        and the AnalyticsData SharePoint list via import.
+      row_level_security_roles:
+        - name: StoreRole
+          description: Filters data to the authenticated user's assigned store.
+          dax_filter: "[StoreNumber] = LOOKUPVALUE(StoreMap[StoreNumber], StoreMap[UPN], USERPRINCIPALNAME())"
+          entra_id_group_prefix: "${StoreGroupPrefix}"
+        - name: RegionRole
+          description: Filters data to the authenticated user's assigned region.
+          dax_filter: "[Region] = LOOKUPVALUE(RegionMap[Region], RegionMap[UPN], USERPRINCIPALNAME())"
+          entra_id_group_prefix: "${RegionGroupPrefix}"
+        - name: CorporateRole
+          description: No filter applied. All stores and regions visible.
+          dax_filter: ""
+          entra_id_group_id: "${CorporateGroupId}"
+      pages:
+        - name: ConversationVolume
+          title: Conversation Volume
+          visuals:
+            - type: line_chart
+              title: Daily Conversations by Store
+              x_axis: SnapshotDate
+              y_axis: ConversationCount
+              legend: StoreNumber
+            - type: bar_chart
+              title: Weekly Conversations by Region
+              x_axis: Region
+              y_axis: ConversationCount
+              slicer: SnapshotDate
+        - name: TopicBreakdown
+          title: Topic Breakdown
+          visuals:
+            - type: donut_chart
+              title: Query Distribution by Topic
+              category: TopicName
+              value: TopicQueryCount
+            - type: bar_chart
+              title: Topic Query Count by Store
+              x_axis: TopicName
+              y_axis: TopicQueryCount
+              legend: StoreNumber
+        - name: UnresolvedQueries
+          title: Unresolved Queries
+          visuals:
+            - type: bar_chart
+              title: Unresolved Rate by Topic (Percent)
+              x_axis: TopicName
+              y_axis: UnresolvedRatePct
+            - type: line_chart
+              title: Unresolved Rate Trend Over Time
+              x_axis: SnapshotDate
+              y_axis: UnresolvedRatePct
+              legend: TopicName
+        - name: PeakUsage
+          title: Peak Usage Times
+          visuals:
+            - type: heatmap
+              title: Usage by Hour of Day
+              x_axis: PeakUsageHour
+              y_axis: ConversationCount
+            - type: bar_chart
+              title: Conversation Count by Day of Week
+              x_axis: DayOfWeek
+              y_axis: ConversationCount
+        - name: EmployeeAdoption
+          title: Employee Adoption
+          visuals:
+            - type: bar_chart
+              title: Unique Active Users by Role
+              x_axis: UserRole
+              y_axis: UniqueUsers
+              legend: Region
+            - type: kpi_card
+              title: Overall Adoption Rate
+              value: AdoptionRatePct
+              target: 80
+
+  sharepoint_pages:
+    - name: VirtualCoachAnalyticsDashboard
+      display_name: Virtual Coach Analytics Dashboard
+      site_url: "${AnalyticsSiteUrl}"
+      page_name: Virtual-Coach-Analytics-Dashboard.aspx
+      description: >
+        SharePoint modern site page hosting the embedded Power BI analytics report.
+        Audience targeting restricts page sections so each user sees only
+        store-level, region-level, or enterprise-wide data based on their role.
+      web_parts:
+        - type: text
+          content: >
+            Virtual Coach Analytics. This dashboard shows conversation volume,
+            topic usage, unresolved query rates, peak usage times, and employee
+            adoption for the Virtual Coach agent across all stores.
+        - type: power_bi
+          report_id: "${PowerBiReportId}"
+          workspace_id: "${PowerBiWorkspaceId}"
+          page: ConversationVolume
+          height: 600
+        - type: power_bi
+          report_id: "${PowerBiReportId}"
+          workspace_id: "${PowerBiWorkspaceId}"
+          page: TopicBreakdown
+          height: 600
+        - type: power_bi
+          report_id: "${PowerBiReportId}"
+          workspace_id: "${PowerBiWorkspaceId}"
+          page: UnresolvedQueries
+          height: 600
+        - type: power_bi
+          report_id: "${PowerBiReportId}"
+          workspace_id: "${PowerBiWorkspaceId}"
+          page: PeakUsage
+          height: 600
+        - type: power_bi
+          report_id: "${PowerBiReportId}"
+          workspace_id: "${PowerBiWorkspaceId}"
+          page: EmployeeAdoption
+          height: 600
+          audience_targeting:
+            entra_id_groups:
+              - "${CorporateGroupId}"
+              - "${RegionGroupPrefix}*"
+      audience_targeting_enabled: true
+
+connections:
+  - connector: copilot_studio_analytics
+    display_name: Copilot Studio Analytics
+  - connector: sharepoint_online
+    display_name: SharePoint Online
+  - connector: dataverse
+    display_name: Microsoft Dataverse
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+  - connector: power_bi
+    display_name: Power BI
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+  - type: sharepoint_page
+    enabled: true
+    configuration:
+      page_url: "${AnalyticsSiteUrl}/SitePages/Virtual-Coach-Analytics-Dashboard.aspx"
