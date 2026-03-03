@@ -1,0 +1,417 @@
+swagger: "2.0"
+info:
+  title: Insurance Claims System Integration Connector
+  description: >
+    Custom connector for claims management system integration in the Insurance vertical.
+    Supports Guidewire ClaimCenter and Duck Creek Claims REST APIs for policy lookup,
+    claim creation, status tracking, and reserve management. Uses OAuth 2.0
+    Authorization Code flow. Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Insurance Vertical Platform Engineering
+host: "<claims-api-host>"
+basePath: "/api/v1"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2_claims:
+    type: oauth2
+    flow: accessCode
+    authorizationUrl: "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/authorize"
+    tokenUrl: "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token"
+    scopes:
+      "<claims-api-scope>/claims.read": "Read claims and policy data"
+      "<claims-api-scope>/claims.write": "Create and update claims"
+      "<claims-api-scope>/reserves.write": "Update reserve amounts"
+    x-ms-client-id: "<client-id>"
+    x-ms-client-secret-name: EV_INSURANCE_CLAIMS_CLIENT_SECRET
+
+security:
+  - oauth2_claims:
+      - "<claims-api-scope>/claims.read"
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://<claims-api-host>"
+  - propertyName: Privacy policy
+    propertyValue: "https://<claims-api-host>/privacy"
+  - propertyName: Categories
+    propertyValue: "Finance;Business Intelligence"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - claims data contains PII, health information, financial records,
+#   and legally sensitive claim details. Apply Business Data Only policy.
+#   Block from all non-business and unmanaged environments.
+#   Ensure all data transit uses TLS 1.2 or higher.
+x-ms-dlp-classification: Business
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Verify claims system connectivity and token validity.
+      operationId: HealthCheck
+      x-ms-summary: Health Check
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Claims system is accessible.
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                x-ms-summary: Status
+        "401":
+          description: Unauthorized.
+
+  /policies/{policyNumber}:
+    get:
+      summary: Get policy
+      description: Retrieve policy details by policy number.
+      operationId: GetPolicy
+      x-ms-summary: Get Policy
+      x-ms-visibility: important
+      parameters:
+        - name: policyNumber
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Policy Number
+          description: The policy number identifier.
+      responses:
+        "200":
+          description: Policy retrieved.
+          schema:
+            $ref: "#/definitions/Policy"
+        "404":
+          description: Policy not found.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /claims:
+    post:
+      summary: Create claim
+      description: Submit a new first notice of loss (FNOL) claim.
+      operationId: CreateClaim
+      x-ms-summary: Create Claim
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/CreateClaimRequest"
+      responses:
+        "201":
+          description: Claim created successfully.
+          schema:
+            $ref: "#/definitions/Claim"
+        "400":
+          description: Bad request. Validate required fields.
+        "401":
+          description: Unauthorized.
+        "409":
+          description: Duplicate claim detected.
+        "422":
+          description: Business rule violation. Check policy status and coverage.
+        "429":
+          description: Rate limit exceeded.
+
+  /claims/{claimNumber}:
+    get:
+      summary: Get claim status
+      description: Retrieve current status and details for an existing claim.
+      operationId: GetClaimStatus
+      x-ms-summary: Get Claim Status
+      x-ms-visibility: important
+      parameters:
+        - name: claimNumber
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Claim Number
+          description: The claim number identifier.
+      responses:
+        "200":
+          description: Claim status retrieved.
+          schema:
+            $ref: "#/definitions/Claim"
+        "404":
+          description: Claim not found.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /claims/{claimNumber}/reserves:
+    patch:
+      summary: Update reserve
+      description: Update the reserve amount for an existing claim.
+      operationId: UpdateReserve
+      x-ms-summary: Update Reserve
+      x-ms-visibility: important
+      parameters:
+        - name: claimNumber
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Claim Number
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateReserveRequest"
+      responses:
+        "200":
+          description: Reserve updated.
+          schema:
+            $ref: "#/definitions/ReserveUpdateResponse"
+        "400":
+          description: Bad request.
+        "401":
+          description: Unauthorized. Requires reserves.write scope.
+        "403":
+          description: Forbidden. Reserve update requires elevated permission.
+        "404":
+          description: Claim not found.
+        "429":
+          description: Rate limit exceeded.
+
+  /claims/{claimNumber}/payments:
+    get:
+      summary: Get payment history
+      description: Retrieve the payment history for an existing claim.
+      operationId: GetPaymentHistory
+      x-ms-summary: Get Payment History
+      x-ms-visibility: important
+      parameters:
+        - name: claimNumber
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Claim Number
+      responses:
+        "200":
+          description: Payment history retrieved.
+          schema:
+            $ref: "#/definitions/PaymentHistoryResponse"
+        "404":
+          description: Claim not found.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  Policy:
+    type: object
+    properties:
+      policyNumber:
+        type: string
+        x-ms-summary: Policy Number
+      policyHolder:
+        type: string
+        x-ms-summary: Policy Holder
+      status:
+        type: string
+        x-ms-summary: Status
+      effectiveDate:
+        type: string
+        format: date
+        x-ms-summary: Effective Date
+      expirationDate:
+        type: string
+        format: date
+        x-ms-summary: Expiration Date
+      coverageType:
+        type: string
+        x-ms-summary: Coverage Type
+      insuredAmount:
+        type: number
+        format: double
+        x-ms-summary: Insured Amount
+      deductible:
+        type: number
+        format: double
+        x-ms-summary: Deductible
+
+  CreateClaimRequest:
+    type: object
+    required:
+      - policyNumber
+      - lossDate
+      - lossDescription
+      - lossType
+    properties:
+      policyNumber:
+        type: string
+        x-ms-summary: Policy Number
+      lossDate:
+        type: string
+        format: date
+        x-ms-summary: Date of Loss
+      lossDescription:
+        type: string
+        x-ms-summary: Loss Description
+      lossType:
+        type: string
+        x-ms-summary: Loss Type
+      reportedByName:
+        type: string
+        x-ms-summary: Reported By
+      reportedByPhone:
+        type: string
+        x-ms-summary: Contact Phone
+
+  Claim:
+    type: object
+    properties:
+      claimNumber:
+        type: string
+        x-ms-summary: Claim Number
+      policyNumber:
+        type: string
+        x-ms-summary: Policy Number
+      status:
+        type: string
+        x-ms-summary: Status
+      lossDate:
+        type: string
+        format: date
+        x-ms-summary: Date of Loss
+      lossType:
+        type: string
+        x-ms-summary: Loss Type
+      adjusterName:
+        type: string
+        x-ms-summary: Assigned Adjuster
+      totalReserve:
+        type: number
+        format: double
+        x-ms-summary: Total Reserve
+      totalPaid:
+        type: number
+        format: double
+        x-ms-summary: Total Paid
+      openedDate:
+        type: string
+        format: date-time
+        x-ms-summary: Opened Date
+      closedDate:
+        type: string
+        format: date-time
+        x-ms-summary: Closed Date
+
+  UpdateReserveRequest:
+    type: object
+    required:
+      - reserveAmount
+      - reserveType
+      - reason
+    properties:
+      reserveAmount:
+        type: number
+        format: double
+        x-ms-summary: Reserve Amount
+      reserveType:
+        type: string
+        x-ms-summary: Reserve Type
+        description: "Reserve category. Examples: indemnity, expense, medical."
+      reason:
+        type: string
+        x-ms-summary: Reason
+        description: Justification for the reserve change.
+
+  ReserveUpdateResponse:
+    type: object
+    properties:
+      claimNumber:
+        type: string
+        x-ms-summary: Claim Number
+      previousReserve:
+        type: number
+        format: double
+        x-ms-summary: Previous Reserve
+      updatedReserve:
+        type: number
+        format: double
+        x-ms-summary: Updated Reserve
+      updatedAt:
+        type: string
+        format: date-time
+        x-ms-summary: Updated At
+
+  PaymentHistoryResponse:
+    type: object
+    properties:
+      claimNumber:
+        type: string
+        x-ms-summary: Claim Number
+      payments:
+        type: array
+        x-ms-summary: Payments
+        items:
+          type: object
+          properties:
+            paymentId:
+              type: string
+              x-ms-summary: Payment ID
+            amount:
+              type: number
+              format: double
+              x-ms-summary: Amount
+            paymentDate:
+              type: string
+              format: date
+              x-ms-summary: Payment Date
+            paymentType:
+              type: string
+              x-ms-summary: Payment Type
+            status:
+              type: string
+              x-ms-summary: Status
+
+# Environment Variables Required:
+#   EV_INSURANCE_CLAIMS_CLIENT_ID     - type: string  - App registration client ID
+#   EV_INSURANCE_CLAIMS_CLIENT_SECRET - type: secret  - App registration client secret
+#   EV_INSURANCE_CLAIMS_TENANT_ID     - type: string  - Entra tenant ID
+#   EV_INSURANCE_CLAIMS_BASE_URL      - type: string  - Claims system API base URL
+#   EV_INSURANCE_CLAIMS_SCOPE         - type: string  - API permission scope URI
+
+# Test Flow Steps:
+#   1. Import connector into the Insurance vertical Power Platform environment.
+#   2. Create a connection using a pilot user account with claims.read scope.
+#   3. Run HealthCheck and verify HTTP 200.
+#   4. Run GetPolicy with a test policy number and verify policy fields.
+#   5. Run CreateClaim with test FNOL data and verify claim number is returned.
+#   6. Run GetClaimStatus with the returned claim number and verify status.
+#   7. Run GetPaymentHistory and verify payment records are returned.
+#   8. Confirm connection reference is named cr_claims_insurance in the solution.
+
+# Error Handling Patterns:
+#   401 - Token expired: Re-authenticate connection in Power Platform Admin Center.
+#   403 - Insufficient scope: Add required scope to OAuth consent and re-consent.
+#   409 - Duplicate claim: Check for existing open claims on the policy before
+#         creating a new FNOL. Surface a duplicate warning to the agent user.
+#   422 - Policy validation failure: Log policyNumber, coverage type, and
+#         loss date. Surface friendly guidance to the claimant.
+#   429 - Rate limit: Apply exponential backoff. Do not retry claim creation
+#         immediately to avoid duplicates.

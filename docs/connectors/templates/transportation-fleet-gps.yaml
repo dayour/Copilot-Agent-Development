@@ -1,0 +1,401 @@
+swagger: "2.0"
+info:
+  title: Transportation Fleet GPS Integration Connector
+  description: >
+    Custom connector for fleet GPS and telematics integration in the Transportation
+    vertical. Supports Samsara and Geotab REST APIs for vehicle position tracking,
+    fuel level monitoring, engine telemetry, and driver hours-of-service (HOS) data.
+    Uses API key header authentication. Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Transportation Vertical Platform Engineering
+host: "api.samsara.com"
+basePath: "/v1"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  apiKeyHeader:
+    type: apiKey
+    in: header
+    name: Authorization
+
+security:
+  - apiKeyHeader: []
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://www.samsara.com"
+  - propertyName: Privacy policy
+    propertyValue: "https://www.samsara.com/legal/privacy"
+  - propertyName: Categories
+    propertyValue: "IT Operations;Data"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - contains GPS location data, driver information, and vehicle
+#   telemetry that may be subject to privacy and labor regulations.
+#   Apply Business Data Only policy. Block from non-business environments.
+#   Ensure driver HOS and location data is handled per applicable regulations
+#   (FMCSA, GDPR where applicable).
+x-ms-dlp-classification: Business
+
+# API Key Format Note (Samsara):
+#   The Authorization header value must be prefixed with "Bearer ":
+#   Authorization: Bearer <api-token>
+#   Store the full "Bearer <token>" string in EV_TRANSPORT_GPS_API_KEY,
+#   or configure the connector to prepend "Bearer " to the token value.
+x-ms-api-key-prefix: "Bearer "
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+  samsaraNotes: >
+    Samsara API enforces rate limits per API token.
+    Polling vehicle locations more frequently than every 30 seconds is not recommended.
+    Use webhook subscriptions for real-time event delivery where available.
+
+paths:
+  /fleet/drivers:
+    get:
+      summary: List drivers
+      description: Retrieve a list of all active drivers. Used as health check probe.
+      operationId: ListDrivers
+      x-ms-summary: List Drivers
+      x-ms-visibility: internal
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          default: 1
+          x-ms-summary: Limit
+      responses:
+        "200":
+          description: Drivers retrieved. API is accessible and token is valid.
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Unauthorized. API token is missing or invalid.
+        "429":
+          description: Rate limit exceeded.
+
+  /fleet/vehicles/stats:
+    get:
+      summary: Get vehicle stats
+      description: >
+        Retrieve the latest statistics for fleet vehicles including GPS location,
+        fuel percentage, engine state, and odometer readings.
+      operationId: GetVehicleStats
+      x-ms-summary: Get Vehicle Stats
+      x-ms-visibility: important
+      parameters:
+        - name: types
+          in: query
+          required: true
+          type: string
+          x-ms-summary: Stat Types
+          description: >
+            Comma-separated list of stat types to retrieve.
+            Supported values: gps, fuelPercents, engineStates, obdOdometerMeters.
+        - name: vehicleIds
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Vehicle IDs
+          description: Comma-separated list of vehicle IDs to filter results.
+        - name: after
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Pagination Cursor
+          description: Cursor for paginating through large result sets.
+      responses:
+        "200":
+          description: Vehicle stats retrieved.
+          schema:
+            $ref: "#/definitions/VehicleStatsResponse"
+        "400":
+          description: Bad request. Validate stat type values.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /fleet/vehicles/locations:
+    get:
+      summary: Get vehicle locations
+      description: Retrieve current GPS locations for all or specified fleet vehicles.
+      operationId: GetVehicleLocations
+      x-ms-summary: Get Vehicle Locations
+      x-ms-visibility: important
+      parameters:
+        - name: vehicleIds
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Vehicle IDs
+          description: Comma-separated list of vehicle IDs. Returns all if omitted.
+      responses:
+        "200":
+          description: Vehicle locations retrieved.
+          schema:
+            $ref: "#/definitions/VehicleLocationsResponse"
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /fleet/hos/logs:
+    get:
+      summary: Get HOS logs
+      description: Retrieve driver hours-of-service log entries for a specified time range.
+      operationId: GetHosLogs
+      x-ms-summary: Get HOS Logs
+      x-ms-visibility: important
+      parameters:
+        - name: driverIds
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Driver IDs
+          description: Comma-separated list of driver IDs to retrieve HOS logs for.
+        - name: startMs
+          in: query
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Start Time (ms)
+          description: Start of the time range as a Unix epoch timestamp in milliseconds.
+        - name: endMs
+          in: query
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: End Time (ms)
+          description: End of the time range as a Unix epoch timestamp in milliseconds.
+      responses:
+        "200":
+          description: HOS logs retrieved.
+          schema:
+            $ref: "#/definitions/HosLogsResponse"
+        "400":
+          description: Bad request. Validate time range parameters.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /fleet/vehicles/{id}/safety-score:
+    get:
+      summary: Get vehicle safety score
+      description: Retrieve the safety score and event summary for a specific vehicle.
+      operationId: GetVehicleSafetyScore
+      x-ms-summary: Get Vehicle Safety Score
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Vehicle ID
+          description: Numeric vehicle identifier.
+        - name: startMs
+          in: query
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: Start Time (ms)
+        - name: endMs
+          in: query
+          required: true
+          type: integer
+          format: int64
+          x-ms-summary: End Time (ms)
+      responses:
+        "200":
+          description: Safety score retrieved.
+          schema:
+            $ref: "#/definitions/SafetyScoreResponse"
+        "404":
+          description: Vehicle not found.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  VehicleStatsResponse:
+    type: object
+    properties:
+      data:
+        type: array
+        x-ms-summary: Vehicle Stats
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              x-ms-summary: Vehicle ID
+            name:
+              type: string
+              x-ms-summary: Vehicle Name
+            gps:
+              type: object
+              x-ms-summary: GPS
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                  x-ms-summary: Latitude
+                longitude:
+                  type: number
+                  format: double
+                  x-ms-summary: Longitude
+                speedMilesPerHour:
+                  type: number
+                  x-ms-summary: Speed (mph)
+                time:
+                  type: string
+                  format: date-time
+                  x-ms-summary: Timestamp
+            fuelPercents:
+              type: object
+              x-ms-summary: Fuel Percent
+              properties:
+                value:
+                  type: number
+                  x-ms-summary: Fuel Level (%)
+            engineStates:
+              type: object
+              x-ms-summary: Engine State
+              properties:
+                value:
+                  type: string
+                  x-ms-summary: Engine State
+                  description: "On or Off"
+      pagination:
+        type: object
+        properties:
+          endCursor:
+            type: string
+            x-ms-summary: End Cursor
+
+  VehicleLocationsResponse:
+    type: object
+    properties:
+      data:
+        type: array
+        x-ms-summary: Vehicle Locations
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              x-ms-summary: Vehicle ID
+            name:
+              type: string
+              x-ms-summary: Vehicle Name
+            latitude:
+              type: number
+              format: double
+              x-ms-summary: Latitude
+            longitude:
+              type: number
+              format: double
+              x-ms-summary: Longitude
+            heading:
+              type: number
+              x-ms-summary: Heading (degrees)
+            speed:
+              type: number
+              x-ms-summary: Speed (mph)
+            time:
+              type: string
+              format: date-time
+              x-ms-summary: Timestamp
+
+  HosLogsResponse:
+    type: object
+    properties:
+      logsByDriverId:
+        type: object
+        x-ms-summary: HOS Logs By Driver
+        additionalProperties:
+          type: array
+          items:
+            type: object
+            properties:
+              driverId:
+                type: integer
+                x-ms-summary: Driver ID
+              logStartMs:
+                type: integer
+                format: int64
+                x-ms-summary: Log Start (ms)
+              statusType:
+                type: string
+                x-ms-summary: HOS Status
+                description: "ON_DUTY, OFF_DUTY, SLEEPER_BED, DRIVING"
+              vehicleId:
+                type: integer
+                x-ms-summary: Vehicle ID
+
+  SafetyScoreResponse:
+    type: object
+    properties:
+      vehicleId:
+        type: integer
+        x-ms-summary: Vehicle ID
+      safetyScore:
+        type: integer
+        x-ms-summary: Safety Score
+        description: Score from 0 to 100. Higher is safer.
+      crashCount:
+        type: integer
+        x-ms-summary: Crash Count
+      harshAccelCount:
+        type: integer
+        x-ms-summary: Harsh Acceleration Count
+      harshBrakingCount:
+        type: integer
+        x-ms-summary: Harsh Braking Count
+      harshTurningCount:
+        type: integer
+        x-ms-summary: Harsh Turning Count
+
+# Environment Variables Required:
+#   EV_TRANSPORT_GPS_API_KEY  - type: secret  - Samsara API token (full "Bearer <token>" value)
+#   EV_TRANSPORT_GPS_BASE_URL - type: string  - Samsara API base URL (https://api.samsara.com/v1)
+
+# Test Flow Steps:
+#   1. Import connector into the Transportation vertical Power Platform environment.
+#   2. Create a connection and supply the Samsara API token in the Authorization header.
+#   3. Run ListDrivers (with limit=1) and verify HTTP 200.
+#   4. Run GetVehicleLocations and verify at least one vehicle is returned.
+#   5. Run GetVehicleStats with types=gps,fuelPercents for a known vehicle ID.
+#   6. Run GetHosLogs with a recent 24-hour time range for a known driver ID.
+#   7. Confirm connection reference is named cr_telematics_transport in the solution.
+
+# Error Handling Patterns:
+#   401 - Invalid token: Regenerate the API token in the Samsara dashboard.
+#         Update EV_TRANSPORT_GPS_API_KEY. Re-authenticate connection.
+#   429 - Rate limit: Apply exponential backoff. Increase polling interval to
+#         at least 30 seconds for vehicle location queries.
+#   Stale data: Check the time field on GPS results. If timestamp is older
+#         than 5 minutes, log a warning and surface a stale data indicator
+#         in the agent response.

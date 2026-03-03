@@ -1,0 +1,430 @@
+swagger: "2.0"
+info:
+  title: Tech Ticketing System Integration Connector
+  description: >
+    Custom connector for IT service management ticketing system integration in the
+    Tech vertical. Supports ServiceNow and Jira Service Management REST APIs for
+    incident management, service requests, and knowledge base operations. Uses
+    OAuth 2.0 Authorization Code flow. Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Tech Vertical Platform Engineering
+host: "<instance>.service-now.com"
+basePath: "/api/now"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2_servicenow:
+    type: oauth2
+    flow: accessCode
+    authorizationUrl: "https://<instance>.service-now.com/oauth_auth.do"
+    tokenUrl: "https://<instance>.service-now.com/oauth_token.do"
+    scopes:
+      useraccount: "Access ServiceNow on behalf of the authenticated user"
+    x-ms-client-id: "<servicenow-client-id>"
+    x-ms-client-secret-name: EV_TECH_SERVICENOW_CLIENT_SECRET
+
+security:
+  - oauth2_servicenow:
+      - useraccount
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://www.servicenow.com"
+  - propertyName: Privacy policy
+    propertyValue: "https://www.servicenow.com/privacy-statement.html"
+  - propertyName: Categories
+    propertyValue: "IT Operations;Productivity"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - contains incident details, user information, and internal
+#   IT infrastructure data. Apply Business Data Only policy.
+#   Block from non-business and unmanaged environments.
+x-ms-dlp-classification: Business
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+  serviceNowNotes: >
+    ServiceNow enforces per-user and per-instance rate limits.
+    Check X-RateLimit-Limit and X-RateLimit-Remaining response headers.
+    Default limit is 3000 requests per hour per user token.
+
+paths:
+  /table/sys_user:
+    get:
+      summary: Health check (user lookup)
+      description: Retrieve the authenticated user record as a connectivity probe.
+      operationId: HealthCheck
+      x-ms-summary: Health Check
+      x-ms-visibility: internal
+      parameters:
+        - name: sysparm_limit
+          in: query
+          required: false
+          type: integer
+          default: 1
+          x-ms-summary: Limit
+        - name: sysparm_fields
+          in: query
+          required: false
+          type: string
+          default: sys_id,user_name,email
+          x-ms-summary: Fields
+      responses:
+        "200":
+          description: User record retrieved. ServiceNow is accessible.
+          schema:
+            type: object
+            properties:
+              result:
+                type: array
+                items:
+                  type: object
+        "401":
+          description: Unauthorized.
+
+  /table/incident:
+    get:
+      summary: List incidents
+      description: Retrieve incidents with optional filters on state, priority, or assignment group.
+      operationId: ListIncidents
+      x-ms-summary: List Incidents
+      x-ms-visibility: important
+      parameters:
+        - name: sysparm_query
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Query Filter
+          description: >
+            ServiceNow encoded query string. Examples:
+            state=1 (New), priority=1 (Critical), assignment_group=<sys_id>.
+        - name: sysparm_limit
+          in: query
+          required: false
+          type: integer
+          default: 25
+          x-ms-summary: Limit
+        - name: sysparm_offset
+          in: query
+          required: false
+          type: integer
+          default: 0
+          x-ms-summary: Offset
+        - name: sysparm_fields
+          in: query
+          required: false
+          type: string
+          default: >
+            sys_id,number,short_description,state,priority,
+            assigned_to,assignment_group,opened_at,resolved_at
+          x-ms-summary: Fields
+      responses:
+        "200":
+          description: Incidents retrieved.
+          schema:
+            $ref: "#/definitions/IncidentListResponse"
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+    post:
+      summary: Create incident
+      description: Create a new incident record in ServiceNow.
+      operationId: CreateIncident
+      x-ms-summary: Create Incident
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/CreateIncidentRequest"
+      responses:
+        "201":
+          description: Incident created successfully.
+          schema:
+            $ref: "#/definitions/IncidentResponse"
+        "400":
+          description: Bad request. Validate required fields.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /table/incident/{sys_id}:
+    get:
+      summary: Get incident
+      description: Retrieve a single incident by its sys_id or incident number.
+      operationId: GetIncident
+      x-ms-summary: Get Incident
+      x-ms-visibility: important
+      parameters:
+        - name: sys_id
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Incident sys_id
+          description: ServiceNow system identifier (sys_id) of the incident.
+        - name: sysparm_fields
+          in: query
+          required: false
+          type: string
+          default: >
+            sys_id,number,short_description,description,state,priority,
+            impact,urgency,assigned_to,assignment_group,opened_at,resolved_at,
+            close_notes,work_notes
+          x-ms-summary: Fields
+      responses:
+        "200":
+          description: Incident retrieved.
+          schema:
+            $ref: "#/definitions/IncidentResponse"
+        "404":
+          description: Incident not found.
+        "401":
+          description: Unauthorized.
+
+    patch:
+      summary: Update incident
+      description: Update an existing incident record.
+      operationId: UpdateIncident
+      x-ms-summary: Update Incident
+      x-ms-visibility: important
+      parameters:
+        - name: sys_id
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Incident sys_id
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateIncidentRequest"
+      responses:
+        "200":
+          description: Incident updated.
+          schema:
+            $ref: "#/definitions/IncidentResponse"
+        "400":
+          description: Bad request.
+        "401":
+          description: Unauthorized.
+        "404":
+          description: Incident not found.
+
+  /table/kb_knowledge:
+    get:
+      summary: Search knowledge base
+      description: Search the ServiceNow knowledge base for articles matching the query.
+      operationId: SearchKnowledgeBase
+      x-ms-summary: Search Knowledge Base
+      x-ms-visibility: important
+      parameters:
+        - name: sysparm_query
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Search Query
+          description: >
+            Search expression. Use CONTAINS operator for text search:
+            short_descriptionCONTAINSpassword reset.
+        - name: sysparm_limit
+          in: query
+          required: false
+          type: integer
+          default: 10
+          x-ms-summary: Limit
+        - name: sysparm_fields
+          in: query
+          required: false
+          type: string
+          default: sys_id,number,short_description,text,category,view_count
+          x-ms-summary: Fields
+      responses:
+        "200":
+          description: Knowledge articles retrieved.
+          schema:
+            $ref: "#/definitions/KnowledgeListResponse"
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  IncidentListResponse:
+    type: object
+    properties:
+      result:
+        type: array
+        x-ms-summary: Incidents
+        items:
+          $ref: "#/definitions/Incident"
+
+  IncidentResponse:
+    type: object
+    properties:
+      result:
+        $ref: "#/definitions/Incident"
+
+  Incident:
+    type: object
+    properties:
+      sys_id:
+        type: string
+        x-ms-summary: sys_id
+      number:
+        type: string
+        x-ms-summary: Incident Number
+      short_description:
+        type: string
+        x-ms-summary: Short Description
+      description:
+        type: string
+        x-ms-summary: Description
+      state:
+        type: string
+        x-ms-summary: State
+      priority:
+        type: string
+        x-ms-summary: Priority
+      impact:
+        type: string
+        x-ms-summary: Impact
+      urgency:
+        type: string
+        x-ms-summary: Urgency
+      assigned_to:
+        type: object
+        x-ms-summary: Assigned To
+        properties:
+          display_value:
+            type: string
+            x-ms-summary: Display Name
+      assignment_group:
+        type: object
+        x-ms-summary: Assignment Group
+        properties:
+          display_value:
+            type: string
+            x-ms-summary: Group Name
+      opened_at:
+        type: string
+        format: date-time
+        x-ms-summary: Opened At
+      resolved_at:
+        type: string
+        format: date-time
+        x-ms-summary: Resolved At
+
+  CreateIncidentRequest:
+    type: object
+    required:
+      - short_description
+      - impact
+      - urgency
+    properties:
+      short_description:
+        type: string
+        x-ms-summary: Short Description
+      description:
+        type: string
+        x-ms-summary: Description
+      impact:
+        type: string
+        x-ms-summary: Impact
+        description: "1=High, 2=Medium, 3=Low"
+      urgency:
+        type: string
+        x-ms-summary: Urgency
+        description: "1=High, 2=Medium, 3=Low"
+      caller_id:
+        type: string
+        x-ms-summary: Caller sys_id
+        description: sys_id of the user reporting the incident.
+      assignment_group:
+        type: string
+        x-ms-summary: Assignment Group sys_id
+
+  UpdateIncidentRequest:
+    type: object
+    properties:
+      state:
+        type: string
+        x-ms-summary: State
+        description: "1=New, 2=In Progress, 3=On Hold, 6=Resolved, 7=Closed"
+      work_notes:
+        type: string
+        x-ms-summary: Work Notes
+      close_notes:
+        type: string
+        x-ms-summary: Close Notes
+      resolved_by:
+        type: string
+        x-ms-summary: Resolved By sys_id
+
+  KnowledgeListResponse:
+    type: object
+    properties:
+      result:
+        type: array
+        x-ms-summary: Knowledge Articles
+        items:
+          type: object
+          properties:
+            sys_id:
+              type: string
+              x-ms-summary: sys_id
+            number:
+              type: string
+              x-ms-summary: Article Number
+            short_description:
+              type: string
+              x-ms-summary: Title
+            text:
+              type: string
+              x-ms-summary: Body Text
+            category:
+              type: string
+              x-ms-summary: Category
+            view_count:
+              type: integer
+              x-ms-summary: View Count
+
+# Environment Variables Required:
+#   EV_TECH_SERVICENOW_CLIENT_ID     - type: string  - ServiceNow OAuth client ID
+#   EV_TECH_SERVICENOW_CLIENT_SECRET - type: secret  - ServiceNow OAuth client secret
+#   EV_TECH_SERVICENOW_INSTANCE_URL  - type: string  - ServiceNow instance base URL
+
+# Test Flow Steps:
+#   1. Import connector into the Tech vertical Power Platform environment.
+#   2. Create a connection using a pilot ServiceNow user account.
+#   3. Run HealthCheck (user lookup) and verify HTTP 200.
+#   4. Run ListIncidents with sysparm_query=state=1 and verify open incidents.
+#   5. Run CreateIncident with test data and capture the returned sys_id.
+#   6. Run GetIncident with the captured sys_id and verify fields.
+#   7. Run UpdateIncident to set state=6 (Resolved) and verify the update.
+#   8. Run SearchKnowledgeBase with a common IT query and verify articles.
+#   9. Confirm connection reference is named cr_servicenow_tech in the solution.
+
+# Error Handling Patterns:
+#   401 - Token expired: Re-authenticate the ServiceNow OAuth connection.
+#   404 - Record not found: Log sys_id. Surface a not-found message.
+#         Do not retry; return a user-friendly error to the agent.
+#   429 - Rate limit: Check X-RateLimit-Remaining. Apply exponential backoff.
+#         Reduce number of concurrent flow branches querying ServiceNow.
+#   500 - ServiceNow error: Log correlationId and error body.
+#         Alert operations channel. Check ServiceNow instance health.

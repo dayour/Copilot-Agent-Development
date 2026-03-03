@@ -1,0 +1,384 @@
+swagger: "2.0"
+info:
+  title: Insurance Actuarial System Integration Connector
+  description: >
+    Custom connector for actuarial and compliance system integration in the
+    Insurance vertical. Provides access to risk rating models, loss reserve
+    calculations, and regulatory compliance rule evaluation. Uses certificate-based
+    authentication or OAuth 2.0 Client Credentials depending on the provider.
+    Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Insurance Vertical Platform Engineering
+host: "<actuarial-api-host>"
+basePath: "/actuarial/v1"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2_client_credentials:
+    type: oauth2
+    flow: application
+    tokenUrl: "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token"
+    scopes:
+      "<actuarial-api-resource>/.default": "Default scope for actuarial API access"
+    x-ms-client-id: "<client-id>"
+    x-ms-client-secret-name: EV_INSURANCE_ACTUARIAL_CLIENT_SECRET
+
+security:
+  - oauth2_client_credentials:
+      - "<actuarial-api-resource>/.default"
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://<actuarial-api-host>"
+  - propertyName: Privacy policy
+    propertyValue: "https://<actuarial-api-host>/privacy"
+  - propertyName: Categories
+    propertyValue: "Finance;Business Intelligence"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - actuarial models contain proprietary loss algorithms and
+#   statistical data classified as confidential business assets.
+#   Apply Business Data Only policy. Block from unmanaged environments.
+#   Do not expose model parameters or rating factors outside of approved flows.
+x-ms-dlp-classification: Business
+
+# Certificate-Based Authentication Note:
+#   If the actuarial system uses mutual TLS (mTLS) rather than OAuth 2.0,
+#   upload the client certificate to the custom connector in Power Platform.
+#   Store the certificate thumbprint in EV_INSURANCE_ACTUARIAL_CERT_THUMBPRINT.
+#   Reference the certificate in the connector advanced settings under Security.
+x-ms-certificate-auth:
+  thumbprintEnvVar: EV_INSURANCE_ACTUARIAL_CERT_THUMBPRINT
+  certStoreLocation: CurrentUser
+  renewalAlertDaysBeforeExpiry: 30
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 3
+  backoffBase: 2
+  backoffCapSeconds: 32
+  notes: >
+    Actuarial rating calls may be computationally expensive. Limit concurrent
+    requests to 2 parallel branches. Cache rating results for identical inputs
+    for the duration of a single session.
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Verify actuarial API connectivity and authentication.
+      operationId: HealthCheck
+      x-ms-summary: Health Check
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Actuarial system is accessible.
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                x-ms-summary: Status
+              modelVersion:
+                type: string
+                x-ms-summary: Model Version
+        "401":
+          description: Unauthorized.
+
+  /rating/calculate:
+    post:
+      summary: Calculate risk rating
+      description: >
+        Execute a risk rating calculation using the actuarial model for the specified
+        policy type and risk attributes. Returns a premium indication and risk tier.
+      operationId: CalculateRiskRating
+      x-ms-summary: Calculate Risk Rating
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/RatingRequest"
+      responses:
+        "200":
+          description: Rating calculation completed.
+          schema:
+            $ref: "#/definitions/RatingResponse"
+        "400":
+          description: Bad request. Validate rating input attributes.
+        "401":
+          description: Unauthorized.
+        "422":
+          description: Rating model declined to rate the submission.
+        "429":
+          description: Rate limit exceeded. Actuarial calls are computationally bounded.
+        "500":
+          description: Model execution error. Log model version and input parameters.
+
+  /reserves/calculate:
+    post:
+      summary: Calculate loss reserve
+      description: >
+        Calculate an actuarially indicated loss reserve estimate for the specified
+        claim characteristics and loss development factors.
+      operationId: CalculateLossReserve
+      x-ms-summary: Calculate Loss Reserve
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/ReserveCalculationRequest"
+      responses:
+        "200":
+          description: Reserve calculation completed.
+          schema:
+            $ref: "#/definitions/ReserveCalculationResponse"
+        "400":
+          description: Bad request. Validate claim attributes.
+        "401":
+          description: Unauthorized.
+        "422":
+          description: Insufficient data for reserve calculation.
+        "429":
+          description: Rate limit exceeded.
+
+  /compliance/evaluate:
+    post:
+      summary: Evaluate compliance rules
+      description: >
+        Evaluate a set of regulatory compliance rules against the provided policy
+        or claim data. Returns a list of triggered rules and their severity.
+      operationId: EvaluateComplianceRules
+      x-ms-summary: Evaluate Compliance Rules
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/ComplianceEvaluationRequest"
+      responses:
+        "200":
+          description: Compliance evaluation completed.
+          schema:
+            $ref: "#/definitions/ComplianceEvaluationResponse"
+        "400":
+          description: Bad request. Validate entity type and attributes.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  RatingRequest:
+    type: object
+    required:
+      - policyType
+      - effectiveDate
+      - riskAttributes
+    properties:
+      policyType:
+        type: string
+        x-ms-summary: Policy Type
+        description: "Type of policy being rated. Examples: auto, homeowners, commercial-property."
+      effectiveDate:
+        type: string
+        format: date
+        x-ms-summary: Effective Date
+        description: Proposed policy effective date.
+      riskAttributes:
+        type: object
+        x-ms-summary: Risk Attributes
+        description: Key-value map of risk characteristics specific to the policy type.
+        additionalProperties:
+          type: string
+      stateCode:
+        type: string
+        x-ms-summary: State Code
+        description: Two-letter US state code for jurisdiction-specific rating factors.
+
+  RatingResponse:
+    type: object
+    properties:
+      requestId:
+        type: string
+        x-ms-summary: Request ID
+      policyType:
+        type: string
+        x-ms-summary: Policy Type
+      riskTier:
+        type: string
+        x-ms-summary: Risk Tier
+        description: "Assigned risk tier. Examples: preferred, standard, non-standard."
+      annualPremiumIndication:
+        type: number
+        format: double
+        x-ms-summary: Annual Premium Indication
+      ratingFactors:
+        type: array
+        x-ms-summary: Rating Factors
+        items:
+          type: object
+          properties:
+            factorName:
+              type: string
+              x-ms-summary: Factor Name
+            factorValue:
+              type: number
+              format: double
+              x-ms-summary: Factor Value
+      modelVersion:
+        type: string
+        x-ms-summary: Model Version
+      calculatedAt:
+        type: string
+        format: date-time
+        x-ms-summary: Calculated At
+
+  ReserveCalculationRequest:
+    type: object
+    required:
+      - claimNumber
+      - lossType
+      - reportedDate
+      - accidentDate
+    properties:
+      claimNumber:
+        type: string
+        x-ms-summary: Claim Number
+      lossType:
+        type: string
+        x-ms-summary: Loss Type
+      reportedDate:
+        type: string
+        format: date
+        x-ms-summary: Reported Date
+      accidentDate:
+        type: string
+        format: date
+        x-ms-summary: Accident Date
+      paidToDate:
+        type: number
+        format: double
+        x-ms-summary: Paid To Date
+
+  ReserveCalculationResponse:
+    type: object
+    properties:
+      claimNumber:
+        type: string
+        x-ms-summary: Claim Number
+      indicatedReserve:
+        type: number
+        format: double
+        x-ms-summary: Indicated Reserve
+      confidenceInterval:
+        type: object
+        x-ms-summary: Confidence Interval
+        properties:
+          lower:
+            type: number
+            format: double
+            x-ms-summary: Lower Bound
+          upper:
+            type: number
+            format: double
+            x-ms-summary: Upper Bound
+      developmentPattern:
+        type: string
+        x-ms-summary: Development Pattern
+      modelVersion:
+        type: string
+        x-ms-summary: Model Version
+
+  ComplianceEvaluationRequest:
+    type: object
+    required:
+      - entityType
+      - entityData
+      - jurisdiction
+    properties:
+      entityType:
+        type: string
+        x-ms-summary: Entity Type
+        description: "Entity to evaluate. Values: policy, claim."
+      entityData:
+        type: object
+        x-ms-summary: Entity Data
+        description: Key-value map of the entity attributes to evaluate.
+        additionalProperties:
+          type: string
+      jurisdiction:
+        type: string
+        x-ms-summary: Jurisdiction
+        description: Regulatory jurisdiction code for rule selection.
+
+  ComplianceEvaluationResponse:
+    type: object
+    properties:
+      entityType:
+        type: string
+        x-ms-summary: Entity Type
+      jurisdiction:
+        type: string
+        x-ms-summary: Jurisdiction
+      isCompliant:
+        type: boolean
+        x-ms-summary: Is Compliant
+      triggeredRules:
+        type: array
+        x-ms-summary: Triggered Rules
+        items:
+          type: object
+          properties:
+            ruleId:
+              type: string
+              x-ms-summary: Rule ID
+            description:
+              type: string
+              x-ms-summary: Description
+            severity:
+              type: string
+              x-ms-summary: Severity
+              description: "Values: informational, warning, violation."
+            remediationGuidance:
+              type: string
+              x-ms-summary: Remediation Guidance
+
+# Environment Variables Required:
+#   EV_INSURANCE_ACTUARIAL_CLIENT_ID        - type: string  - Service principal client ID
+#   EV_INSURANCE_ACTUARIAL_CLIENT_SECRET    - type: secret  - Service principal client secret
+#   EV_INSURANCE_ACTUARIAL_TENANT_ID        - type: string  - Entra tenant ID
+#   EV_INSURANCE_ACTUARIAL_BASE_URL         - type: string  - Actuarial API base URL
+#   EV_INSURANCE_ACTUARIAL_CERT_THUMBPRINT  - type: string  - (mTLS only) Certificate thumbprint
+
+# Test Flow Steps:
+#   1. Import connector into the Insurance vertical Power Platform environment.
+#   2. Create a connection using service principal credentials.
+#   3. Run HealthCheck and verify HTTP 200 with model version.
+#   4. Run CalculateRiskRating with test auto policy attributes.
+#   5. Run CalculateLossReserve with a known test claim number.
+#   6. Run EvaluateComplianceRules with test policy data.
+#   7. Confirm connection reference is named cr_actuarial_insurance in the solution.
+
+# Error Handling Patterns:
+#   401 - Expired credentials: Rotate EV_INSURANCE_ACTUARIAL_CLIENT_SECRET.
+#   422 - Model decline: Log policyType, stateCode, and input attributes.
+#         Surface a rating-declined message without exposing model logic.
+#   429 - Compute limit: Queue requests. Use a sequential flow pattern.
+#         Cache results for duplicate inputs within the same session.
+#   500 - Model error: Log requestId and modelVersion for vendor triage.
+#         Alert operations channel. Do not retry automatically.

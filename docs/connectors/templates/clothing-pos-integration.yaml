@@ -1,0 +1,316 @@
+swagger: "2.0"
+info:
+  title: Clothing POS Integration Connector
+  description: >
+    Custom connector for Point-of-Sale system integration in the Clothing vertical.
+    Supports Shopify and Lightspeed POS APIs for retail transaction data,
+    product catalog access, and inventory synchronization. Uses API key
+    authentication. Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Clothing Vertical Platform Engineering
+host: "<shopify-store>.myshopify.com"
+basePath: "/admin/api/2024-01"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  apiKeyHeader:
+    type: apiKey
+    in: header
+    name: X-Shopify-Access-Token
+
+security:
+  - apiKeyHeader: []
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://shopify.com"
+  - propertyName: Privacy policy
+    propertyValue: "https://www.shopify.com/legal/privacy"
+  - propertyName: Categories
+    propertyValue: "Sales and CRM;Finance"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - contains retail sales data, product pricing, and customer
+#   transaction records. Apply Business Data Only policy.
+#   Block from non-business and unmanaged environments.
+x-ms-dlp-classification: Business
+
+x-ms-rate-limit:
+  rateLimitRemainingHeader: X-Shopify-Shop-Api-Call-Limit
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+  shopifyLimitNotes: >
+    Shopify REST API has a leaky-bucket rate limit of 40 requests per app per store.
+    The X-Shopify-Shop-Api-Call-Limit header shows current/max usage (e.g. 20/40).
+    Slow down requests when remaining capacity drops below 5.
+
+paths:
+  /shop.json:
+    get:
+      summary: Get shop info
+      description: Retrieve basic information about the shop. Used as health check probe.
+      operationId: GetShopInfo
+      x-ms-summary: Get Shop Info
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Shop information retrieved.
+          schema:
+            type: object
+            properties:
+              shop:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    x-ms-summary: Shop ID
+                  name:
+                    type: string
+                    x-ms-summary: Shop Name
+                  domain:
+                    type: string
+                    x-ms-summary: Domain
+        "401":
+          description: Unauthorized. Access token is missing or invalid.
+        "403":
+          description: Forbidden. Access token lacks required scopes.
+
+  /orders.json:
+    get:
+      summary: List orders
+      description: Retrieve a list of orders with optional filters.
+      operationId: ListOrders
+      x-ms-summary: List Orders
+      x-ms-visibility: important
+      parameters:
+        - name: status
+          in: query
+          required: false
+          type: string
+          default: any
+          x-ms-summary: Status
+          description: "Filter by order status. Values: open, closed, cancelled, any."
+        - name: created_at_min
+          in: query
+          required: false
+          type: string
+          format: date-time
+          x-ms-summary: Created After
+          description: Return orders created after this date (ISO 8601).
+        - name: created_at_max
+          in: query
+          required: false
+          type: string
+          format: date-time
+          x-ms-summary: Created Before
+          description: Return orders created before this date (ISO 8601).
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          default: 50
+          x-ms-summary: Limit
+          description: Maximum orders per page. Maximum value is 250.
+        - name: page_info
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Page Cursor
+          description: Cursor for page-based pagination. Obtained from Link response header.
+      responses:
+        "200":
+          description: Orders retrieved.
+          schema:
+            $ref: "#/definitions/OrderListResponse"
+        "400":
+          description: Bad request.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /orders/{order_id}.json:
+    get:
+      summary: Get order
+      description: Retrieve a single order by its Shopify order ID.
+      operationId: GetOrder
+      x-ms-summary: Get Order
+      x-ms-visibility: important
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          type: integer
+          x-ms-summary: Order ID
+          description: Shopify order identifier.
+      responses:
+        "200":
+          description: Order retrieved.
+          schema:
+            $ref: "#/definitions/OrderResponse"
+        "404":
+          description: Order not found.
+        "429":
+          description: Rate limit exceeded.
+
+  /products.json:
+    get:
+      summary: List products
+      description: Retrieve a list of products in the store catalog.
+      operationId: ListProducts
+      x-ms-summary: List Products
+      x-ms-visibility: important
+      parameters:
+        - name: product_type
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Product Type
+          description: Filter by product type.
+        - name: vendor
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Vendor
+          description: Filter by product vendor.
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          default: 50
+          x-ms-summary: Limit
+      responses:
+        "200":
+          description: Products retrieved.
+          schema:
+            $ref: "#/definitions/ProductListResponse"
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  OrderListResponse:
+    type: object
+    properties:
+      orders:
+        type: array
+        x-ms-summary: Orders
+        items:
+          $ref: "#/definitions/Order"
+
+  OrderResponse:
+    type: object
+    properties:
+      order:
+        $ref: "#/definitions/Order"
+
+  Order:
+    type: object
+    properties:
+      id:
+        type: integer
+        x-ms-summary: Order ID
+      order_number:
+        type: integer
+        x-ms-summary: Order Number
+      email:
+        type: string
+        x-ms-summary: Customer Email
+      financial_status:
+        type: string
+        x-ms-summary: Financial Status
+      fulfillment_status:
+        type: string
+        x-ms-summary: Fulfillment Status
+      total_price:
+        type: string
+        x-ms-summary: Total Price
+      currency:
+        type: string
+        x-ms-summary: Currency
+      created_at:
+        type: string
+        format: date-time
+        x-ms-summary: Created At
+      line_items:
+        type: array
+        x-ms-summary: Line Items
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              x-ms-summary: Line Item ID
+            title:
+              type: string
+              x-ms-summary: Product Title
+            sku:
+              type: string
+              x-ms-summary: SKU
+            quantity:
+              type: integer
+              x-ms-summary: Quantity
+            price:
+              type: string
+              x-ms-summary: Unit Price
+
+  ProductListResponse:
+    type: object
+    properties:
+      products:
+        type: array
+        x-ms-summary: Products
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+              x-ms-summary: Product ID
+            title:
+              type: string
+              x-ms-summary: Title
+            vendor:
+              type: string
+              x-ms-summary: Vendor
+            product_type:
+              type: string
+              x-ms-summary: Product Type
+            status:
+              type: string
+              x-ms-summary: Status
+
+# Environment Variables Required:
+#   EV_CLOTHING_POS_ACCESS_TOKEN - type: secret  - Shopify private app access token
+#   EV_CLOTHING_POS_SHOP_DOMAIN  - type: string  - Shopify store subdomain
+#                                                   (e.g. mystore.myshopify.com)
+
+# Test Flow Steps:
+#   1. Import connector into the Clothing vertical Power Platform environment.
+#   2. Create a connection and supply the Shopify access token.
+#   3. Run GetShopInfo and verify the shop name and domain are returned.
+#   4. Run ListOrders with status=open and verify orders are returned.
+#   5. Run GetOrder with a known order ID and verify line item detail.
+#   6. Run ListProducts and verify catalog items are returned.
+#   7. Confirm connection reference is named cr_pos_clothing in the solution.
+
+# Error Handling Patterns:
+#   401 - Invalid access token: Regenerate the private app token in Shopify admin.
+#         Update EV_CLOTHING_POS_ACCESS_TOKEN and re-authenticate connection.
+#   403 - Missing API scope: Review required scopes in the Shopify private app
+#         configuration and add the missing scope.
+#   429 - Rate limit: Monitor X-Shopify-Shop-Api-Call-Limit header.
+#         Slow calls when remaining capacity drops below 5.
+#         Apply exponential backoff on 429 response.

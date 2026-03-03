@@ -1,0 +1,352 @@
+swagger: "2.0"
+info:
+  title: Coffee POS Integration Connector
+  description: >
+    Custom connector for Point-of-Sale system integration in the Coffee vertical.
+    Supports Square and Toast POS APIs for order management, sales reporting, and
+    loyalty program operations. Uses OAuth 2.0 Authorization Code flow for
+    user-delegated access. Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Coffee Vertical Platform Engineering
+host: "connect.squareup.com"
+basePath: "/v2"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2_square:
+    type: oauth2
+    flow: accessCode
+    authorizationUrl: "https://connect.squareup.com/oauth2/authorize"
+    tokenUrl: "https://connect.squareup.com/oauth2/token"
+    scopes:
+      MERCHANT_PROFILE_READ: "Read merchant profile and location data"
+      ORDERS_READ: "Read order data"
+      ORDERS_WRITE: "Create and update orders"
+      PAYMENTS_READ: "Read payment and transaction data"
+      LOYALTY_READ: "Read loyalty program and account data"
+      LOYALTY_WRITE: "Create and update loyalty rewards"
+    x-ms-client-id: "<square-application-id>"
+    x-ms-client-secret-name: EV_COFFEE_POS_CLIENT_SECRET
+
+security:
+  - oauth2_square:
+      - MERCHANT_PROFILE_READ
+      - ORDERS_READ
+      - PAYMENTS_READ
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://squareup.com"
+  - propertyName: Privacy policy
+    propertyValue: "https://squareup.com/us/en/legal/general/privacy"
+  - propertyName: Categories
+    propertyValue: "Sales and CRM;Finance"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - contains transaction data, payment records, and loyalty PII.
+#   Apply Business Data Only policy. Block from non-business environments.
+#   Do not route POS data to non-approved connectors or external services.
+x-ms-dlp-classification: Business
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+  squareLimitNotes: >
+    Square enforces per-token rate limits documented at
+    https://developer.squareup.com/docs/build-basics/rate-limiting.
+    Typical limit is 100 requests per 10 seconds per token.
+
+paths:
+  /locations:
+    get:
+      summary: List locations
+      description: Retrieve all locations associated with the merchant account.
+      operationId: ListLocations
+      x-ms-summary: List Locations
+      x-ms-visibility: important
+      parameters: []
+      responses:
+        "200":
+          description: Locations retrieved successfully.
+          schema:
+            $ref: "#/definitions/LocationListResponse"
+        "401":
+          description: Unauthorized. Token is missing or expired.
+        "429":
+          description: Rate limit exceeded.
+
+  /orders/search:
+    post:
+      summary: Search orders
+      description: Search for orders across one or more locations with filters.
+      operationId: SearchOrders
+      x-ms-summary: Search Orders
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/SearchOrdersRequest"
+      responses:
+        "200":
+          description: Orders retrieved successfully.
+          schema:
+            $ref: "#/definitions/SearchOrdersResponse"
+        "400":
+          description: Bad request. Validate filter and location IDs.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /loyalty/accounts/search:
+    post:
+      summary: Search loyalty accounts
+      description: Look up a customer loyalty account by phone number or customer ID.
+      operationId: SearchLoyaltyAccounts
+      x-ms-summary: Search Loyalty Accounts
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/SearchLoyaltyAccountsRequest"
+      responses:
+        "200":
+          description: Loyalty accounts retrieved.
+          schema:
+            $ref: "#/definitions/SearchLoyaltyAccountsResponse"
+        "400":
+          description: Bad request.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /loyalty/rewards:
+    post:
+      summary: Create loyalty reward
+      description: Issue a loyalty reward to a customer account.
+      operationId: CreateLoyaltyReward
+      x-ms-summary: Create Loyalty Reward
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/CreateLoyaltyRewardRequest"
+      responses:
+        "200":
+          description: Loyalty reward created.
+          schema:
+            $ref: "#/definitions/CreateLoyaltyRewardResponse"
+        "400":
+          description: Bad request.
+        "401":
+          description: Unauthorized.
+        "422":
+          description: Insufficient loyalty points or invalid reward tier.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  LocationListResponse:
+    type: object
+    properties:
+      locations:
+        type: array
+        x-ms-summary: Locations
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              x-ms-summary: Location ID
+            name:
+              type: string
+              x-ms-summary: Location Name
+            address:
+              type: object
+              x-ms-summary: Address
+              properties:
+                address_line_1:
+                  type: string
+                  x-ms-summary: Address Line 1
+                locality:
+                  type: string
+                  x-ms-summary: City
+                postal_code:
+                  type: string
+                  x-ms-summary: Postal Code
+
+  SearchOrdersRequest:
+    type: object
+    required:
+      - location_ids
+    properties:
+      location_ids:
+        type: array
+        items:
+          type: string
+        x-ms-summary: Location IDs
+        description: One or more location IDs to search within.
+      query:
+        type: object
+        x-ms-summary: Query
+        properties:
+          filter:
+            type: object
+            properties:
+              date_time_filter:
+                type: object
+                properties:
+                  created_at:
+                    type: object
+                    properties:
+                      start_at:
+                        type: string
+                        format: date-time
+                        x-ms-summary: Start Date
+                      end_at:
+                        type: string
+                        format: date-time
+                        x-ms-summary: End Date
+      limit:
+        type: integer
+        default: 100
+        x-ms-summary: Limit
+
+  SearchOrdersResponse:
+    type: object
+    properties:
+      orders:
+        type: array
+        x-ms-summary: Orders
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              x-ms-summary: Order ID
+            location_id:
+              type: string
+              x-ms-summary: Location ID
+            total_money:
+              type: object
+              properties:
+                amount:
+                  type: integer
+                  x-ms-summary: Amount (cents)
+                currency:
+                  type: string
+                  x-ms-summary: Currency
+            created_at:
+              type: string
+              format: date-time
+              x-ms-summary: Created At
+            state:
+              type: string
+              x-ms-summary: Order State
+      cursor:
+        type: string
+        x-ms-summary: Pagination Cursor
+
+  SearchLoyaltyAccountsRequest:
+    type: object
+    properties:
+      query:
+        type: object
+        properties:
+          mappings:
+            type: array
+            items:
+              type: object
+              properties:
+                phone_number:
+                  type: string
+                  x-ms-summary: Phone Number
+
+  SearchLoyaltyAccountsResponse:
+    type: object
+    properties:
+      loyalty_accounts:
+        type: array
+        x-ms-summary: Loyalty Accounts
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+              x-ms-summary: Account ID
+            balance:
+              type: integer
+              x-ms-summary: Point Balance
+            program_id:
+              type: string
+              x-ms-summary: Program ID
+
+  CreateLoyaltyRewardRequest:
+    type: object
+    required:
+      - reward
+    properties:
+      reward:
+        type: object
+        properties:
+          loyalty_account_id:
+            type: string
+            x-ms-summary: Loyalty Account ID
+          reward_tier_id:
+            type: string
+            x-ms-summary: Reward Tier ID
+
+  CreateLoyaltyRewardResponse:
+    type: object
+    properties:
+      reward:
+        type: object
+        properties:
+          id:
+            type: string
+            x-ms-summary: Reward ID
+          status:
+            type: string
+            x-ms-summary: Status
+          loyalty_account_id:
+            type: string
+            x-ms-summary: Loyalty Account ID
+
+# Environment Variables Required:
+#   EV_COFFEE_POS_CLIENT_ID     - type: string  - Square application ID
+#   EV_COFFEE_POS_CLIENT_SECRET - type: secret  - Square application secret
+#   EV_COFFEE_POS_LOCATION_ID   - type: string  - Default Square location ID
+
+# Test Flow Steps:
+#   1. Import connector into the Coffee vertical Power Platform environment.
+#   2. Create a connection using a Square merchant account with pilot data.
+#   3. Run ListLocations and verify at least one location is returned.
+#   4. Run SearchOrders with a narrow date range and verify order records.
+#   5. Run SearchLoyaltyAccounts with a known test phone number.
+#   6. Create a test loyalty reward and verify the response.
+#   7. Confirm the connection reference is named cr_pos_coffee in the solution.
+
+# Error Handling Patterns:
+#   401 - Token expired: Power Platform re-authenticates automatically.
+#         Persistent 401: re-consent the Square OAuth connection.
+#   422 - Business rule error: Log reward_tier_id and account balance.
+#         Surface friendly message to agent user.
+#   429 - Rate limit: Apply exponential backoff. Reduce parallel calls.

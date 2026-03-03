@@ -1,0 +1,248 @@
+swagger: "2.0"
+info:
+  title: Tech Azure Data Explorer (Kusto) Integration Connector
+  description: >
+    Custom connector for Azure Data Explorer (Kusto) integration in the Tech vertical.
+    Enables execution of KQL queries against ADX clusters for telemetry analysis,
+    log analytics, and operational intelligence. Uses OAuth 2.0 Client Credentials
+    flow with Entra service principal. Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Tech Vertical Platform Engineering
+host: "<cluster-name>.<region>.kusto.windows.net"
+basePath: "/v1/rest"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2_adx:
+    type: oauth2
+    flow: application
+    tokenUrl: "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token"
+    scopes:
+      "https://<cluster-name>.<region>.kusto.windows.net/.default": "ADX cluster access"
+    x-ms-client-id: "<client-id>"
+    x-ms-client-secret-name: EV_TECH_ADX_CLIENT_SECRET
+
+security:
+  - oauth2_adx:
+      - "https://<cluster-name>.<region>.kusto.windows.net/.default"
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://azure.microsoft.com/products/data-explorer"
+  - propertyName: Privacy policy
+    propertyValue: "https://privacy.microsoft.com/privacystatement"
+  - propertyName: Categories
+    propertyValue: "Business Intelligence;IT Operations"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - ADX typically contains operational telemetry, security logs,
+#   and application performance data classified as internal business data.
+#   Apply Business Data Only policy.
+#   Ensure queries do not expose PII unless authorized and masked.
+x-ms-dlp-classification: Business
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+  adxNotes: >
+    ADX enforces query concurrency and memory limits per cluster.
+    Avoid unbounded queries. Always use a time-range filter in KQL.
+    Use take or limit operators during development to cap result sizes.
+    Set request timeout to 30 seconds for interactive queries.
+
+paths:
+  /query:
+    post:
+      summary: Run KQL query
+      description: >
+        Execute a KQL (Kusto Query Language) query against the specified ADX database.
+        Returns a tabular result set. Always include a time-range filter to avoid
+        full-table scans.
+      operationId: RunQuery
+      x-ms-summary: Run KQL Query
+      x-ms-visibility: important
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/QueryRequest"
+      responses:
+        "200":
+          description: Query executed successfully.
+          schema:
+            $ref: "#/definitions/QueryResponse"
+        "400":
+          description: Bad request. Validate the KQL syntax and database name.
+        "401":
+          description: Unauthorized. Rotate service principal credentials.
+        "403":
+          description: Forbidden. Service principal lacks viewer role on the ADX database.
+        "429":
+          description: Too many requests. ADX cluster concurrency limit reached.
+        "500":
+          description: Query execution error. Log query text and error details.
+
+  /mgmt:
+    post:
+      summary: Run management command
+      description: >
+        Execute an ADX management command (.show, .get) for metadata retrieval.
+        Use for schema discovery and health probes only. Do not execute
+        destructive management commands in production flows.
+      operationId: RunManagementCommand
+      x-ms-summary: Run Management Command
+      x-ms-visibility: advanced
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/ManagementCommandRequest"
+      responses:
+        "200":
+          description: Management command executed.
+          schema:
+            $ref: "#/definitions/QueryResponse"
+        "400":
+          description: Bad request. Validate the management command syntax.
+        "401":
+          description: Unauthorized.
+        "403":
+          description: Forbidden. Command requires higher permissions.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  QueryRequest:
+    type: object
+    required:
+      - db
+      - csl
+    properties:
+      db:
+        type: string
+        x-ms-summary: Database Name
+        description: Name of the ADX database to query.
+      csl:
+        type: string
+        x-ms-summary: KQL Query
+        description: >
+          Kusto Query Language expression. Always include a time filter.
+          Example: MyTable | where ingestion_time() > ago(1h) | take 100
+      properties:
+        type: object
+        x-ms-summary: Query Properties
+        description: Optional query execution properties.
+        properties:
+          Options:
+            type: object
+            properties:
+              servertimeout:
+                type: string
+                default: "00:00:30"
+                x-ms-summary: Server Timeout
+                description: Maximum server-side execution time in hh:mm:ss format.
+              query_language:
+                type: string
+                default: "csl"
+                x-ms-summary: Query Language
+
+  ManagementCommandRequest:
+    type: object
+    required:
+      - db
+      - csl
+    properties:
+      db:
+        type: string
+        x-ms-summary: Database Name
+        description: Name of the ADX database for the management command scope.
+      csl:
+        type: string
+        x-ms-summary: Management Command
+        description: >
+          ADX management command. Permitted commands for agent flows:
+          .show databases, .show tables, .show table <name> schema, print 'health'.
+
+  QueryResponse:
+    type: object
+    properties:
+      Tables:
+        type: array
+        x-ms-summary: Result Tables
+        description: Array of result table sets from the query.
+        items:
+          type: object
+          properties:
+            TableName:
+              type: string
+              x-ms-summary: Table Name
+            Columns:
+              type: array
+              x-ms-summary: Columns
+              items:
+                type: object
+                properties:
+                  ColumnName:
+                    type: string
+                    x-ms-summary: Column Name
+                  DataType:
+                    type: string
+                    x-ms-summary: Data Type
+                  ColumnType:
+                    type: string
+                    x-ms-summary: Column Type
+            Rows:
+              type: array
+              x-ms-summary: Rows
+              description: Array of row arrays, where each inner array corresponds to a column.
+              items:
+                type: array
+                items:
+                  type: object
+
+# Environment Variables Required:
+#   EV_TECH_ADX_CLIENT_ID     - type: string  - Service principal application ID
+#   EV_TECH_ADX_CLIENT_SECRET - type: secret  - Service principal client secret
+#   EV_TECH_ADX_TENANT_ID     - type: string  - Entra tenant ID
+#   EV_TECH_ADX_CLUSTER_URI   - type: string  - ADX cluster URI (https://<cluster>.<region>.kusto.windows.net)
+#   EV_TECH_ADX_DATABASE      - type: string  - Default database name
+
+# Required ADX Permissions:
+#   Grant the service principal the 'viewer' role on the target ADX database.
+#   ADX role assignment command:
+#     .add database <database-name> viewers ('aadapp=<client-id>;<tenant-id>')
+#   Do NOT grant admin or ingestor roles to the connector service principal.
+
+# Test Flow Steps:
+#   1. Import connector into the Tech vertical Power Platform environment.
+#   2. Create a connection using ADX service principal credentials.
+#   3. Run RunManagementCommand with csl=".show databases" and verify database list.
+#   4. Run RunQuery with a simple health check: print 'health'.
+#   5. Run a time-bounded query against a known table with take 10.
+#   6. Verify the result Tables array contains the expected column structure.
+#   7. Confirm connection reference is named cr_adx_tech in the solution.
+
+# Error Handling Patterns:
+#   401 - Expired credentials: Rotate EV_TECH_ADX_CLIENT_SECRET.
+#         Re-authenticate connection in Power Platform Admin Center.
+#   403 - Missing viewer role: Grant viewer role using the .add database command.
+#   429 - Concurrency limit: Reduce parallel query branches. Stagger queries
+#         with a delay action between calls.
+#   Partial query results: Check for the QueryCompletionInformation table in the
+#         response. Log any warnings or throttle notices.
+#   Timeout: Increase servertimeout property for long-running analytical queries.
+#         Consider moving complex queries to scheduled flows rather than
+#         real-time agent response paths.

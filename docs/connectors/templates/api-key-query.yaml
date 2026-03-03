@@ -1,0 +1,210 @@
+swagger: "2.0"
+info:
+  title: API Key (Query Parameter) Connector Template
+  description: >
+    Reusable custom connector template for APIs that authenticate via an API key
+    passed as a URL query parameter. Use this pattern only when the provider does
+    not support header-based key authentication. Header-based keys are preferred
+    because they are less likely to appear in server logs. Replace all placeholder
+    values (marked with angle brackets) before importing into Power Platform.
+  version: "1.0"
+  contact:
+    name: Platform Engineering
+host: "<api-host>"
+basePath: "/api"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  apiKeyQuery:
+    type: apiKey
+    in: query
+    name: apikey
+
+security:
+  - apiKeyQuery: []
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://<api-host>"
+  - propertyName: Privacy policy
+    propertyValue: "https://<api-host>/privacy"
+  - propertyName: Categories
+    propertyValue: "Data;Business Intelligence"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Non-Business for public read-only APIs with no PII.
+#   Business if the API returns organizational or confidential data.
+#   Query-parameter keys are visible in logs; apply stricter rotation and audit controls.
+x-ms-dlp-classification: Non-Business
+
+# Rate Limit Handling:
+#   Check for X-RateLimit-Remaining and X-RateLimit-Reset response headers.
+#   Retry on 429 using the value of Retry-After header.
+#   Implement exponential backoff: wait 2^attempt seconds, capped at 64 seconds.
+#   Maximum retry attempts: 5.
+#   Note: Query-parameter keys in URLs may be logged by proxies and gateways.
+#   Rotate keys more frequently than header-based keys and audit access logs.
+x-ms-rate-limit:
+  rateLimitRemainingHeader: X-RateLimit-Remaining
+  rateLimitResetHeader: X-RateLimit-Reset
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+
+paths:
+  /status:
+    get:
+      summary: API status
+      description: Probe endpoint to verify API key validity and service availability.
+      operationId: GetStatus
+      x-ms-summary: Get Status
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Service is healthy and API key is valid.
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                x-ms-summary: Status
+              version:
+                type: string
+                x-ms-summary: API Version
+        "401":
+          description: Unauthorized. API key is missing or invalid.
+        "403":
+          description: Forbidden. API key does not have access to this endpoint.
+
+  /lookup:
+    get:
+      summary: Lookup
+      description: Look up a value by key from the provider data set.
+      operationId: Lookup
+      x-ms-summary: Lookup
+      x-ms-visibility: important
+      parameters:
+        - name: q
+          in: query
+          required: true
+          type: string
+          x-ms-summary: Query Term
+          description: The value or identifier to look up.
+        - name: format
+          in: query
+          required: false
+          type: string
+          default: json
+          x-ms-summary: Response Format
+          description: "Response format. Supported values: json, xml. Default: json."
+          x-ms-dynamic-values:
+            operationId: GetSupportedFormats
+            value-path: value
+            value-title: label
+      responses:
+        "200":
+          description: Lookup results returned successfully.
+          schema:
+            $ref: "#/definitions/LookupResponse"
+        "400":
+          description: Bad request. Validate the query term format.
+        "401":
+          description: Unauthorized. API key is invalid or missing.
+        "404":
+          description: No results found for the specified query term.
+        "429":
+          description: Rate limit exceeded. Retry after specified interval.
+        "500":
+          description: Internal server error.
+
+  /formats:
+    get:
+      summary: Get supported formats
+      description: Returns the list of supported response formats for dynamic value binding.
+      operationId: GetSupportedFormats
+      x-ms-summary: Get Supported Formats
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Formats retrieved.
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                value:
+                  type: string
+                  x-ms-summary: Value
+                label:
+                  type: string
+                  x-ms-summary: Label
+
+definitions:
+  LookupResponse:
+    type: object
+    properties:
+      query:
+        type: string
+        x-ms-summary: Query
+        description: The original query term.
+      results:
+        type: array
+        items:
+          $ref: "#/definitions/LookupResult"
+        x-ms-summary: Results
+      count:
+        type: integer
+        x-ms-summary: Result Count
+
+  LookupResult:
+    type: object
+    properties:
+      id:
+        type: string
+        x-ms-summary: ID
+      value:
+        type: string
+        x-ms-summary: Value
+      confidence:
+        type: number
+        format: float
+        x-ms-summary: Confidence Score
+        description: Confidence score between 0 and 1 for the result match quality.
+
+# Environment Variables Required:
+#   EV_API_KEY      - type: secret  - API key appended to each request as ?apikey=
+#   EV_API_BASE_URL - type: string  - Base URL of the target API (https://<api-host>/api)
+
+# Security Note:
+#   Query-parameter API keys appear in server logs, proxy logs, and browser history.
+#   Mitigations:
+#   - Always use HTTPS (TLS 1.2 or higher) to encrypt the key in transit.
+#   - Rotate the API key every 30-60 days or upon any suspected exposure.
+#   - Audit provider access logs for unexpected usage patterns.
+#   - Prefer header-based API key authentication (api-key-header.yaml) when available.
+
+# Test Flow Steps:
+#   1. Import this connector definition into the target Power Platform environment.
+#   2. Create a new connection and supply the API key from EV_API_KEY.
+#   3. Run GetStatus and verify HTTP 200 response.
+#   4. Run Lookup with a known query term and verify results are returned.
+#   5. Replace the API key with an invalid value and confirm a 401 response.
+#   6. Restore the valid key and confirm recovery.
+
+# Error Handling Patterns:
+#   401 - Invalid API key: Rotate the key via the provider portal.
+#         Update EV_API_KEY environment variable. Re-authenticate connection.
+#   403 - Plan restriction: Upgrade API subscription plan or contact provider.
+#   429 - Rate limit: Back off using Retry-After or X-RateLimit-Reset header value.
+#   500 - Server error: Log correlationId. Retry after 30 seconds.

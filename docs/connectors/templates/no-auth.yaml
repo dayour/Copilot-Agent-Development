@@ -1,0 +1,207 @@
+swagger: "2.0"
+info:
+  title: No Authentication Connector Template
+  description: >
+    Reusable custom connector template for public APIs that require no
+    authentication. Use this pattern for open government data portals, public
+    reference data APIs, and other publicly accessible endpoints. Replace all
+    placeholder values (marked with angle brackets) before importing into
+    Power Platform.
+  version: "1.0"
+  contact:
+    name: Platform Engineering
+host: "<api-host>"
+basePath: "/v1"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+# No securityDefinitions block - this connector requires no authentication.
+# Ensure the target API is truly public and does not expose PII or confidential data.
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://<api-host>"
+  - propertyName: Privacy policy
+    propertyValue: "https://<api-host>/privacy"
+  - propertyName: Categories
+    propertyValue: "Data"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Non-Business - public APIs with no organizational or sensitive data.
+#   Review the content returned by the API before assigning classification.
+#   If any response includes PII or confidential data, reclassify as Business
+#   and add appropriate connector policies.
+x-ms-dlp-classification: Non-Business
+
+# Rate Limit Handling:
+#   Public APIs often enforce per-IP or per-endpoint rate limits without auth.
+#   Check for X-RateLimit-Remaining, X-RateLimit-Reset, and Retry-After headers.
+#   Implement caching in the calling flow to reduce unnecessary repeated calls.
+#   Maximum retry attempts: 3 (public APIs may have stricter abuse limits).
+x-ms-rate-limit:
+  rateLimitRemainingHeader: X-RateLimit-Remaining
+  rateLimitResetHeader: X-RateLimit-Reset
+  retryAfterHeader: Retry-After
+  maxRetries: 3
+  backoffBase: 2
+  backoffCapSeconds: 32
+  cachingRecommended: true
+
+paths:
+  /status:
+    get:
+      summary: API status
+      description: Probe endpoint to verify service availability.
+      operationId: GetStatus
+      x-ms-summary: Get Status
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Service is available.
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                x-ms-summary: Status
+              version:
+                type: string
+                x-ms-summary: API Version
+        "503":
+          description: Service temporarily unavailable.
+
+  /data:
+    get:
+      summary: Get public data
+      description: Retrieve public data records matching the specified query parameters.
+      operationId: GetPublicData
+      x-ms-summary: Get Public Data
+      x-ms-visibility: important
+      parameters:
+        - name: q
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Search Query
+          description: Optional search or filter expression.
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          default: 25
+          x-ms-summary: Limit
+          description: Maximum number of results to return per page.
+        - name: page
+          in: query
+          required: false
+          type: integer
+          default: 1
+          x-ms-summary: Page
+          description: Page number for pagination, starting at 1.
+      responses:
+        "200":
+          description: Data retrieved successfully.
+          schema:
+            $ref: "#/definitions/PublicDataResponse"
+        "400":
+          description: Bad request. Validate query parameter format.
+        "429":
+          description: Rate limit exceeded. Retry after specified interval.
+        "503":
+          description: Service temporarily unavailable.
+
+  /data/{id}:
+    get:
+      summary: Get public data item
+      description: Retrieve a single public data item by its unique identifier.
+      operationId: GetPublicDataItem
+      x-ms-summary: Get Public Data Item
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Item ID
+          description: Unique identifier of the data item.
+      responses:
+        "200":
+          description: Data item retrieved successfully.
+          schema:
+            $ref: "#/definitions/PublicDataItem"
+        "404":
+          description: Item not found.
+        "429":
+          description: Rate limit exceeded.
+        "503":
+          description: Service temporarily unavailable.
+
+definitions:
+  PublicDataResponse:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          $ref: "#/definitions/PublicDataItem"
+        x-ms-summary: Data
+      page:
+        type: integer
+        x-ms-summary: Current Page
+      totalPages:
+        type: integer
+        x-ms-summary: Total Pages
+      totalCount:
+        type: integer
+        x-ms-summary: Total Count
+
+  PublicDataItem:
+    type: object
+    properties:
+      id:
+        type: string
+        x-ms-summary: ID
+        description: Unique identifier.
+      title:
+        type: string
+        x-ms-summary: Title
+        description: Display title for the data item.
+      description:
+        type: string
+        x-ms-summary: Description
+        description: Description or summary text.
+      publishedAt:
+        type: string
+        format: date-time
+        x-ms-summary: Published At
+        description: UTC timestamp when the item was published.
+      sourceUrl:
+        type: string
+        x-ms-summary: Source URL
+        description: Link to the original source of the data.
+
+# Environment Variables Required:
+#   EV_API_BASE_URL - type: string  - Base URL of the target API (https://<api-host>/v1)
+
+# Test Flow Steps:
+#   1. Import this connector definition into the target Power Platform environment.
+#   2. Create a new connection (no credentials required).
+#   3. Run GetStatus and verify HTTP 200 response.
+#   4. Run GetPublicData with no query parameters and verify results are returned.
+#   5. Run GetPublicDataItem with a known valid ID and verify the response.
+#   6. Confirm no authentication headers are sent in the outgoing request.
+
+# Error Handling Patterns:
+#   429 - Rate limit: Apply exponential backoff. Add caching in calling flow to
+#         avoid redundant requests. Consider increasing flow schedule interval.
+#   503 - Unavailable: Retry after 60 seconds. Alert operations if persistent.
+#   Note: No token rotation is required. Monitor the API provider status page
+#         for service disruptions and planned maintenance windows.

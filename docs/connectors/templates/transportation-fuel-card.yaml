@@ -1,0 +1,417 @@
+swagger: "2.0"
+info:
+  title: Transportation Fuel Card Integration Connector
+  description: >
+    Custom connector for fuel card provider integration in the Transportation vertical.
+    Supports WEX and Comdata fuel card REST APIs for transaction retrieval, card
+    management, and merchant-level analysis. Uses API key header authentication.
+    Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Transportation Vertical Platform Engineering
+host: "<fuel-card-api-host>"
+basePath: "/api/v1"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  apiKeyHeader:
+    type: apiKey
+    in: header
+    name: x-api-key
+
+security:
+  - apiKeyHeader: []
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://<fuel-card-api-host>"
+  - propertyName: Privacy policy
+    propertyValue: "https://<fuel-card-api-host>/privacy"
+  - propertyName: Categories
+    propertyValue: "Finance;IT Operations"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - fuel card data contains financial transaction records, card holder
+#   information, and merchant data classified as confidential business data.
+#   Apply Business Data Only policy. Block from non-business environments.
+#   Configure source IP allowlisting on the provider side where supported.
+x-ms-dlp-classification: Business
+
+# IP Allowlisting Note:
+#   WEX and Comdata support source IP restrictions on API keys.
+#   Register the static IP address of the Power Platform environment's
+#   outbound data gateway or connector infrastructure to restrict API access.
+x-ms-ip-allowlist-recommended: true
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Verify fuel card API connectivity and key validity.
+      operationId: HealthCheck
+      x-ms-summary: Health Check
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Fuel card API is accessible and key is valid.
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                x-ms-summary: Status
+        "401":
+          description: Unauthorized. API key is missing or invalid.
+
+  /transactions:
+    get:
+      summary: Get transactions
+      description: >
+        Retrieve fuel card transaction records for the specified date range and
+        optional card or vehicle filter.
+      operationId: GetTransactions
+      x-ms-summary: Get Transactions
+      x-ms-visibility: important
+      parameters:
+        - name: fromDate
+          in: query
+          required: true
+          type: string
+          format: date
+          x-ms-summary: From Date
+          description: Start date for the transaction query (YYYY-MM-DD).
+        - name: toDate
+          in: query
+          required: true
+          type: string
+          format: date
+          x-ms-summary: To Date
+          description: End date for the transaction query (YYYY-MM-DD).
+        - name: cardNumber
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Card Number
+          description: Filter by specific fuel card number.
+        - name: vehicleId
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Vehicle ID
+          description: Filter by vehicle identifier associated with the card.
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          default: 100
+          x-ms-summary: Limit
+        - name: offset
+          in: query
+          required: false
+          type: integer
+          default: 0
+          x-ms-summary: Offset
+      responses:
+        "200":
+          description: Transactions retrieved.
+          schema:
+            $ref: "#/definitions/TransactionListResponse"
+        "400":
+          description: Bad request. Validate date range format.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /cards/{cardNumber}:
+    get:
+      summary: Get card details
+      description: Retrieve current state and limit information for a specific fuel card.
+      operationId: GetCardDetails
+      x-ms-summary: Get Card Details
+      x-ms-visibility: important
+      parameters:
+        - name: cardNumber
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Card Number
+          description: The fuel card number.
+      responses:
+        "200":
+          description: Card details retrieved.
+          schema:
+            $ref: "#/definitions/CardDetails"
+        "404":
+          description: Card not found.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /cards/{cardNumber}/suspend:
+    post:
+      summary: Suspend card
+      description: >
+        Immediately suspend a fuel card to prevent further transactions.
+        Use this operation for lost, stolen, or misuse-detected cards.
+        This action is reversible via the reactivate endpoint.
+      operationId: SuspendCard
+      x-ms-summary: Suspend Card
+      x-ms-visibility: important
+      parameters:
+        - name: cardNumber
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Card Number
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/SuspendCardRequest"
+      responses:
+        "200":
+          description: Card suspended successfully.
+          schema:
+            $ref: "#/definitions/CardActionResponse"
+        "400":
+          description: Bad request.
+        "401":
+          description: Unauthorized.
+        "404":
+          description: Card not found.
+        "409":
+          description: Card is already suspended.
+        "429":
+          description: Rate limit exceeded.
+
+  /merchants/{merchantId}:
+    get:
+      summary: Get merchant info
+      description: Retrieve information about a fuel merchant by merchant identifier.
+      operationId: GetMerchantInfo
+      x-ms-summary: Get Merchant Info
+      x-ms-visibility: important
+      parameters:
+        - name: merchantId
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Merchant ID
+          description: Merchant identifier from the transaction record.
+      responses:
+        "200":
+          description: Merchant information retrieved.
+          schema:
+            $ref: "#/definitions/MerchantInfo"
+        "404":
+          description: Merchant not found.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+definitions:
+  TransactionListResponse:
+    type: object
+    properties:
+      transactions:
+        type: array
+        x-ms-summary: Transactions
+        items:
+          $ref: "#/definitions/Transaction"
+      totalCount:
+        type: integer
+        x-ms-summary: Total Count
+
+  Transaction:
+    type: object
+    properties:
+      transactionId:
+        type: string
+        x-ms-summary: Transaction ID
+      cardNumber:
+        type: string
+        x-ms-summary: Card Number
+      vehicleId:
+        type: string
+        x-ms-summary: Vehicle ID
+      transactionDate:
+        type: string
+        format: date-time
+        x-ms-summary: Transaction Date
+      merchantId:
+        type: string
+        x-ms-summary: Merchant ID
+      merchantName:
+        type: string
+        x-ms-summary: Merchant Name
+      latitude:
+        type: number
+        format: double
+        x-ms-summary: Latitude
+      longitude:
+        type: number
+        format: double
+        x-ms-summary: Longitude
+      productType:
+        type: string
+        x-ms-summary: Product Type
+        description: "Fuel type purchased. Examples: diesel, unleaded, DEF."
+      gallons:
+        type: number
+        format: double
+        x-ms-summary: Gallons
+      unitPrice:
+        type: number
+        format: double
+        x-ms-summary: Unit Price Per Gallon
+      totalAmount:
+        type: number
+        format: double
+        x-ms-summary: Total Amount
+      currency:
+        type: string
+        x-ms-summary: Currency
+      odometer:
+        type: integer
+        x-ms-summary: Odometer Reading
+
+  CardDetails:
+    type: object
+    properties:
+      cardNumber:
+        type: string
+        x-ms-summary: Card Number
+      cardHolderName:
+        type: string
+        x-ms-summary: Card Holder Name
+      vehicleId:
+        type: string
+        x-ms-summary: Associated Vehicle ID
+      status:
+        type: string
+        x-ms-summary: Card Status
+        description: "Active, Suspended, or Cancelled."
+      dailyLimit:
+        type: number
+        format: double
+        x-ms-summary: Daily Limit
+      weeklyLimit:
+        type: number
+        format: double
+        x-ms-summary: Weekly Limit
+      expirationDate:
+        type: string
+        format: date
+        x-ms-summary: Expiration Date
+
+  SuspendCardRequest:
+    type: object
+    required:
+      - reason
+    properties:
+      reason:
+        type: string
+        x-ms-summary: Suspension Reason
+        description: "Reason code for card suspension. Examples: lost, stolen, misuse, maintenance."
+      requestedBy:
+        type: string
+        x-ms-summary: Requested By
+        description: Name or employee ID of the person initiating the suspension.
+      notes:
+        type: string
+        x-ms-summary: Notes
+        description: Additional context for the suspension action.
+
+  CardActionResponse:
+    type: object
+    properties:
+      cardNumber:
+        type: string
+        x-ms-summary: Card Number
+      status:
+        type: string
+        x-ms-summary: New Status
+      actionTimestamp:
+        type: string
+        format: date-time
+        x-ms-summary: Action Timestamp
+      confirmationNumber:
+        type: string
+        x-ms-summary: Confirmation Number
+
+  MerchantInfo:
+    type: object
+    properties:
+      merchantId:
+        type: string
+        x-ms-summary: Merchant ID
+      name:
+        type: string
+        x-ms-summary: Merchant Name
+      address:
+        type: string
+        x-ms-summary: Address
+      city:
+        type: string
+        x-ms-summary: City
+      stateCode:
+        type: string
+        x-ms-summary: State
+      postalCode:
+        type: string
+        x-ms-summary: Postal Code
+      latitude:
+        type: number
+        format: double
+        x-ms-summary: Latitude
+      longitude:
+        type: number
+        format: double
+        x-ms-summary: Longitude
+      acceptedProducts:
+        type: array
+        x-ms-summary: Accepted Products
+        items:
+          type: string
+
+# Environment Variables Required:
+#   EV_TRANSPORT_FUELCARD_API_KEY  - type: secret  - Fuel card provider API key
+#   EV_TRANSPORT_FUELCARD_BASE_URL - type: string  - Fuel card API base URL
+
+# Test Flow Steps:
+#   1. Import connector into the Transportation vertical Power Platform environment.
+#   2. Create a connection and supply the fuel card API key.
+#   3. Run HealthCheck and verify HTTP 200.
+#   4. Run GetTransactions with a recent 7-day date range and verify results.
+#   5. Run GetCardDetails with a known test card number and verify card status.
+#   6. Run GetMerchantInfo with a merchant ID from a retrieved transaction.
+#   7. Run SuspendCard on a test card with reason=maintenance.
+#   8. Confirm connection reference is named cr_fuelcard_transport in the solution.
+
+# Error Handling Patterns:
+#   401 - Invalid API key: Rotate the key via the provider portal.
+#         Update EV_TRANSPORT_FUELCARD_API_KEY. Re-authenticate connection.
+#   409 - Card already suspended: Log and surface a message to the fleet manager.
+#         Do not re-suspend. Query GetCardDetails to confirm current status.
+#   429 - Rate limit: Apply exponential backoff. Transaction history queries
+#         should run on a scheduled basis, not in real-time agent response paths.
+#   Anomaly detection: For transactions with gallons or unit_price outside
+#         expected ranges, log the transactionId and alert the fleet manager.

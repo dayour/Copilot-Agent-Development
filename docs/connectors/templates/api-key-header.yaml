@@ -1,0 +1,209 @@
+swagger: "2.0"
+info:
+  title: API Key (Header) Connector Template
+  description: >
+    Reusable custom connector template for APIs that authenticate via an API key
+    passed in a request header. Common examples include weather APIs, mapping
+    services, and public data providers. Replace all placeholder values
+    (marked with angle brackets) before importing into Power Platform.
+  version: "1.0"
+  contact:
+    name: Platform Engineering
+host: "<api-host>"
+basePath: "/v1"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  apiKeyHeader:
+    type: apiKey
+    in: header
+    name: x-api-key
+
+security:
+  - apiKeyHeader: []
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://<api-host>"
+  - propertyName: Privacy policy
+    propertyValue: "https://<api-host>/privacy"
+  - propertyName: Categories
+    propertyValue: "Data;Business Intelligence"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Depends on data sensitivity of the target API.
+#   Business - for internal or proprietary data APIs.
+#   Non-Business - for public data APIs with no PII or confidential content.
+#   Review data classification policy before deploying to production environments.
+x-ms-dlp-classification: Business
+
+# Rate Limit Handling:
+#   Check for X-RateLimit-Remaining and X-RateLimit-Reset response headers.
+#   Retry on 429 using the value of Retry-After or X-RateLimit-Reset header.
+#   Implement exponential backoff: wait 2^attempt seconds, capped at 64 seconds.
+#   Maximum retry attempts: 5.
+x-ms-rate-limit:
+  rateLimitRemainingHeader: X-RateLimit-Remaining
+  rateLimitResetHeader: X-RateLimit-Reset
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Probe endpoint to verify API key validity and service availability.
+      operationId: HealthCheck
+      x-ms-summary: Health Check
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Service is healthy and API key is valid.
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                x-ms-summary: Status
+        "401":
+          description: Unauthorized. API key is missing or invalid.
+        "403":
+          description: Forbidden. API key does not have access to this endpoint.
+
+  /data:
+    get:
+      summary: Get data
+      description: Retrieve data records matching the specified query parameters.
+      operationId: GetData
+      x-ms-summary: Get Data
+      x-ms-visibility: important
+      parameters:
+        - name: query
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Query
+          description: Filter or search expression for the data request.
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          default: 50
+          x-ms-summary: Limit
+          description: Maximum number of results to return.
+        - name: offset
+          in: query
+          required: false
+          type: integer
+          default: 0
+          x-ms-summary: Offset
+          description: Number of results to skip for pagination.
+      responses:
+        "200":
+          description: Data retrieved successfully.
+          schema:
+            $ref: "#/definitions/DataResponse"
+        "400":
+          description: Bad request. Validate query parameter format.
+        "401":
+          description: Unauthorized. API key is invalid or expired.
+        "403":
+          description: Forbidden. Key plan does not include this endpoint.
+        "429":
+          description: Rate limit exceeded. Retry after specified interval.
+        "500":
+          description: Internal server error.
+
+  /data/{id}:
+    get:
+      summary: Get data item
+      description: Retrieve a single data item by its unique identifier.
+      operationId: GetDataItem
+      x-ms-summary: Get Data Item
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Item ID
+          description: Unique identifier of the data item.
+      responses:
+        "200":
+          description: Data item retrieved successfully.
+          schema:
+            $ref: "#/definitions/DataItem"
+        "404":
+          description: Item not found.
+        "429":
+          description: Rate limit exceeded.
+        "500":
+          description: Internal server error.
+
+definitions:
+  DataResponse:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          $ref: "#/definitions/DataItem"
+        x-ms-summary: Data
+      count:
+        type: integer
+        x-ms-summary: Count
+        description: Number of results returned in this page.
+      total:
+        type: integer
+        x-ms-summary: Total
+        description: Total number of results matching the query.
+
+  DataItem:
+    type: object
+    properties:
+      id:
+        type: string
+        x-ms-summary: ID
+        description: Unique identifier.
+      value:
+        type: string
+        x-ms-summary: Value
+        description: Primary data value.
+      timestamp:
+        type: string
+        format: date-time
+        x-ms-summary: Timestamp
+        description: UTC timestamp of the data point.
+
+# Environment Variables Required:
+#   EV_API_KEY      - type: secret  - API key to pass in the x-api-key header
+#   EV_API_BASE_URL - type: string  - Base URL of the target API (https://<api-host>/v1)
+
+# Test Flow Steps:
+#   1. Import this connector definition into the target Power Platform environment.
+#   2. Create a new connection and supply the API key from EV_API_KEY.
+#   3. Run HealthCheck and verify HTTP 200 response.
+#   4. Run GetData with no query parameters and verify results are returned.
+#   5. Run GetDataItem with a known valid ID and verify the response.
+#   6. Replace the API key with an invalid value and confirm a 401 response.
+#   7. Restore the valid key and confirm recovery.
+
+# Error Handling Patterns:
+#   401 - Invalid API key: Rotate the key via the provider portal.
+#         Update EV_API_KEY environment variable. Re-authenticate connection.
+#   403 - Plan restriction: Upgrade API subscription plan or contact provider.
+#   429 - Rate limit: Back off using Retry-After or X-RateLimit-Reset header value.
+#         Reduce polling frequency in calling flows.
+#   500 - Server error: Log correlationId. Retry after 30 seconds.
+#         Alert operations if persistent.

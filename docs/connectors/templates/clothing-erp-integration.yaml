@@ -1,0 +1,374 @@
+swagger: "2.0"
+info:
+  title: Clothing ERP Integration Connector
+  description: >
+    Custom connector for ERP system integration in the Clothing vertical.
+    Supports SAP and Oracle REST APIs for inventory management, purchase orders,
+    and financial reporting. Uses OAuth 2.0 Client Credentials flow for
+    service-to-service access. Replace all placeholder values before importing.
+  version: "1.0"
+  contact:
+    name: Clothing Vertical Platform Engineering
+host: "<erp-api-host>"
+basePath: "/api/v1"
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  oauth2_client_credentials:
+    type: oauth2
+    flow: application
+    tokenUrl: "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token"
+    scopes:
+      "<erp-resource-uri>/.default": "Default scope for ERP API access"
+    x-ms-client-id: "<client-id>"
+    x-ms-client-secret-name: EV_CLOTHING_ERP_CLIENT_SECRET
+
+security:
+  - oauth2_client_credentials:
+      - "<erp-resource-uri>/.default"
+
+x-ms-connector-metadata:
+  - propertyName: Website
+    propertyValue: "https://<erp-api-host>"
+  - propertyName: Privacy policy
+    propertyValue: "https://<erp-api-host>/privacy"
+  - propertyName: Categories
+    propertyValue: "Finance;Business Intelligence"
+
+x-ms-capabilities:
+  testConnection: true
+
+# DLP Classification Recommendation:
+#   Business - ERP data includes inventory valuations, purchase costs, and
+#   financial records classified as confidential business data.
+#   Apply Business Data Only policy. Block from non-business environments.
+#   Restrict to clothing vertical environment only.
+x-ms-dlp-classification: Business
+
+x-ms-rate-limit:
+  retryAfterHeader: Retry-After
+  maxRetries: 5
+  backoffBase: 2
+  backoffCapSeconds: 64
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Verify ERP API connectivity and token validity.
+      operationId: HealthCheck
+      x-ms-summary: Health Check
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: ERP API is accessible.
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                x-ms-summary: Status
+        "401":
+          description: Unauthorized. Rotate client credentials.
+
+  /inventory/items:
+    get:
+      summary: List inventory items
+      description: Retrieve inventory item records with optional filtering by SKU or category.
+      operationId: ListInventoryItems
+      x-ms-summary: List Inventory Items
+      x-ms-visibility: important
+      parameters:
+        - name: sku
+          in: query
+          required: false
+          type: string
+          x-ms-summary: SKU
+          description: Filter by specific SKU code.
+        - name: category
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Category
+          description: Filter by product category.
+        - name: warehouseId
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Warehouse ID
+          description: Filter by warehouse or distribution center identifier.
+        - name: $top
+          in: query
+          required: false
+          type: integer
+          default: 100
+          x-ms-summary: Page Size
+        - name: $skip
+          in: query
+          required: false
+          type: integer
+          default: 0
+          x-ms-summary: Skip Count
+      responses:
+        "200":
+          description: Inventory items retrieved.
+          schema:
+            $ref: "#/definitions/InventoryItemListResponse"
+        "400":
+          description: Bad request. Validate filter parameters.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /inventory/items/{sku}:
+    get:
+      summary: Get inventory item
+      description: Retrieve a single inventory item by its SKU identifier.
+      operationId: GetInventoryItem
+      x-ms-summary: Get Inventory Item
+      x-ms-visibility: important
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          type: string
+          x-ms-summary: SKU
+          description: Stock keeping unit identifier.
+      responses:
+        "200":
+          description: Inventory item retrieved.
+          schema:
+            $ref: "#/definitions/InventoryItem"
+        "404":
+          description: SKU not found.
+        "429":
+          description: Rate limit exceeded.
+
+  /purchase-orders:
+    get:
+      summary: List purchase orders
+      description: Retrieve purchase orders with optional filtering by status or date range.
+      operationId: ListPurchaseOrders
+      x-ms-summary: List Purchase Orders
+      x-ms-visibility: important
+      parameters:
+        - name: status
+          in: query
+          required: false
+          type: string
+          x-ms-summary: Status
+          description: "Filter by PO status. Supported: draft, submitted, approved, received, closed."
+          x-ms-dynamic-values:
+            operationId: GetPurchaseOrderStatuses
+            value-path: value
+            value-title: label
+        - name: fromDate
+          in: query
+          required: false
+          type: string
+          format: date
+          x-ms-summary: From Date
+          description: Start date for the date range filter (YYYY-MM-DD).
+        - name: toDate
+          in: query
+          required: false
+          type: string
+          format: date
+          x-ms-summary: To Date
+          description: End date for the date range filter (YYYY-MM-DD).
+        - name: $top
+          in: query
+          required: false
+          type: integer
+          default: 50
+          x-ms-summary: Page Size
+      responses:
+        "200":
+          description: Purchase orders retrieved.
+          schema:
+            $ref: "#/definitions/PurchaseOrderListResponse"
+        "400":
+          description: Bad request.
+        "401":
+          description: Unauthorized.
+        "429":
+          description: Rate limit exceeded.
+
+  /purchase-orders/{id}:
+    get:
+      summary: Get purchase order
+      description: Retrieve a single purchase order by its identifier.
+      operationId: GetPurchaseOrder
+      x-ms-summary: Get Purchase Order
+      x-ms-visibility: important
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: string
+          x-ms-summary: Purchase Order ID
+      responses:
+        "200":
+          description: Purchase order retrieved.
+          schema:
+            $ref: "#/definitions/PurchaseOrder"
+        "404":
+          description: Purchase order not found.
+        "429":
+          description: Rate limit exceeded.
+
+  /purchase-order-statuses:
+    get:
+      summary: Get purchase order statuses
+      description: Returns available purchase order status values for dynamic value binding.
+      operationId: GetPurchaseOrderStatuses
+      x-ms-summary: Get Purchase Order Statuses
+      x-ms-visibility: internal
+      parameters: []
+      responses:
+        "200":
+          description: Statuses retrieved.
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                value:
+                  type: string
+                label:
+                  type: string
+
+definitions:
+  InventoryItem:
+    type: object
+    properties:
+      sku:
+        type: string
+        x-ms-summary: SKU
+      name:
+        type: string
+        x-ms-summary: Product Name
+      category:
+        type: string
+        x-ms-summary: Category
+      quantityOnHand:
+        type: integer
+        x-ms-summary: Quantity On Hand
+      quantityReserved:
+        type: integer
+        x-ms-summary: Quantity Reserved
+      quantityAvailable:
+        type: integer
+        x-ms-summary: Quantity Available
+      unitCost:
+        type: number
+        format: double
+        x-ms-summary: Unit Cost
+      warehouseId:
+        type: string
+        x-ms-summary: Warehouse ID
+      lastUpdated:
+        type: string
+        format: date-time
+        x-ms-summary: Last Updated
+
+  InventoryItemListResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          $ref: "#/definitions/InventoryItem"
+        x-ms-summary: Items
+      totalCount:
+        type: integer
+        x-ms-summary: Total Count
+
+  PurchaseOrder:
+    type: object
+    properties:
+      id:
+        type: string
+        x-ms-summary: Purchase Order ID
+      supplierName:
+        type: string
+        x-ms-summary: Supplier Name
+      status:
+        type: string
+        x-ms-summary: Status
+      orderDate:
+        type: string
+        format: date
+        x-ms-summary: Order Date
+      expectedDeliveryDate:
+        type: string
+        format: date
+        x-ms-summary: Expected Delivery Date
+      totalValue:
+        type: number
+        format: double
+        x-ms-summary: Total Value
+      currency:
+        type: string
+        x-ms-summary: Currency
+      lineItems:
+        type: array
+        x-ms-summary: Line Items
+        items:
+          type: object
+          properties:
+            sku:
+              type: string
+              x-ms-summary: SKU
+            quantity:
+              type: integer
+              x-ms-summary: Quantity
+            unitPrice:
+              type: number
+              format: double
+              x-ms-summary: Unit Price
+
+  PurchaseOrderListResponse:
+    type: object
+    properties:
+      purchaseOrders:
+        type: array
+        items:
+          $ref: "#/definitions/PurchaseOrder"
+        x-ms-summary: Purchase Orders
+      totalCount:
+        type: integer
+        x-ms-summary: Total Count
+
+# Environment Variables Required:
+#   EV_CLOTHING_ERP_CLIENT_ID     - type: string  - Service principal application ID
+#   EV_CLOTHING_ERP_CLIENT_SECRET - type: secret  - Service principal client secret
+#   EV_CLOTHING_ERP_TENANT_ID     - type: string  - Entra tenant ID
+#   EV_CLOTHING_ERP_BASE_URL      - type: string  - ERP API base URL
+#   EV_CLOTHING_ERP_RESOURCE_URI  - type: string  - ERP API resource URI for token scope
+
+# Test Flow Steps:
+#   1. Import connector into the Clothing vertical Power Platform environment.
+#   2. Create a connection using the ERP service principal credentials.
+#   3. Run HealthCheck and verify HTTP 200.
+#   4. Run ListInventoryItems with no filters and verify items are returned.
+#   5. Run GetInventoryItem with a known SKU and verify stock levels.
+#   6. Run ListPurchaseOrders filtered by status=approved and verify results.
+#   7. Confirm connection reference is named cr_erp_clothing in the solution.
+
+# Error Handling Patterns:
+#   401 - Expired credentials: Rotate EV_CLOTHING_ERP_CLIENT_SECRET.
+#         Re-authenticate connection in Power Platform Admin Center.
+#   404 - SKU or PO not found: Log the identifier and surface a not-found
+#         message to the agent user. Do not retry.
+#   429 - Rate limit: Apply exponential backoff. Avoid calling ERP APIs in
+#         parallel flow branches; use sequential patterns instead.
+#   500 - ERP server error: Log correlationId. Alert operations channel.
+#         Do not surface raw ERP error messages to end users.
