@@ -60,6 +60,25 @@ environment_variables:
     type: string
     required: true
     default_value: ""
+  - schema_name: EtaChangeThresholdMinutes
+    display_name: ETA Change Notification Threshold (minutes)
+    type: number
+    required: true
+    default_value: 15
+  - schema_name: CustomerNotificationEmail
+    display_name: Customer Notification From Email
+    type: string
+    required: false
+    default_value: noreply-delivery@contoso.com
+  - schema_name: CustomerSmsApiUrl
+    display_name: Customer SMS API URL
+    type: string
+    required: false
+    default_value: ""
+  - schema_name: CustomerSmsApiKey
+    display_name: Customer SMS API Key
+    type: secret
+    required: false
 
 dataverse:
   tables:
@@ -190,6 +209,26 @@ dataverse:
           display_name: estimated_arrival
           type: datetime
           behavior: user_local
+        - name: crd_order_id
+          display_name: order_id
+          type: text
+          max_length: 100
+          required: false
+        - name: crd_customer_name
+          display_name: customer_name
+          type: text
+          max_length: 200
+          required: false
+        - name: crd_customer_email
+          display_name: customer_email
+          type: text
+          max_length: 320
+          required: false
+        - name: crd_customer_phone
+          display_name: customer_phone
+          type: text
+          max_length: 30
+          required: false
 
     - logical_name: crd_driverassignments
       display_name: DriverAssignments
@@ -275,6 +314,150 @@ dataverse:
           type: datetime
           behavior: user_local
 
+    - logical_name: crd_routedelays
+      display_name: RouteDelays
+      description: Delay reason log for active and completed routes, used for operational reporting and trend analysis.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Delay Record Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_delay_id
+          display_name: delay_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: false
+          max_length: 50
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          required: false
+          max_length: 50
+        - name: crd_delay_reason
+          display_name: delay_reason
+          type: choice
+          options:
+            - traffic
+            - breakdown
+            - weather
+            - customer_not_available
+            - other
+        - name: crd_delay_minutes
+          display_name: delay_minutes
+          type: whole_number
+          required: true
+        - name: crd_notes
+          display_name: notes
+          type: multiline_text
+          max_length: 2000
+          required: false
+        - name: crd_logged_on
+          display_name: logged_on
+          type: datetime
+          behavior: user_local
+      indexes:
+        - name: idx_routedelays_route
+          columns:
+            - crd_route_id
+            - crd_logged_on
+        - name: idx_routedelays_reason
+          columns:
+            - crd_delay_reason
+            - crd_logged_on
+
+    - logical_name: crd_etaaccuracy
+      display_name: EtaAccuracy
+      description: Tracks predicted versus actual arrival times per stop for ETA model feedback and accuracy reporting.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: ETA Accuracy Record Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_accuracy_id
+          display_name: accuracy_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_stop_id
+          display_name: stop_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: false
+          max_length: 50
+        - name: crd_route_type
+          display_name: route_type
+          type: text
+          max_length: 100
+          required: false
+        - name: crd_predicted_eta
+          display_name: predicted_eta
+          type: datetime
+          behavior: user_local
+          required: true
+        - name: crd_actual_arrival
+          display_name: actual_arrival
+          type: datetime
+          behavior: user_local
+          required: false
+        - name: crd_variance_minutes
+          display_name: variance_minutes
+          type: decimal
+          precision: 6
+          scale: 1
+          required: false
+        - name: crd_confidence_level
+          display_name: confidence_level
+          type: choice
+          options:
+            - high
+            - medium
+            - low
+        - name: crd_time_of_day
+          display_name: time_of_day
+          type: choice
+          options:
+            - morning
+            - afternoon
+            - evening
+            - night
+        - name: crd_logged_on
+          display_name: logged_on
+          type: datetime
+          behavior: user_local
+      indexes:
+        - name: idx_etaaccuracy_driver_route
+          columns:
+            - crd_driver_id
+            - crd_route_type
+        - name: idx_etaaccuracy_time_of_day
+          columns:
+            - crd_time_of_day
+            - crd_logged_on
+
 connectors:
   - name: MappingApiHttp
     type: http
@@ -319,6 +502,17 @@ connectors:
     configuration:
       base_url_env_var: FuelTrackingFlowBaseUrl
       authentication: managed_identity
+  - name: Office365Outlook
+    type: first_party
+    description: Office 365 Outlook connector for sending customer ETA notification emails.
+  - name: CustomerSmsApiHttp
+    type: http
+    description: HTTP connector for sending customer SMS notifications when ETA changes significantly.
+    configuration:
+      base_url_env_var: CustomerSmsApiUrl
+      authentication: api_key
+      api_key_env_var: CustomerSmsApiKey
+      api_key_header: x-api-key
 
 flows:
   - name: OptimizeRoute
@@ -359,6 +553,7 @@ flows:
       - etaTimestamp
       - distanceRemainingMiles
       - trafficConditionSummary
+      - confidenceLevel
     steps:
       - action: http_get
         connector: TelematicsApiHttp
@@ -367,11 +562,18 @@ flows:
         connector: TrafficApiHttp
         path: /flow/segment
       - action: compute_eta
+      - action: evaluate_confidence
       - action: respond_to_agent
 
   - name: EvaluateReroutingNeed
     trigger: recurrence_5_minutes
     description: Compares projected ETA against planned schedule using live traffic; fires rerouting notification if delay exceeds threshold.
+    outputs:
+      - delayMinutes
+      - alternativeRouteSummary
+      - timeSavedMinutes
+      - additionalDistanceMiles
+      - affectedDeliveryCount
     steps:
       - action: list_rows
         connector: Dataverse
@@ -390,6 +592,7 @@ flows:
           - action: http_post
             connector: MappingApiHttp
             path: /route/alternative
+          - action: compute_impact_assessment
           - action: send_email
             to_env_var: DispatchAlertEmail
           - action: update_row
@@ -626,6 +829,229 @@ flows:
           affected_route_count: "{affectedRouteCount}"
           rerouting_initiated: true
           summary: "{reroutingStatusTable}"
+
+  - name: GetTrafficConditions
+    trigger: instant_from_agent
+    description: Queries the traffic API for current conditions and incidents along all active route segments, returning delay severity and incident summaries.
+    inputs:
+      - routeId
+    outputs:
+      - trafficSegments
+      - maxDelayMinutes
+      - incidentCount
+      - overallTrafficStatus
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: http_get
+        connector: TrafficApiHttp
+        path: /flow/segment
+      - action: http_get
+        connector: TrafficApiHttp
+        path: /incidents/tile
+      - action: aggregate_traffic_conditions
+      - action: respond_to_agent
+
+  - name: GetDeliveryEta
+    trigger: instant_from_agent
+    description: Looks up the route and vehicle associated with a delivery order ID, then calculates the current ETA with confidence level using telematics and live traffic data.
+    inputs:
+      - orderId
+    outputs:
+      - vehicleId
+      - routeId
+      - stopId
+      - destinationName
+      - etaTimestamp
+      - previousEtaTimestamp
+      - etaDeltaMinutes
+      - distanceRemainingMiles
+      - trafficConditionSummary
+      - confidenceLevel
+      - remainingStopCount
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_order_id eq orderId
+      - action: get_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/position
+      - action: http_get
+        connector: TrafficApiHttp
+        path: /flow/segment
+      - action: compute_eta
+      - action: evaluate_confidence
+      - action: respond_to_agent
+
+  - name: NotifyCustomerEtaChange
+    trigger: instant_from_agent
+    description: >
+      Sends an email and optional SMS to the customer associated with a stop when
+      the ETA has changed beyond the configured EtaChangeThresholdMinutes. Uses
+      Office 365 Outlook for email and the CustomerSmsApiHttp connector for SMS.
+    inputs:
+      - orderId
+      - updatedEtaTimestamp
+      - previousEtaTimestamp
+      - etaDeltaMinutes
+    outputs:
+      - emailSent
+      - smsSent
+      - notificationSkipped
+      - skipReason
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_order_id eq orderId
+        select:
+          - crd_customer_email
+          - crd_customer_phone
+          - crd_customer_name
+      - action: condition
+        if: abs(etaDeltaMinutes) >= EtaChangeThresholdMinutes
+        then:
+          - action: condition
+            if: crd_customer_email ne null and crd_customer_email ne ''
+            then:
+              - action: send_email
+                connector: Office365Outlook
+                from_env_var: CustomerNotificationEmail
+                to: "{crd_customer_email}"
+                subject: "Updated delivery window for your order {orderId}"
+                body: >
+                  Your delivery is now estimated to arrive at {updatedEtaTimestamp}.
+                  Previous estimate was {previousEtaTimestamp}.
+          - action: condition
+            if: crd_customer_phone ne null and crd_customer_phone ne ''
+            then:
+              - action: http_post
+                connector: CustomerSmsApiHttp
+                path: /send
+                body:
+                  to: "{crd_customer_phone}"
+                  message: "Delivery update for order {orderId}: new estimated arrival {updatedEtaTimestamp}."
+          - action: respond_to_agent
+        else_actions:
+          - action: set_variable
+            name: notificationSkipped
+            value: true
+          - action: set_variable
+            name: skipReason
+            value: "ETA delta below threshold"
+          - action: respond_to_agent
+
+  - name: LogDelayReason
+    trigger: instant_from_agent
+    description: >
+      Creates a RouteDelays record in Dataverse capturing the delay reason,
+      duration, and associated route and driver. Delay reasons include traffic,
+      breakdown, weather, and customer not available.
+    inputs:
+      - routeId
+      - driverId
+      - vehicleId
+      - delayReason
+      - delayMinutes
+      - notes
+    outputs:
+      - delayId
+      - logSuccess
+    steps:
+      - action: create_row
+        connector: Dataverse
+        table: RouteDelays
+        fields:
+          crd_route_id: "{routeId}"
+          crd_driver_id: "{driverId}"
+          crd_vehicle_id: "{vehicleId}"
+          crd_delay_reason: "{delayReason}"
+          crd_delay_minutes: "{delayMinutes}"
+          crd_notes: "{notes}"
+          crd_logged_on: "@{utcNow()}"
+      - action: respond_to_agent
+
+  - name: TrackEtaAccuracy
+    trigger: instant_from_agent
+    description: >
+      Records a predicted ETA alongside the actual arrival time for a stop and
+      computes the variance. Persists the record to the EtaAccuracy table for
+      downstream accuracy reporting and model feedback.
+    inputs:
+      - routeId
+      - stopId
+      - driverId
+      - routeType
+      - predictedEta
+      - actualArrival
+      - confidenceLevel
+    outputs:
+      - accuracyId
+      - varianceMinutes
+      - logSuccess
+    steps:
+      - action: compute_variance
+        predicted: "{predictedEta}"
+        actual: "{actualArrival}"
+      - action: classify_time_of_day
+        timestamp: "{actualArrival}"
+      - action: create_row
+        connector: Dataverse
+        table: EtaAccuracy
+        fields:
+          crd_route_id: "{routeId}"
+          crd_stop_id: "{stopId}"
+          crd_driver_id: "{driverId}"
+          crd_route_type: "{routeType}"
+          crd_predicted_eta: "{predictedEta}"
+          crd_actual_arrival: "{actualArrival}"
+          crd_variance_minutes: "{varianceMinutes}"
+          crd_confidence_level: "{confidenceLevel}"
+          crd_time_of_day: "{timeOfDay}"
+          crd_logged_on: "@{utcNow()}"
+      - action: respond_to_agent
+
+  - name: GetEtaAccuracyReport
+    trigger: instant_from_agent
+    description: >
+      Aggregates EtaAccuracy records to produce accuracy metrics broken down by
+      driver, route type, and time of day. Returns average variance, on-time
+      percentage, and trend data for the requested period.
+    inputs:
+      - periodDays
+      - driverId
+      - routeType
+    outputs:
+      - averageVarianceMinutes
+      - onTimePct
+      - earlyPct
+      - latePct
+      - recordCount
+      - breakdownByDriver
+      - breakdownByRouteType
+      - breakdownByTimeOfDay
+    steps:
+      - action: query_dataverse
+        connector: Dataverse
+        table: EtaAccuracy
+        filter: crd_logged_on ge subDays(utcNow(), periodDays)
+        aggregate:
+          - avg(crd_variance_minutes) as averageVarianceMinutes
+          - count() as recordCount
+      - action: compute_on_time_percentages
+      - action: group_by
+        fields:
+          - crd_driver_id
+          - crd_route_type
+          - crd_time_of_day
+      - action: respond_to_agent
 
 channels:
   - name: teams

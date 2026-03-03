@@ -55,6 +55,10 @@ This runbook defines deployment, validation, monitoring, and rollback for the Ro
 | HosApiKey | HOS system API key or token reference | `kv://hos/api-key` |
 | RerouteDelayThresholdMinutes | Delay in minutes that triggers a re-routing alert | `30` |
 | DispatchAlertEmail | Dispatch team distribution list for re-routing alerts | `fleet-dispatch@contoso.com` |
+| EtaChangeThresholdMinutes | ETA change in minutes that triggers a customer notification | `15` |
+| CustomerNotificationEmail | From address for customer ETA change email notifications | `noreply-delivery@contoso.com` |
+| CustomerSmsApiUrl | SMS provider REST base URL for customer notifications | `https://api.smsprovider.com/v1` |
+| CustomerSmsApiKey | SMS provider API key or token reference | `kv://sms/api-key` |
 
 ## 4. Dataverse Table Provisioning
 
@@ -64,6 +68,8 @@ Provision and validate the following tables before enabling production traffic:
 - `RouteStops`
 - `DriverAssignments`
 - `HosRecords`
+- `RouteDelays`
+- `EtaAccuracy`
 
 ### Validation Steps
 
@@ -71,7 +77,9 @@ Provision and validate the following tables before enabling production traffic:
 2. Confirm primary keys and required columns exist.
 3. Validate data types for coordinates, timestamps, and duration fields.
 4. Validate indexes for high-read queries (`route_id`, `driver_id`, `planned_departure`).
-5. Seed test routes with multiple stops and confirm optimization flow executes correctly.
+5. Confirm `RouteDelays` table includes `delay_reason` choice column with values: traffic, breakdown, weather, customer_not_available, other.
+6. Confirm `EtaAccuracy` table includes `variance_minutes`, `confidence_level`, and `time_of_day` columns.
+7. Seed test routes with multiple stops and confirm optimization flow executes correctly.
 
 ## 5. Knowledge Source Configuration
 
@@ -117,7 +125,14 @@ Knowledge source recommendation:
 
 - [ ] Multi-stop optimization returns valid sequence — all stops visited, time windows respected, sequence is optimized
 - [ ] Real-time ETA calculation matches expected arrival — ETA within acceptable tolerance based on current position and traffic
+- [ ] ETA Update topic returns adaptive card with confidence level and change delta for a delivery order ID
 - [ ] Re-routing triggers on traffic delay — proactive notification sent when delay exceeds threshold (e.g., 30 min)
+- [ ] Re-routing alert includes impact assessment — time saved, additional distance, and affected delivery count displayed
+- [ ] Customer notification sent when ETA change exceeds configured threshold (e.g., 15 min)
+- [ ] Customer notification skipped when ETA change is within threshold
+- [ ] Delay reason logging creates RouteDelays record with correct reason, duration, and route reference
+- [ ] ETA accuracy tracking creates EtaAccuracy record with correct variance after stop completion
+- [ ] ETA accuracy report returns breakdown by driver, route type, and time of day
 - [ ] Constraint engine prevents over-hours scheduling — driver exceeding HOS limits is not assigned additional routes
 - [ ] Driver assignment respects certifications — hazmat route only assignable to hazmat-certified drivers
 
@@ -125,7 +140,16 @@ Knowledge source recommendation:
 
 - [ ] Optimization flow queries mapping API and returns a valid sequenced stop list
 - [ ] ETA calculation flow reads vehicle GPS position from telematics API and applies live traffic data
+- [ ] ETA calculation flow returns confidence level (high/medium/low) based on traffic data quality
+- [ ] GetTrafficConditions flow queries traffic API for all active route segments and returns max delay minutes
+- [ ] GetDeliveryEta flow resolves order ID to vehicle and stop, and returns ETA with confidence level
 - [ ] Re-routing alert flow fires within configured threshold and posts to dispatch channel
+- [ ] Re-routing alert flow includes impact assessment (timeSavedMinutes, additionalDistanceMiles, affectedDeliveryCount)
+- [ ] NotifyCustomerEtaChange flow sends email when ETA delta exceeds EtaChangeThresholdMinutes
+- [ ] NotifyCustomerEtaChange flow sends SMS when CustomerSmsApiUrl is configured and phone is on record
+- [ ] LogDelayReason flow creates a RouteDelays record in Dataverse with all required fields
+- [ ] TrackEtaAccuracy flow computes variance and creates EtaAccuracy record after stop completion
+- [ ] GetEtaAccuracyReport flow aggregates and returns accuracy percentages grouped by driver, route type, and time of day
 - [ ] HOS compliance check flow reads from HOS system and blocks assignment when limit is reached
 - [ ] Driver assignment flow filters certification attribute and excludes non-certified drivers from hazmat routes
 
@@ -135,17 +159,21 @@ Knowledge source recommendation:
 
 - Route optimization flow health (run success rate, API failures, latency)
 - Re-routing alert volume and threshold trigger frequency
+- Customer notification delivery success rate (email and SMS)
 - HOS constraint violations flagged
+- Delay reason log volume by category (traffic, breakdown, weather, customer not available)
 
 ### Weekly
 
 - On-time delivery rate vs pre-agent baseline
 - Driver assignment efficiency (unassigned routes, reassignments)
 - Re-routing accuracy review (were re-routed ETAs better than original?)
+- ETA accuracy report review — average variance and on-time percentage by driver and route type
 
 ### Monthly
 
-- Threshold tuning review (re-route delay threshold, HOS margin settings)
+- Threshold tuning review (re-route delay threshold, ETA change notification threshold, HOS margin settings)
+- ETA accuracy trend analysis — identify drivers or time windows with persistent variance
 - Connector and API quota and performance review
 - Policy documentation freshness review
 
@@ -175,6 +203,8 @@ Notification path:
 ## 12. Post-Deployment Operational Notes
 
 - Review re-route delay threshold quarterly with dispatch team.
+- Review ETA change notification threshold with customer experience team after first month.
 - Use staged rollout when adding new certification types to the driver assignment constraint engine.
 - Keep HOS limit logic current with applicable regulatory updates.
 - Keep fleet operations and dispatch teams in weekly review loop for threshold tuning.
+- Run ETA accuracy reports monthly to identify systematic prediction gaps by driver, route type, or time of day and feed findings back into optimization model calibration.

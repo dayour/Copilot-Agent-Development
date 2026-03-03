@@ -18,6 +18,9 @@ agent:
     - name: Global.RerouteDelayThresholdMinutes
       type: number
       default: 30
+    - name: Global.EtaChangeThresholdMinutes
+      type: number
+      default: 15
 
 topics:
   - name: Greeting
@@ -180,7 +183,15 @@ topics:
                   delayMinutes: =Topic.DelayMinutes
                   alternativeRoute: =Topic.AlternativeRouteSummary
               - type: message
-                text: "⚠️ Re-routing alert sent for vehicle {Topic.vehicle_id}. Delay: {Topic.DelayMinutes} minutes. Alternative route: {Topic.AlternativeRouteSummary}."
+                text: "Re-routing alert sent for vehicle {Topic.vehicle_id}. Delay: {Topic.DelayMinutes} minutes. Alternative route: {Topic.AlternativeRouteSummary}."
+              - type: adaptive_card
+                title: Re-routing Impact Assessment
+                body:
+                  - text: "Current delay: {Topic.DelayMinutes} minutes (threshold: {Global.RerouteDelayThresholdMinutes} minutes)"
+                  - text: "Alternative route: {Topic.AlternativeRouteSummary}"
+                  - text: "Time saved by re-routing: {Topic.TimeSavedMinutes} minutes"
+                  - text: "Additional distance: {Topic.AdditionalDistanceMiles} miles"
+                  - text: "Affected deliveries: {Topic.AffectedDeliveryCount}"
         else_actions:
           - type: message
             text: "No re-routing required. Current delay for vehicle {Topic.vehicle_id} is {Topic.DelayMinutes} minutes, within the {Global.RerouteDelayThresholdMinutes}-minute threshold."
@@ -220,10 +231,10 @@ topics:
           - condition: =Topic.HosCompliant = true
             actions:
               - type: message
-                text: "✅ Driver {Topic.driver_id} is within HOS limits. Hours remaining: {Topic.HoursRemaining}. Route can be assigned."
+                text: "Driver {Topic.driver_id} is within HOS limits. Hours remaining: {Topic.HoursRemaining}. Route can be assigned."
         else_actions:
           - type: message
-            text: "🚫 Driver {Topic.driver_id} cannot be assigned. Remaining HOS: {Topic.HoursRemaining} hours. Route requires {Topic.estimated_route_hours} hours. Assignment blocked to prevent regulatory violation."
+            text: "Driver {Topic.driver_id} cannot be assigned. Remaining HOS: {Topic.HoursRemaining} hours. Route requires {Topic.estimated_route_hours} hours. Assignment blocked to prevent regulatory violation."
 
   - name: Driver Assignment
     description: Assigns an available, qualified driver to a route, validating HOS availability and required certifications such as hazmat.
@@ -382,3 +393,134 @@ topics:
         else_actions:
           - type: message
             text: "No active routes found for vehicle {Topic.vehicle_id}. No re-routing required."
+
+  - name: ETA Update
+    description: Returns a current ETA for a specific delivery or order number, based on real-time vehicle position and live traffic. Includes confidence level and change delta from the previous estimate.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - what is the eta for delivery
+        - ETA for order number
+        - when will my order arrive
+        - delivery status update for order
+        - updated arrival time for delivery
+    inputs:
+      - name: order_id
+        type: string
+        required: true
+    nodes:
+      - type: question
+        id: askOrderId
+        prompt: "What is the delivery or order number you want an ETA update for?"
+        variable: Topic.order_id
+        entity: Text
+      - type: tool
+        id: getDeliveryEta
+        tool_name: GetDeliveryEta
+        input_mapping:
+          orderId: =Topic.order_id
+      - type: adaptive_card
+        title: Delivery ETA Update
+        body:
+          - text: "Order: {Topic.order_id}"
+          - text: "Destination: {Topic.DestinationName}"
+          - text: "Estimated arrival: {Topic.EtaTimestamp}"
+          - text: "Previous estimate: {Topic.PreviousEtaTimestamp}"
+          - text: "Change: {Topic.EtaDeltaMinutes} minutes"
+          - text: "Distance remaining: {Topic.DistanceRemainingMiles} miles"
+          - text: "Traffic conditions: {Topic.TrafficConditionSummary}"
+          - text: "Stops remaining: {Topic.RemainingStopCount}"
+          - text: "ETA confidence: {Topic.ConfidenceLevel}"
+
+  - name: Delay Reason Logging
+    description: Logs a delay reason for an active route to the RouteDelays table. Accepted reasons include traffic, breakdown, weather, and customer not available.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - log a delay for route
+        - record delay reason
+        - report delivery delay
+        - delay caused by traffic
+        - driver delayed by weather
+    inputs:
+      - name: route_id
+        type: string
+        required: true
+      - name: delay_reason
+        type: string
+        required: true
+      - name: delay_minutes
+        type: number
+        required: false
+      - name: notes
+        type: string
+        required: false
+    nodes:
+      - type: question
+        id: askRouteIdDelay
+        prompt: "Which route ID is affected by the delay?"
+        variable: Topic.route_id
+        entity: Text
+      - type: question
+        id: askDelayReason
+        prompt: "What is the reason for the delay? Options: traffic, breakdown, weather, customer not available, other."
+        variable: Topic.delay_reason
+        entity: Text
+      - type: question
+        id: askDelayMinutes
+        prompt: "How many minutes is the expected delay?"
+        variable: Topic.delay_minutes
+        entity: Number
+      - type: tool
+        id: logDelay
+        tool_name: LogDelayReason
+        input_mapping:
+          routeId: =Topic.route_id
+          driverId: =Global.UserId
+          vehicleId: =Topic.vehicle_id
+          delayReason: =Topic.delay_reason
+          delayMinutes: =Topic.delay_minutes
+          notes: =Topic.notes
+      - type: message
+        text: "Delay logged for route {Topic.route_id}. Reason: {Topic.delay_reason}. Duration: {Topic.delay_minutes} minutes. Reference ID: {Topic.DelayId}."
+
+  - name: ETA Accuracy Report
+    description: Displays historical ETA accuracy metrics comparing predicted versus actual arrival times, broken down by driver, route type, and time of day.
+    trigger:
+      mode: classic
+      trigger_phrases:
+        - show ETA accuracy report
+        - how accurate are our ETAs
+        - ETA prediction accuracy by driver
+        - on-time delivery accuracy
+        - ETA variance report
+    inputs:
+      - name: period_days
+        type: number
+        required: false
+      - name: driver_id
+        type: string
+        required: false
+      - name: route_type
+        type: string
+        required: false
+    nodes:
+      - type: tool
+        id: getAccuracyReport
+        tool_name: GetEtaAccuracyReport
+        input_mapping:
+          periodDays: =Coalesce(Topic.period_days, 30)
+          driverId: =Topic.driver_id
+          routeType: =Topic.route_type
+      - type: adaptive_card
+        title: ETA Accuracy Report
+        body:
+          - text: "Period: last {Coalesce(Topic.period_days, 30)} days"
+          - text: "Total records: {Topic.RecordCount}"
+          - text: "Average variance: {Topic.AverageVarianceMinutes} minutes"
+          - text: "On-time deliveries: {Topic.OnTimePct}%"
+          - text: "Early deliveries: {Topic.EarlyPct}%"
+          - text: "Late deliveries: {Topic.LatePct}%"
+          - text: "By driver: {Topic.BreakdownByDriver}"
+          - text: "By route type: {Topic.BreakdownByRouteType}"
+          - text: "By time of day: {Topic.BreakdownByTimeOfDay}"

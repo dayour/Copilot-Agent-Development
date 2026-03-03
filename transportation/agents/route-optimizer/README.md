@@ -20,9 +20,12 @@ Route Optimization Scheduler is a Copilot Studio agent that automates multi-stop
 
 - **Route Optimization**: Multi-stop route sequencing that respects time windows and minimizes travel time
 - **ETA Calculation**: Real-time arrival estimates using current vehicle position and live traffic data
-- **Re-routing Alert**: Proactive notification when a traffic delay exceeds the configured threshold
+- **ETA Update**: Delivery-order-based ETA lookup with confidence level and change delta adaptive card
+- **Re-routing Alert**: Proactive notification when a traffic delay exceeds the configured threshold, with impact assessment showing time saved, additional distance, and affected deliveries
 - **HOS Compliance Check**: Validates driver hours before assigning additional routes to prevent over-hours scheduling
 - **Driver Assignment**: Matches drivers to routes based on availability, proximity, and required certifications
+- **Delay Reason Logging**: Captures delay reasons (traffic, breakdown, weather, customer not available) to the RouteDelays table for operational reporting
+- **ETA Accuracy Report**: Historical accuracy metrics comparing predicted versus actual arrival times, broken down by driver, route type, and time of day
 
 ## Folder Structure
 
@@ -41,6 +44,6 @@ transportation/
 ## Solution Components
 
 - Copilot Studio agent definition and topic scaffold
-- Dataverse schema for routes, stops, driver assignments, and HOS records
-- Power Automate flow contracts for optimization, ETA, re-routing, and driver matching
-- Environment variable model for mapping API, traffic API, HOS threshold, and re-routing delay threshold
+- Dataverse schema for routes, stops, driver assignments, HOS records, delay reasons, and ETA accuracy tracking
+- Power Automate flow contracts for optimization, ETA, re-routing, customer notification, delay logging, accuracy tracking, and driver matching
+- Environment variable model for mapping API, traffic API, telematics API, HOS threshold, re-routing delay threshold, customer notification settings, and ETA change threshold
