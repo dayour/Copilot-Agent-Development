@@ -1,0 +1,286 @@
+# Copilot Studio Agent Template - Analytics Dashboard (Coffee Virtual Coach)
+
+agent:
+  name: Analytics Dashboard
+  description: >
+    A conversational analytics assistant for Virtual Coach reporting.
+    Enables store managers, regional directors, and corporate users to query
+    conversation volume, topic trends, unresolved query rates, peak usage times,
+    and employee adoption metrics using natural language.
+  language: en-US
+  fallback_message: >
+    I could not find that analytics data. Try asking about conversation volume,
+    top topics, unresolved queries, peak usage times, or employee adoption rates.
+
+topics:
+  - name: Greeting
+    trigger_phrases:
+      - show me analytics
+      - open the dashboard
+      - how is the virtual coach performing
+      - give me a summary
+      - what are the usage stats
+    messages:
+      - text: >
+          Hello. I can show you Virtual Coach analytics including conversation volume,
+          top topics, unresolved queries, peak usage, and employee adoption.
+          What would you like to see?
+    quick_replies:
+      - Conversation volume
+      - Top queried topics
+      - Unresolved query rate
+      - Peak usage times
+      - Employee adoption
+
+  - name: Conversation Volume
+    description: >
+      Reports total conversation counts and trends by store and region over a specified
+      date range. Supports filtering by store number, region, or enterprise-wide scope.
+    trigger_phrases:
+      - how many conversations happened
+      - conversation volume for store {store_number}
+      - how busy was the virtual coach last week
+      - total conversations by region
+      - show me usage for {region} region
+    entities:
+      - name: store_number
+        type: string
+        prompt: Which store number? Leave blank for all stores.
+      - name: region
+        type: string
+        prompt: Which region? Leave blank for all regions.
+      - name: date_range
+        type: string
+        prompt: What date range? For example, last 7 days or last 30 days.
+    actions:
+      - type: dataverse_query
+        table: VirtualCoachAnalytics
+        select:
+          - SnapshotDate
+          - StoreNumber
+          - Region
+          - ConversationCount
+        filter: >
+          SnapshotDate ge '{start_date}' and
+          (StoreNumber eq '{store_number}' or Region eq '{region}')
+        order_by: SnapshotDate desc
+    messages:
+      - text: >
+          Here is the conversation volume breakdown for the period you selected.
+          You can also view this data in detail on the analytics dashboard page.
+    fallback_message: >
+      I could not retrieve conversation volume for those parameters. Check the
+      store number or region and try again.
+
+  - name: Top Queried Topics
+    description: >
+      Returns a ranked list of the most queried topics for the Virtual Coach agent,
+      optionally filtered by store, region, or date range.
+    trigger_phrases:
+      - what are the top topics
+      - which topics are asked most
+      - most common questions
+      - topic breakdown for last month
+      - are recipes or HR questions more common
+    entities:
+      - name: date_range
+        type: string
+        prompt: What date range? For example, last 7 days or last 30 days.
+      - name: store_number
+        type: string
+        prompt: Which store number? Leave blank for all stores.
+    actions:
+      - type: dataverse_query
+        table: VirtualCoachAnalytics
+        select:
+          - TopicName
+          - TopicQueryCount
+          - StoreNumber
+          - Region
+          - SnapshotDate
+        filter: "SnapshotDate ge '{start_date}'"
+        aggregate:
+          group_by:
+            - TopicName
+          sum:
+            - TopicQueryCount
+        order_by: TopicQueryCount desc
+        top: 10
+    messages:
+      - text: >
+          Here are the top queried topics for the period. Recipes, HR and Policy,
+          and Store Operations tend to be the highest-volume categories.
+    fallback_message: >
+      I could not retrieve topic data for the requested period.
+
+  - name: Unresolved Query Rate
+    description: >
+      Shows the percentage of conversations that ended without a grounded answer,
+      broken down by topic. Helps identify content gaps in SharePoint knowledge sources.
+    trigger_phrases:
+      - what is the unresolved query rate
+      - which topics have the most unanswered questions
+      - how many questions go unanswered
+      - unresolved queries for recipes topic
+      - show me content gaps
+    entities:
+      - name: topic_name
+        type: string
+        prompt: Which topic? Leave blank to see all topics.
+      - name: date_range
+        type: string
+        prompt: What date range? For example, last 7 days or last 30 days.
+    actions:
+      - type: dataverse_query
+        table: VirtualCoachAnalytics
+        select:
+          - TopicName
+          - TopicQueryCount
+          - UnresolvedCount
+          - SnapshotDate
+        filter: "SnapshotDate ge '{start_date}'"
+        aggregate:
+          group_by:
+            - TopicName
+          sum:
+            - TopicQueryCount
+            - UnresolvedCount
+        calculated_field:
+          name: UnresolvedRatePct
+          formula: "(UnresolvedCount / TopicQueryCount) * 100"
+        order_by: UnresolvedRatePct desc
+    messages:
+      - text: >
+          Here is the unresolved query rate by topic. Topics with a rate above 15 percent
+          may indicate gaps in the knowledge library. Consider reviewing content in
+          the corresponding SharePoint library.
+    fallback_message: >
+      I could not retrieve unresolved query data for that period or topic.
+
+  - name: Peak Usage Times
+    description: >
+      Shows the hours of the day and days of the week with the highest Virtual Coach
+      usage, helping operations teams plan staffing and system availability.
+    trigger_phrases:
+      - when is the virtual coach busiest
+      - peak usage times
+      - what hour do employees use it most
+      - show me the busiest hours
+      - when should we plan maintenance windows
+    entities:
+      - name: date_range
+        type: string
+        prompt: What date range? For example, last 7 days or last 30 days.
+      - name: store_number
+        type: string
+        prompt: Which store number? Leave blank for all stores.
+    actions:
+      - type: dataverse_query
+        table: VirtualCoachAnalytics
+        select:
+          - PeakUsageHour
+          - ConversationCount
+          - SnapshotDate
+          - StoreNumber
+          - Region
+        filter: "SnapshotDate ge '{start_date}'"
+        aggregate:
+          group_by:
+            - PeakUsageHour
+          sum:
+            - ConversationCount
+        order_by: ConversationCount desc
+    messages:
+      - text: >
+          Here are the peak usage hours for the selected period. Consider scheduling
+          content updates and maintenance outside these peak windows.
+    fallback_message: >
+      I could not retrieve peak usage data for those parameters.
+
+  - name: Employee Adoption Rate
+    description: >
+      Reports the percentage of eligible employees who have actively used the Virtual
+      Coach agent, broken down by role such as Barista, Shift Lead, and Store Manager.
+    trigger_phrases:
+      - what is the adoption rate
+      - how many employees are using the virtual coach
+      - adoption by role
+      - barista usage rate
+      - how many store managers have used the agent
+    entities:
+      - name: role
+        type: string
+        prompt: Which role? Options are Barista, Shift Lead, or Store Manager. Leave blank for all roles.
+      - name: date_range
+        type: string
+        prompt: What date range? For example, last 30 days.
+      - name: region
+        type: string
+        prompt: Which region? Leave blank for all regions.
+    actions:
+      - type: dataverse_query
+        table: VirtualCoachAnalytics
+        select:
+          - UserRole
+          - UniqueUsers
+          - Region
+          - SnapshotDate
+        filter: "SnapshotDate ge '{start_date}'"
+        aggregate:
+          group_by:
+            - UserRole
+            - Region
+          sum:
+            - UniqueUsers
+        order_by: UniqueUsers desc
+    messages:
+      - text: >
+          Here is the employee adoption breakdown by role for the selected period.
+          Adoption rate is calculated as unique active users divided by total
+          eligible employees in the reporting scope.
+    fallback_message: >
+      I could not retrieve adoption data for those parameters. Verify that
+      user role metadata is available in the analytics table.
+
+  - name: Open Dashboard
+    description: >
+      Provides a direct link to the SharePoint analytics dashboard page so users can
+      view the full Power BI report with role-appropriate data filters.
+    trigger_phrases:
+      - open the dashboard page
+      - take me to the full report
+      - sharepoint analytics page
+      - where is the power bi dashboard
+      - show full analytics report
+    messages:
+      - text: >
+          You can access the full analytics dashboard on the Virtual Coach Analytics
+          SharePoint page. Your view is automatically filtered to match your role.
+          If you do not see data, confirm your account is in the correct analytics group.
+    actions:
+      - type: send_adaptive_card
+        card:
+          title: Virtual Coach Analytics Dashboard
+          text: >
+            Open the SharePoint dashboard for interactive Power BI visuals with
+            role-based filtering for store, region, and corporate views.
+          buttons:
+            - label: Open Dashboard
+              action: open_url
+              url: "{AnalyticsSiteUrl}/SitePages/Virtual-Coach-Analytics-Dashboard.aspx"
+
+  - name: Escalation
+    trigger_phrases:
+      - something is wrong with the data
+      - the report looks incorrect
+      - i need help with analytics
+      - contact the analytics team
+      - report a data issue
+    messages:
+      - text: >
+          I will flag this for the Power Platform admin team. Please describe the
+          issue so I can include details in the notification.
+    actions:
+      - type: send_teams_notification
+        channel: "{AnalyticsAdminTeamsChannelId}"
+        message: "Analytics dashboard issue reported by {employee_name}: {user_input}"

@@ -5,6 +5,13 @@ All notable changes to the Virtual Coach agent will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-03-03
+
+### Added
+
+- `ExportAnalyticsToDataverse` Power Automate flow reference linking the Virtual Coach solution to the new `CoffeeVirtualCoachAnalytics` analytics dashboard solution.
+- Analytics dashboard companion solution at `coffee/agents/analytics-dashboard/` providing SharePoint-hosted Power BI reporting, role-based views, and a natural-language analytics agent.
+
 ## [1.1.0] - 2026-03-02
 
 ### Added

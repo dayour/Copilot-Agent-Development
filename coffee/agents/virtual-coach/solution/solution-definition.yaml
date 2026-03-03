@@ -3,7 +3,7 @@
 solution:
   name: CoffeeVirtualCoach
   display_name: "Coffee - Virtual Coach"
-  version: "1.1.0"
+  version: "1.2.0"
   publisher: Copilot Agent Development
   description: >
     Production-ready SharePoint-centric solution for the Virtual Coach agent.
@@ -131,6 +131,15 @@ components:
       notifications:
         - connector: microsoft_teams
         - connector: office365_outlook
+
+    - name: ExportAnalyticsToDataverse
+      description: >
+        Companion flow referenced by the analytics-dashboard solution.
+        Exports conversation session metadata from agent activity logs to the
+        VirtualCoachAnalytics Dataverse table consumed by the analytics dashboard.
+      trigger: copilot_studio_analytics_scheduled
+      connector: copilot_studio_analytics
+      related_solution: CoffeeVirtualCoachAnalytics
 
 connections:
   - connector: sharepoint_online
