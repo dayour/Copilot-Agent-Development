@@ -1,0 +1,135 @@
+# Manager Portal - SharePoint Page Template
+
+page:
+  name: Manager Portal
+  slug: manager-portal
+  url: /sites/coffee-ops/SitePages/manager-portal.aspx
+  title: Manager Portal
+  description: >
+    Restricted portal for store managers and regional managers. Provides shift management,
+    team performance tracking, and reporting. The embedded Virtual Coach assists with
+    reporting queries and operational escalations.
+  layout: two_column
+  responsive:
+    breakpoint_px: 1024
+    narrow_layout: single_column_stacked
+    column_order_narrow:
+      - content
+      - agent
+
+sections:
+  - id: page-header
+    type: hero
+    column_span: full
+    web_parts:
+      - type: text
+        properties:
+          text: "Manager Portal"
+          heading_level: 1
+      - type: text
+        properties:
+          text: "Shift management, performance tracking, and reporting for store and regional managers."
+          heading_level: 3
+
+  - id: manager-content
+    type: column
+    column_span: content
+    web_parts:
+      - type: spfx_custom
+        component_id: shift-management
+        title: Shift Management
+        properties:
+          shiftHandoverListUrl: "${ShiftHandoverListUrl}"
+          storeDirectoryListUrl: "${StoreDirectoryListUrl}"
+          displayDays: 7
+          show_columns:
+            - ShiftDate
+            - IncomingColleague
+            - SubmittedBy
+            - CashBalanced
+            - StockChecked
+            - EquipmentCleaned
+            - Issues
+          allow_export: true
+          export_format: csv
+
+      - type: spfx_custom
+        component_id: performance-tracker
+        title: Team Performance
+        properties:
+          storeDirectoryListUrl: "${StoreDirectoryListUrl}"
+          metrics:
+            - id: open_handover_issues
+              label: Open Handover Issues
+              source: shiftHandoverListUrl
+              filter: "Issues ne '' and Resolved eq false"
+            - id: training_completion_rate
+              label: Training Completion Rate
+              source: trainingLibraryUrl
+              display: percentage
+            - id: content_approval_pending
+              label: Pending Content Approvals
+              source: recipesLibraryUrl
+              filter: "ApprovalStatus eq 'Pending'"
+          refresh_interval_minutes: 15
+
+      - type: spfx_custom
+        component_id: reporting-dashboard
+        title: Reporting
+        properties:
+          shiftHandoverListUrl: "${ShiftHandoverListUrl}"
+          storeDirectoryListUrl: "${StoreDirectoryListUrl}"
+          report_types:
+            - id: weekly_shift_summary
+              label: Weekly Shift Summary
+              description: Aggregated shift handover data for the past 7 days.
+            - id: equipment_issue_log
+              label: Equipment Issue Log
+              description: Open and resolved equipment issues across all shifts.
+            - id: training_status
+              label: Training Status Report
+              description: Completion status for all active training requirements by role.
+          export_formats:
+            - csv
+            - pdf
+
+      - type: quick_links
+        title: Manager Resources
+        properties:
+          links:
+            - title: HR Policy Library
+              url: "${HrPolicyLibraryUrl}"
+              icon: Library
+            - title: Operations Library
+              url: "${OperationsLibraryUrl}"
+              icon: Settings
+            - title: Store Directory
+              url: "${StoreDirectoryListUrl}"
+              icon: MapPin
+            - title: Content Approval Queue
+              url: "${RecipeLibraryUrl}?viewId=pending-approval"
+              icon: Checkmark
+
+  - id: agent-panel
+    type: column
+    column_span: agent
+    web_parts:
+      - type: spfx_custom
+        component_id: virtual-coach-embed
+        title: Virtual Coach
+        properties:
+          agentEmbedUrl: "${VirtualCoachEmbedUrl}"
+          tenantId: "${TenantId}"
+          height_px: 700
+          max_width_px: 420
+          suggested_prompts:
+            - Show me open shift handover issues for this week.
+            - Which stores have pending content approvals?
+            - How do I escalate an equipment issue?
+            - What is the policy for approving shift swaps?
+
+page_metadata:
+  content_type: Site Page
+  promote_news: false
+  show_in_navigation: true
+  navigation_label: Manager Portal

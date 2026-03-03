@@ -1,0 +1,103 @@
+# Store Dashboard - SharePoint Page Template
+
+page:
+  name: Store Dashboard
+  slug: store-dashboard
+  url: /sites/coffee-ops/SitePages/store-dashboard.aspx
+  title: Store Dashboard
+  description: >
+    Daily operations summary for baristas and shift leads. Displays real-time
+    operational metrics, the shift handover log, and the embedded Virtual Coach
+    agent for in-context questions during shift.
+  layout: two_column
+  responsive:
+    breakpoint_px: 1024
+    narrow_layout: single_column_stacked
+    column_order_narrow:
+      - content
+      - agent
+
+sections:
+  - id: page-header
+    type: hero
+    column_span: full
+    web_parts:
+      - type: text
+        properties:
+          text: "Store Dashboard"
+          heading_level: 1
+      - type: text
+        properties:
+          text: "Your daily operations summary and in-shift assistant."
+          heading_level: 3
+
+  - id: ops-summary
+    type: column
+    column_span: content
+    web_parts:
+      - type: spfx_custom
+        component_id: daily-ops-summary
+        title: Daily Operations Summary
+        properties:
+          storeDirectoryListUrl: "${StoreDirectoryListUrl}"
+          shiftHandoverListUrl: "${ShiftHandoverListUrl}"
+          refreshIntervalMinutes: 5
+          showMetrics:
+            - transactions_today
+            - open_issues
+            - current_shift_lead
+            - next_shift_lead
+            - equipment_alerts
+
+      - type: spfx_custom
+        component_id: shift-handover-viewer
+        title: Recent Shift Handover Notes
+        properties:
+          shiftHandoverListUrl: "${ShiftHandoverListUrl}"
+          displayCount: 3
+          showFields:
+            - ShiftDate
+            - IncomingColleague
+            - Issues
+            - EquipmentCleaned
+
+      - type: quick_links
+        title: Quick Links
+        properties:
+          links:
+            - title: Opening Checklist
+              url: "${OperationsLibraryUrl}/opening-checklist"
+              icon: CheckMark
+            - title: Closing Checklist
+              url: "${OperationsLibraryUrl}/closing-checklist"
+              icon: CheckMark
+            - title: Equipment Issue Log
+              url: "${OperationsLibraryUrl}/equipment-issues"
+              icon: Warning
+            - title: Seasonal Menu
+              url: "${SeasonalMenuLibraryUrl}"
+              icon: Cafe
+
+  - id: agent-panel
+    type: column
+    column_span: agent
+    web_parts:
+      - type: spfx_custom
+        component_id: virtual-coach-embed
+        title: Virtual Coach
+        properties:
+          agentEmbedUrl: "${VirtualCoachEmbedUrl}"
+          tenantId: "${TenantId}"
+          height_px: 600
+          max_width_px: 420
+          suggested_prompts:
+            - What is today opening checklist?
+            - Show me the latest shift handover notes.
+            - What are the steps for the seasonal latte?
+            - How do I report an equipment issue?
+
+page_metadata:
+  content_type: Site Page
+  promote_news: false
+  show_in_navigation: true
+  navigation_label: Store Dashboard

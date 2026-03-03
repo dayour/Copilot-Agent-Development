@@ -3,7 +3,7 @@
 solution:
   name: CoffeeVirtualCoach
   display_name: "Coffee - Virtual Coach"
-  version: "1.1.0"
+  version: "1.2.0"
   publisher: Copilot Agent Development
   description: >
     Production-ready SharePoint-centric solution for the Virtual Coach agent.
@@ -57,6 +57,18 @@ environment_variables:
     display_name: Seasonal Menu Library URL
     type: string
     description: SharePoint document library URL for seasonal menu updates.
+    default_value: ""
+
+  - name: VirtualCoachEmbedUrl
+    display_name: Virtual Coach Embed URL
+    type: string
+    description: Published embed URL for the Virtual Coach Copilot Studio agent, used by SharePoint pages.
+    default_value: ""
+
+  - name: TenantId
+    display_name: Microsoft 365 Tenant ID
+    type: string
+    description: Microsoft 365 tenant ID for Entra ID SSO token scope validation in the SPFx web parts.
     default_value: ""
 
   - name: ManagerTeamsChannelId
@@ -148,3 +160,14 @@ channels:
     enabled: true
     configuration:
       mobile_optimized: true
+
+sharepoint_pages:
+  spfx_solution:
+    package_file: sharepoint-pages/CoffeeVirtualCoachSPFx.sppkg
+    definition_file: ../sharepoint-pages/spfx-web-parts.yaml
+  pages:
+    - template_file: ../sharepoint-pages/store-dashboard.yaml
+    - template_file: ../sharepoint-pages/new-hire-onboarding-hub.yaml
+    - template_file: ../sharepoint-pages/recipe-reference-center.yaml
+    - template_file: ../sharepoint-pages/manager-portal.yaml
+  permissions_file: ../sharepoint-pages/page-permissions.yaml

@@ -1,0 +1,179 @@
+# Page Permissions - Virtual Coach SharePoint Pages
+
+# Azure AD security groups referenced in this file must be created and populated
+# before page permissions are applied. Group names use the coffee chain's standard
+# naming convention: {tenant-prefix}-{scope}-{role}.
+#
+# Unique permissions are broken from the parent site only where noted.
+# All other pages inherit site-level read access for all-store-staff.
+
+security_groups:
+  - id: all-store-staff
+    display_name: Coffee All Store Staff
+    description: All baristas, shift leads, and store managers across all regions.
+    scope: organization
+
+  - id: new-hire-onboarding
+    display_name: Coffee New Hire Onboarding
+    description: >
+      New hires during their onboarding period. Members are added by HR at hire
+      and removed after the onboarding checklist is marked complete.
+    scope: organization
+
+  - id: store-managers
+    display_name: Coffee Store Managers
+    description: Store managers and assistant store managers.
+    scope: organization
+
+  - id: regional-managers
+    display_name: Coffee Regional Managers
+    description: Regional operations managers with cross-store oversight.
+    scope: organization
+
+  - id: content-approvers
+    display_name: Coffee Content Approvers
+    description: >
+      Designated approvers for recipe and policy library content.
+      Includes operations governance leads and HR representatives.
+    scope: organization
+
+page_permissions:
+
+  - page: store-dashboard
+    url: /sites/coffee-ops/SitePages/store-dashboard.aspx
+    break_role_inheritance: false
+    permissions:
+      - group_id: all-store-staff
+        permission_level: Read
+      - group_id: store-managers
+        permission_level: Edit
+      - group_id: regional-managers
+        permission_level: Edit
+    notes: >
+      Store Dashboard is visible to all store staff. Managers can edit
+      the page layout. Shift handover data displayed is filtered by the
+      current user's store via the daily-ops-summary web part.
+
+  - page: new-hire-onboarding-hub
+    url: /sites/coffee-ops/SitePages/new-hire-onboarding-hub.aspx
+    break_role_inheritance: false
+    permissions:
+      - group_id: new-hire-onboarding
+        permission_level: Read
+      - group_id: all-store-staff
+        permission_level: Read
+      - group_id: store-managers
+        permission_level: Edit
+      - group_id: regional-managers
+        permission_level: Edit
+    notes: >
+      Onboarding hub is open to all store staff so experienced team members
+      can reference training materials as needed. The onboarding-checklist web
+      part stores completion progress per user, not per page.
+
+  - page: recipe-reference-center
+    url: /sites/coffee-ops/SitePages/recipe-reference-center.aspx
+    break_role_inheritance: false
+    permissions:
+      - group_id: all-store-staff
+        permission_level: Read
+      - group_id: content-approvers
+        permission_level: Edit
+      - group_id: store-managers
+        permission_level: Edit
+      - group_id: regional-managers
+        permission_level: Edit
+    notes: >
+      Recipe Reference Center is read-only for all store staff. Content approvers
+      can edit page content to curate featured recipes or update quick links.
+      Underlying recipe documents remain governed by library-level content approval
+      settings defined in the runbook.
+
+  - page: manager-portal
+    url: /sites/coffee-ops/SitePages/manager-portal.aspx
+    break_role_inheritance: true
+    permissions:
+      - group_id: store-managers
+        permission_level: Edit
+      - group_id: regional-managers
+        permission_level: Full Control
+    notes: >
+      Manager Portal has unique permissions broken from the parent site.
+      Baristas and shift leads cannot access this page. Regional managers
+      have Full Control to manage page layout and exported report storage.
+      Store managers have Edit access to update shift management views.
+
+library_permissions:
+  # The following library and list permissions align to the same Azure AD security groups.
+  # These are not page permissions but are listed here for completeness because
+  # the knowledge displayed on the pages is sourced from these libraries.
+  entries:
+
+    - library: recipes-library
+      permissions:
+        - group_id: all-store-staff
+          permission_level: Read
+        - group_id: content-approvers
+          permission_level: Contribute
+        - group_id: store-managers
+          permission_level: Contribute
+        - group_id: regional-managers
+          permission_level: Full Control
+
+    - library: hr-policy-library
+      permissions:
+        - group_id: all-store-staff
+          permission_level: Read
+        - group_id: content-approvers
+          permission_level: Contribute
+        - group_id: regional-managers
+          permission_level: Full Control
+
+    - library: training-library
+      permissions:
+        - group_id: all-store-staff
+          permission_level: Read
+        - group_id: new-hire-onboarding
+          permission_level: Read
+        - group_id: content-approvers
+          permission_level: Contribute
+        - group_id: store-managers
+          permission_level: Contribute
+        - group_id: regional-managers
+          permission_level: Full Control
+
+    - library: operations-library
+      permissions:
+        - group_id: all-store-staff
+          permission_level: Read
+        - group_id: store-managers
+          permission_level: Contribute
+        - group_id: regional-managers
+          permission_level: Full Control
+
+    - library: seasonal-menu-library
+      permissions:
+        - group_id: all-store-staff
+          permission_level: Read
+        - group_id: content-approvers
+          permission_level: Contribute
+        - group_id: regional-managers
+          permission_level: Full Control
+
+    - list: shift-handover-list
+      permissions:
+        - group_id: all-store-staff
+          permission_level: Contribute
+        - group_id: store-managers
+          permission_level: Edit
+        - group_id: regional-managers
+          permission_level: Full Control
+
+    - list: store-directory-list
+      permissions:
+        - group_id: all-store-staff
+          permission_level: Read
+        - group_id: store-managers
+          permission_level: Read
+        - group_id: regional-managers
+          permission_level: Edit

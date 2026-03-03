@@ -1,0 +1,129 @@
+# New Hire Onboarding Hub - SharePoint Page Template
+
+page:
+  name: New Hire Onboarding Hub
+  slug: new-hire-onboarding-hub
+  url: /sites/coffee-ops/SitePages/new-hire-onboarding-hub.aspx
+  title: New Hire Onboarding Hub
+  description: >
+    Step-by-step onboarding experience for new hires. Guides new team members through
+    required training modules, compliance checklists, and store orientation tasks.
+    The embedded Virtual Coach provides real-time answers to onboarding questions.
+  layout: two_column
+  responsive:
+    breakpoint_px: 1024
+    narrow_layout: single_column_stacked
+    column_order_narrow:
+      - content
+      - agent
+
+sections:
+  - id: page-header
+    type: hero
+    column_span: full
+    web_parts:
+      - type: text
+        properties:
+          text: "New Hire Onboarding Hub"
+          heading_level: 1
+      - type: text
+        properties:
+          text: "Welcome to the team. Complete each step below to finish your onboarding."
+          heading_level: 3
+
+  - id: onboarding-progress
+    type: column
+    column_span: content
+    web_parts:
+      - type: spfx_custom
+        component_id: onboarding-checklist
+        title: Your Onboarding Checklist
+        properties:
+          trainingLibraryUrl: "${TrainingLibraryUrl}"
+          hrPolicyLibraryUrl: "${HrPolicyLibraryUrl}"
+          checklistSteps:
+            - id: step-01
+              label: Complete food safety and hygiene training
+              document_url: "${TrainingLibraryUrl}/food-safety-training"
+              required: true
+            - id: step-02
+              label: Review employee handbook and code of conduct
+              document_url: "${HrPolicyLibraryUrl}/employee-handbook"
+              required: true
+            - id: step-03
+              label: Complete espresso station training module
+              document_url: "${TrainingLibraryUrl}/espresso-station-training"
+              required: true
+            - id: step-04
+              label: Complete bar and beverage preparation training
+              document_url: "${TrainingLibraryUrl}/beverage-preparation-training"
+              required: true
+            - id: step-05
+              label: Review dress code and personal presentation policy
+              document_url: "${HrPolicyLibraryUrl}/dress-code-policy"
+              required: true
+            - id: step-06
+              label: Complete point-of-sale system orientation
+              document_url: "${TrainingLibraryUrl}/pos-orientation"
+              required: true
+            - id: step-07
+              label: Shadow an experienced team member for one full shift
+              document_url: ""
+              required: true
+            - id: step-08
+              label: Meet your store manager and review your schedule
+              document_url: ""
+              required: true
+
+      - type: file_viewer
+        title: Training Documents
+        properties:
+          libraryUrl: "${TrainingLibraryUrl}"
+          view: tiles
+          filter_by_metadata:
+            JobRole: Barista
+          show_fields:
+            - Title
+            - JobRole
+            - Modified
+
+      - type: quick_links
+        title: Key Policies for New Hires
+        properties:
+          links:
+            - title: Employee Handbook
+              url: "${HrPolicyLibraryUrl}/employee-handbook"
+              icon: ContactInfo
+            - title: Break Policy
+              url: "${HrPolicyLibraryUrl}/break-policy"
+              icon: Clock
+            - title: Attendance Policy
+              url: "${HrPolicyLibraryUrl}/attendance-policy"
+              icon: Calendar
+            - title: Dress Code
+              url: "${HrPolicyLibraryUrl}/dress-code-policy"
+              icon: People
+
+  - id: agent-panel
+    type: column
+    column_span: agent
+    web_parts:
+      - type: spfx_custom
+        component_id: virtual-coach-embed
+        title: Virtual Coach
+        properties:
+          agentEmbedUrl: "${VirtualCoachEmbedUrl}"
+          tenantId: "${TenantId}"
+          height_px: 680
+          max_width_px: 420
+          suggested_prompts:
+            - Where do I start with onboarding?
+            - Show me the espresso station training steps.
+            - What is the break policy for new hires?
+            - What does my first week look like?
+
+page_metadata:
+  content_type: Site Page
+  promote_news: false
+  show_in_navigation: true
+  navigation_label: New Hire Onboarding Hub

@@ -1,0 +1,238 @@
+# SPFx Web Parts - Virtual Coach SharePoint Integration
+
+spfx_solution:
+  package_name: CoffeeVirtualCoachSPFx
+  package_file: CoffeeVirtualCoachSPFx.sppkg
+  version: "1.0.0"
+  skip_feature_deployment: true
+  target_environments:
+    - SharePoint Online
+
+web_parts:
+
+  - id: virtual-coach-embed
+    display_name: Virtual Coach Embed
+    description: >
+      Embeds the Copilot Studio Virtual Coach agent as a responsive iframe panel.
+      Supports suggested prompts, Entra ID single sign-on pass-through, and
+      automatic height adjustment on mobile viewports.
+    properties:
+      agentEmbedUrl:
+        type: string
+        required: true
+        description: The published embed URL for the Virtual Coach Copilot Studio agent.
+      tenantId:
+        type: string
+        required: true
+        description: Microsoft 365 tenant ID for SSO token scope validation.
+      height_px:
+        type: number
+        required: false
+        default: 600
+        description: Iframe height in pixels on desktop viewports.
+      max_width_px:
+        type: number
+        required: false
+        default: 420
+        description: Maximum width of the agent panel in pixels.
+      suggested_prompts:
+        type: array
+        items: string
+        required: false
+        description: >
+          Up to five suggested prompts shown as quick-action buttons above the chat.
+    responsive:
+      min_height_px: 480
+      narrow_height_px: 400
+      full_width_on_narrow: true
+    authentication:
+      type: azure_ad_sso
+      scopes:
+        - https://api.botframework.com/.default
+
+  - id: daily-ops-summary
+    display_name: Daily Operations Summary
+    description: >
+      Displays real-time operational metrics for the current store including
+      transaction count, open issues from the shift handover list, current and
+      next shift lead names, and equipment alerts.
+    properties:
+      storeDirectoryListUrl:
+        type: string
+        required: true
+        description: SharePoint list URL for the store directory.
+      shiftHandoverListUrl:
+        type: string
+        required: true
+        description: SharePoint list URL for shift handover records.
+      refreshIntervalMinutes:
+        type: number
+        required: false
+        default: 5
+        description: How often the web part refreshes data from SharePoint lists.
+      showMetrics:
+        type: array
+        items: string
+        required: false
+        default:
+          - transactions_today
+          - open_issues
+          - current_shift_lead
+          - next_shift_lead
+          - equipment_alerts
+        description: Ordered list of metric tiles to display.
+    responsive:
+      stack_tiles_on_narrow: true
+      min_tile_width_px: 140
+
+  - id: onboarding-checklist
+    display_name: Onboarding Checklist
+    description: >
+      Renders a step-by-step onboarding checklist for new hires. Each step links
+      to the corresponding document in the training or HR policy library.
+      Completion state is persisted per user in the user profile service.
+    properties:
+      trainingLibraryUrl:
+        type: string
+        required: true
+        description: SharePoint library URL for training documents.
+      hrPolicyLibraryUrl:
+        type: string
+        required: true
+        description: SharePoint library URL for HR policy documents.
+      checklistSteps:
+        type: array
+        required: true
+        description: Ordered array of checklist step objects.
+        items:
+          id:
+            type: string
+          label:
+            type: string
+          document_url:
+            type: string
+          required:
+            type: boolean
+    responsive:
+      full_width: true
+
+  - id: recipe-catalog
+    display_name: Recipe Catalog
+    description: >
+      Searchable, filterable catalog of approved drink recipes from the SharePoint
+      recipe library. Supports full-text search, multi-select drink category filter,
+      region filter, and an active-only toggle. Opens a detail panel inline.
+    properties:
+      recipesLibraryUrl:
+        type: string
+        required: true
+        description: SharePoint library URL for approved drink recipes.
+      seasonalMenuLibraryUrl:
+        type: string
+        required: true
+        description: SharePoint library URL for seasonal menu items.
+      searchPlaceholder:
+        type: string
+        required: false
+        default: "Search recipes..."
+        description: Placeholder text for the search input.
+      filters:
+        type: array
+        required: false
+        description: Filter configuration for the catalog.
+      card_fields:
+        type: array
+        items: string
+        required: false
+        description: Fields to show on recipe cards in the list view.
+      detail_fields:
+        type: array
+        items: string
+        required: false
+        description: Fields to show in the recipe detail panel.
+    responsive:
+      cards_per_row_desktop: 3
+      cards_per_row_tablet: 2
+      cards_per_row_mobile: 1
+
+  - id: shift-management
+    display_name: Shift Management
+    description: >
+      Tabular view of shift handover records for the past N days. Supports column
+      sorting, filtering by date range or open issues, and CSV export for offline
+      review by managers.
+    properties:
+      shiftHandoverListUrl:
+        type: string
+        required: true
+        description: SharePoint list URL for shift handover records.
+      storeDirectoryListUrl:
+        type: string
+        required: true
+        description: SharePoint list URL for the store directory.
+      displayDays:
+        type: number
+        required: false
+        default: 7
+        description: Number of past days of shift records to display by default.
+      allow_export:
+        type: boolean
+        required: false
+        default: true
+        description: When true, shows a CSV export button for managers.
+    responsive:
+      horizontal_scroll_on_narrow: true
+
+  - id: performance-tracker
+    display_name: Performance Tracker
+    description: >
+      KPI tile grid for store managers. Displays configurable metrics including
+      open handover issues, training completion rate, and content approval backlog.
+      Data is sourced from SharePoint lists and libraries.
+    properties:
+      storeDirectoryListUrl:
+        type: string
+        required: true
+        description: SharePoint list URL for the store directory.
+      metrics:
+        type: array
+        required: true
+        description: Array of metric configuration objects.
+      refresh_interval_minutes:
+        type: number
+        required: false
+        default: 15
+        description: How often metric tiles refresh.
+    responsive:
+      stack_tiles_on_narrow: true
+      min_tile_width_px: 160
+
+  - id: reporting-dashboard
+    display_name: Reporting Dashboard
+    description: >
+      On-demand report generation for store and regional managers. Supports weekly
+      shift summaries, equipment issue logs, and training status reports. Reports
+      can be exported as CSV or PDF.
+    properties:
+      shiftHandoverListUrl:
+        type: string
+        required: true
+        description: SharePoint list URL for shift handover records.
+      storeDirectoryListUrl:
+        type: string
+        required: true
+        description: SharePoint list URL for the store directory.
+      report_types:
+        type: array
+        required: true
+        description: Array of report type configuration objects.
+      export_formats:
+        type: array
+        items: string
+        required: false
+        default:
+          - csv
+          - pdf
+        description: Available export formats for generated reports.
+    responsive:
+      full_width: true

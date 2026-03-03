@@ -40,9 +40,30 @@ virtual-coach/
 |-- runbook.md
 |-- templates/
 |   |-- agent-template.yaml
-`-- solution/
-    `-- solution-definition.yaml
+|-- solution/
+|   `-- solution-definition.yaml
+`-- sharepoint-pages/
+    |-- README.md
+    |-- store-dashboard.yaml
+    |-- new-hire-onboarding-hub.yaml
+    |-- recipe-reference-center.yaml
+    |-- manager-portal.yaml
+    |-- spfx-web-parts.yaml
+    `-- page-permissions.yaml
 ```
+
+## SharePoint Site Pages
+
+Four SharePoint site pages embed the Virtual Coach agent for in-context assistance. See `sharepoint-pages/README.md` for the full deployment guide and responsive design details.
+
+| Page | Audience | Key Features |
+|------|----------|-------------|
+| Store Dashboard | Baristas, shift leads | Daily ops summary, shift handover viewer, embedded agent |
+| New Hire Onboarding Hub | New hires | Step-by-step checklist, training library, embedded agent |
+| Recipe Reference Center | Baristas, shift leads | Searchable recipe catalog, seasonal highlights, embedded agent |
+| Manager Portal | Store and regional managers | Shift management, performance tracking, reporting, embedded agent |
+
+Page templates and SPFx web part definitions are in `sharepoint-pages/`. Permission configuration aligned to Azure AD security groups is in `sharepoint-pages/page-permissions.yaml`.
 
 ## Quick Start
 
@@ -50,3 +71,6 @@ virtual-coach/
 2. Import `solution/solution-definition.yaml` into the target environment.
 3. Validate knowledge sources and list bindings against your hub-associated libraries.
 4. Publish to Teams and mobile web chat channels.
+5. Deploy the SPFx solution package from `sharepoint-pages/spfx-web-parts.yaml` to the App Catalog.
+6. Provision the four SharePoint pages using the templates in `sharepoint-pages/`.
+7. Apply page and library permissions from `sharepoint-pages/page-permissions.yaml`.

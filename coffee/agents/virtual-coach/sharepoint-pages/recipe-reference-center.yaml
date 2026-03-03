@@ -1,0 +1,113 @@
+# Recipe Reference Center - SharePoint Page Template
+
+page:
+  name: Recipe Reference Center
+  slug: recipe-reference-center
+  url: /sites/coffee-ops/SitePages/recipe-reference-center.aspx
+  title: Recipe Reference Center
+  description: >
+    Searchable catalog of all approved drink recipes for baristas and shift leads.
+    Recipes are filtered by drink category and region. The embedded Virtual Coach
+    answers preparation questions in context while staff work on the floor.
+  layout: two_column
+  responsive:
+    breakpoint_px: 1024
+    narrow_layout: single_column_stacked
+    column_order_narrow:
+      - content
+      - agent
+
+sections:
+  - id: page-header
+    type: hero
+    column_span: full
+    web_parts:
+      - type: text
+        properties:
+          text: "Recipe Reference Center"
+          heading_level: 1
+      - type: text
+        properties:
+          text: "Search the approved recipe catalog or ask the Virtual Coach for preparation help."
+          heading_level: 3
+
+  - id: recipe-search
+    type: column
+    column_span: content
+    web_parts:
+      - type: spfx_custom
+        component_id: recipe-catalog
+        title: Recipe Catalog
+        properties:
+          recipesLibraryUrl: "${RecipeLibraryUrl}"
+          seasonalMenuLibraryUrl: "${SeasonalMenuLibraryUrl}"
+          searchPlaceholder: "Search recipes by name, ingredient, or category..."
+          filters:
+            - field: DrinkCategory
+              label: Drink Category
+              type: multi_select
+              options:
+                - Espresso
+                - Cold Brew
+                - Blended
+                - Tea
+                - Seasonal
+                - Non-Coffee
+            - field: StoreRegion
+              label: Region
+              type: single_select
+            - field: IsCurrentlyActive
+              label: Active Only
+              type: toggle
+              default: true
+          card_fields:
+            - Title
+            - DrinkCategory
+            - PreparationTime
+            - Modified
+          detail_fields:
+            - Title
+            - DrinkCategory
+            - Ingredients
+            - PreparationSteps
+            - ServingSize
+            - ModifiedBy
+            - Modified
+          show_seasonal_badge: true
+
+      - type: highlighted_content
+        title: Seasonal Drinks This Week
+        properties:
+          source: "${SeasonalMenuLibraryUrl}"
+          layout: cards
+          items_to_show: 4
+          filter:
+            IsCurrentlyActive: true
+          show_fields:
+            - Title
+            - DrinkCategory
+            - Modified
+
+  - id: agent-panel
+    type: column
+    column_span: agent
+    web_parts:
+      - type: spfx_custom
+        component_id: virtual-coach-embed
+        title: Virtual Coach
+        properties:
+          agentEmbedUrl: "${VirtualCoachEmbedUrl}"
+          tenantId: "${TenantId}"
+          height_px: 600
+          max_width_px: 420
+          suggested_prompts:
+            - How do I make a vanilla latte?
+            - What are the steps for cold brew?
+            - What goes in the seasonal pumpkin drink?
+            - How many shots in a double espresso?
+
+page_metadata:
+  content_type: Site Page
+  promote_news: false
+  show_in_navigation: true
+  navigation_label: Recipe Reference Center
