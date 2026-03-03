@@ -200,7 +200,7 @@ topics:
           - text: "{Topic.TransactionResultTable}"
 
   - name: Anomaly Alert
-    description: Lists weekly fuel anomalies with rule type, confidence, and evidence.
+    description: Lists weekly fuel anomalies with rule type, confidence, and evidence. Supports proactive notification from the ProactiveAnomalyAlert flow.
     trigger:
       mode: classic
       trigger_phrases:
@@ -209,6 +209,7 @@ topics:
         - suspicious fuel transactions
         - anomaly report
         - weekly anomaly summary
+      proactive_trigger: ProactiveAnomalyAlert
     inputs:
       - name: period
         type: string
@@ -227,9 +228,25 @@ topics:
         body:
           - text: "Rule distribution: {Topic.RuleTypeSummary}"
           - text: "Flagged transactions: {Topic.AnomalyTable}"
+        actions:
+          - type: Action.Submit
+            title: Investigate Top Anomaly
+            data:
+              action: investigate
+              transaction_id: "{Topic.TopAnomalyTransactionId}"
+          - type: Action.Submit
+            title: Suspend Associated Card
+            data:
+              action: suspend_card
+              card_last4: "{Topic.TopAnomalyCardLast4}"
+          - type: Action.Submit
+            title: Dismiss All Low Confidence
+            data:
+              action: dismiss_low_confidence
+              period: "{Topic.period}"
 
   - name: Anomaly Investigation
-    description: Investigates one suspicious transaction by correlating fuel transaction data with telematics and route context.
+    description: Investigates one suspicious transaction by correlating fuel transaction data with telematics GPS, driver assignment, route history, prior transactions, and route context.
     trigger:
       mode: classic
       trigger_phrases:
@@ -259,8 +276,39 @@ topics:
           - Rule triggered: {Topic.RuleType}
           - Confidence: {Topic.ConfidenceScore}
           - Evidence: {Topic.EvidenceSummary}
+          - GPS location at fill: {Topic.GpsLocationAtFill}
           - GPS-route deviation: {Topic.RouteDeviationMiles} miles
+          - Driver assignment: {Topic.DriverName} (ID: {Topic.DriverId})
+          - Route context: {Topic.RouteName} (ID: {Topic.RouteId})
+          - Prior transactions (30 days): {Topic.PriorTransactionCount}
+          - Telematics fuel reading: {Topic.TelematicsFuelReading}
           - Telematics alignment: {Topic.TelematicsConsistency}
+      - type: adaptive_card
+        title: "Transaction Investigation — {Topic.transaction_id}"
+        body:
+          - text: "Evidence: {Topic.EvidenceSummary}"
+          - text: "Driver: {Topic.DriverName} | Vehicle: {Topic.VehicleId}"
+          - text: "GPS at fill: {Topic.GpsLocationAtFill}"
+          - text: "Route deviation: {Topic.RouteDeviationMiles} miles"
+          - text: "Prior transactions (30 days): {Topic.PriorTransactionCount}"
+          - text: "Telematics fuel reading: {Topic.TelematicsFuelReading}"
+        actions:
+          - type: Action.Submit
+            title: Escalate to Finance Fraud Queue
+            data:
+              action: escalate
+              transaction_id: "{Topic.transaction_id}"
+              anomaly_id: "{Topic.AnomalyId}"
+          - type: Action.Submit
+            title: Suspend Card
+            data:
+              action: suspend_card
+              card_last4: "{Topic.CardLast4}"
+          - type: Action.Submit
+            title: Dismiss — False Positive
+            data:
+              action: dismiss
+              anomaly_id: "{Topic.AnomalyId}"
       - type: condition
         id: escalationGate
         branches:

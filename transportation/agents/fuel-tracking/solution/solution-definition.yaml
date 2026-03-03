@@ -133,7 +133,7 @@ dataverse:
             - crd_timestamp
 
     - logical_name: crd_anomalyrules
-      display_name: AnomalyRules
+      display_name: FuelAnomalyRules
       description: Rule definitions and thresholds used by anomaly detection flows.
       ownership: organization
       primary_column:
@@ -319,14 +319,107 @@ dataverse:
           type: datetime
 
 connectors:
-  - name: FuelCardApiHttp
-    type: http
-    description: HTTP connector for fuel card provider transactions and card state management.
+  - name: FuelCardConnector
+    type: custom
+    description: Custom connector for fuel card provider API supporting WEX, Comdata, or Fleetcor. Provides named actions for transaction retrieval, card details, merchant lookup, and card suspension.
     configuration:
       base_url_env_var: FuelCardApiUrl
       authentication: api_key
       api_key_env_var: FuelCardApiKey
       api_key_header: x-api-key
+    actions:
+      - name: GetTransactions
+        method: GET
+        path: /transactions
+        description: Retrieve fuel card transactions within a date range, optionally filtered by card number or vehicle ID.
+        inputs:
+          - name: cardNumber
+            type: string
+            required: false
+          - name: vehicleId
+            type: string
+            required: false
+          - name: fromDate
+            type: string
+            required: false
+          - name: toDate
+            type: string
+            required: false
+          - name: pageSize
+            type: integer
+            required: false
+            default_value: 200
+        outputs:
+          - name: transactions
+            type: array
+          - name: totalCount
+            type: integer
+          - name: hasMore
+            type: boolean
+      - name: GetCardDetails
+        method: GET
+        path: /cards/{cardNumber}
+        description: Retrieve card metadata, status, spending limits, and vehicle or driver assignment for a specific fuel card.
+        inputs:
+          - name: cardNumber
+            type: string
+            required: true
+        outputs:
+          - name: cardNumber
+            type: string
+          - name: cardLast4
+            type: string
+          - name: status
+            type: string
+          - name: vehicleId
+            type: string
+          - name: driverId
+            type: string
+          - name: dailyLimit
+            type: number
+          - name: monthlySpend
+            type: number
+      - name: GetMerchantInfo
+        method: GET
+        path: /merchants/{merchantId}
+        description: Look up fuel station details including address, accepted card types, and current fuel prices.
+        inputs:
+          - name: merchantId
+            type: string
+            required: true
+        outputs:
+          - name: merchantName
+            type: string
+          - name: address
+            type: string
+          - name: latitude
+            type: number
+          - name: longitude
+            type: number
+          - name: fuelTypes
+            type: array
+          - name: currentDieselPrice
+            type: number
+          - name: currentGasolinePrice
+            type: number
+      - name: SuspendCard
+        method: POST
+        path: /cards/{cardNumber}/suspend
+        description: Suspend a fuel card to prevent unauthorized transactions. Returns provider confirmation reference.
+        inputs:
+          - name: cardNumber
+            type: string
+            required: true
+          - name: reason
+            type: string
+            required: false
+        outputs:
+          - name: status
+            type: string
+          - name: providerReference
+            type: string
+          - name: suspendedAt
+            type: string
   - name: TelematicsApiHttp
     type: http
     description: HTTP connector for telematics route, location, and sensor context.
@@ -349,30 +442,69 @@ connectors:
 
 flows:
   - name: IngestFuelTransactions
-    trigger: recurrence_5_minutes
-    description: Pulls new transactions from fuel card provider and upserts FuelTransactions records.
+    trigger: recurrence_hourly
+    description: Pulls new fuel card transactions from the provider every hour, enriches each record with vehicle class, driver name, and route correlation from Dataverse and telematics, then upserts into the FuelTransactions table.
     steps:
-      - action: http_get
-        connector: FuelCardApiHttp
-        path: /transactions
+      - action: connector_action
+        connector: FuelCardConnector
+        action_name: GetTransactions
+        params:
+          fromDate: "{last_run_timestamp}"
+          pageSize: 200
       - action: parse_json
-      - action: upsert_dataverse
-        connector: Dataverse
-        table: FuelTransactions
-        key: crd_transaction_id
+      - action: for_each
+        input: transactions
+        steps:
+          - action: get_row
+            connector: Dataverse
+            table: VehicleMaster
+            filter: crd_vehicle_id eq transaction.vehicle_id
+            output: vehicle_record
+          - action: get_row
+            connector: Dataverse
+            table: DriverMaster
+            filter: crd_driver_id eq transaction.driver_id
+            output: driver_record
+          - action: http_get
+            connector: TelematicsApiHttp
+            path: /route/correlation
+            params:
+              vehicleId: "{transaction.vehicle_id}"
+              timestamp: "{transaction.timestamp}"
+            output: route_context
+          - action: upsert_dataverse
+            connector: Dataverse
+            table: FuelTransactions
+            key: crd_transaction_id
+            enrichment:
+              vehicle_class: "{vehicle_record.vehicle_class}"
+              driver_name: "{driver_record.driver_name}"
+              route_id: "{route_context.route_id}"
+              route_deviation_miles: "{route_context.deviation_miles}"
 
   - name: DetectAnomalies
     trigger: on_fueltransactions_create_or_update
-    description: Evaluates transactions against AnomalyRules and writes FuelAnomalies records.
+    description: Evaluates each new or updated FuelTransactions record against all enabled FuelAnomalyRules and writes FuelAnomalies records. Sends email alert for high or critical severity findings.
     steps:
       - action: list_rows
         connector: Dataverse
-        table: AnomalyRules
+        table: FuelAnomalyRules
         filter: crd_enabled eq true
       - action: http_get
         connector: TelematicsApiHttp
         path: /vehicle/context
       - action: evaluate_rules
+        rule_evaluations:
+          - rule_type: tank_capacity_overfill
+            condition: transaction.gallons > vehicle_record.tank_capacity_gallons + threshold_value
+          - rule_type: multiple_fills_short_period
+            condition: prior_fill_count_within_hours(transaction.card_number, threshold_value) > 1
+          - rule_type: off_route_fueling
+            condition: distance_from_route(transaction.location_lat, transaction.location_lon, route_context.route_id) > threshold_value
+          - rule_type: price_above_market
+            condition: transaction.price_per_gallon > market_price * (1 + threshold_value / 100)
+          - rule_type: after_hours_fueling
+            condition: transaction_hour_local(transaction.timestamp) < operating_start_hour or transaction_hour_local(transaction.timestamp) > operating_end_hour
       - action: create_rows
         connector: Dataverse
         table: FuelAnomalies
@@ -397,7 +529,7 @@ flows:
 
   - name: SuspendFuelCard
     trigger: instant_from_agent
-    description: Suspends a fuel card through provider API and updates Dataverse FuelCards table.
+    description: Suspends a fuel card through the provider API using the SuspendCard action and updates the Dataverse FuelCards table.
     inputs:
       - cardLast4
       - action
@@ -405,9 +537,17 @@ flows:
       - status
       - providerReference
     steps:
-      - action: http_post
-        connector: FuelCardApiHttp
-        path: /cards/suspend
+      - action: get_row
+        connector: Dataverse
+        table: FuelCards
+        filter: crd_card_last4 eq cardLast4 and crd_status eq 'active'
+        output: card_record
+      - action: connector_action
+        connector: FuelCardConnector
+        action_name: SuspendCard
+        params:
+          cardNumber: "{card_record.card_number}"
+          reason: "Suspended via Fuel Tracking agent — action: {action}"
       - action: update_row
         connector: Dataverse
         table: FuelCards
@@ -526,6 +666,224 @@ flows:
           card_action_taken: "{card_action_taken}"
           card_last4: "{cardLast4}"
           provider_reference: "{providerReference}"
+
+  - name: GetFuelSummary
+    trigger: instant_from_agent
+    description: Aggregates fuel spend, budget variance, and segment breakdowns for a given fleet and period. Returns totals and breakdown tables for the Fuel Summary topic.
+    inputs:
+      - period
+      - fleet
+    outputs:
+      - totalSpend
+      - budget
+      - budgetVariance
+      - topRegion
+      - topVehicleSegment
+      - byFleetTable
+      - byRegionTable
+      - byVehicleClassTable
+    steps:
+      - action: query_dataverse
+        connector: Dataverse
+        table: FuelTransactions
+        filter: crd_timestamp ge period_start and crd_timestamp le period_end
+        aggregate:
+          - sum(crd_total_cost) as totalSpend
+          - group_by(crd_vehicle_class) as byVehicleClassTable
+          - group_by(crd_region) as byRegionTable
+      - action: compute_budget_variance
+      - action: respond_to_agent
+
+  - name: GetDriverEfficiencyRanking
+    trigger: instant_from_agent
+    description: Ranks drivers by normalized MPG adjusted for load, route type, and seasonal factors for a given reporting period.
+    inputs:
+      - period
+    outputs:
+      - driverRankingTable
+    steps:
+      - action: query_dataverse
+        connector: Dataverse
+        table: FuelTransactions
+        filter: crd_timestamp ge period_start and crd_timestamp le period_end
+        join:
+          - table: DriverMaster
+            on: crd_driver_id
+      - action: compute_normalized_mpg
+      - action: respond_to_agent
+
+  - name: GetFuelTransactions
+    trigger: instant_from_agent
+    description: Returns filtered fuel card transactions by card last-4, vehicle ID, or date range with merchant and location details.
+    inputs:
+      - cardLast4
+      - vehicleId
+      - dateFrom
+      - dateTo
+    outputs:
+      - transactionCount
+      - transactionResultTable
+    steps:
+      - action: query_dataverse
+        connector: Dataverse
+        table: FuelTransactions
+        filter: >
+          (cardLast4 eq null or crd_card_number endswith cardLast4)
+          and (vehicleId eq null or crd_vehicle_id eq vehicleId)
+          and (dateFrom eq null or crd_timestamp ge dateFrom)
+          and (dateTo eq null or crd_timestamp le dateTo)
+        order_by: crd_timestamp desc
+      - action: respond_to_agent
+
+  - name: GetFuelAnomalies
+    trigger: instant_from_agent
+    description: Returns open and under-review fuel anomalies for a given period with rule type and confidence score.
+    inputs:
+      - period
+    outputs:
+      - anomalyCount
+      - ruleTypeSummary
+      - anomalyTable
+      - topAnomalyTransactionId
+      - topAnomalyCardLast4
+    steps:
+      - action: query_dataverse
+        connector: Dataverse
+        table: FuelAnomalies
+        filter: >
+          crd_detected_on ge period_start
+          and crd_status in ('open', 'under_review')
+        order_by: crd_confidence_score desc
+      - action: compute_rule_type_summary
+      - action: respond_to_agent
+
+  - name: InvestigateFuelTransaction
+    trigger: instant_from_agent
+    description: >
+      Pulls full investigation context for a specific transaction: anomaly record,
+      GPS location at time of fill, driver assignment, route history, prior
+      transactions in the past 30 days, and telematics fuel-level reading.
+      Returns an evidence summary used by the Anomaly Investigation topic.
+    inputs:
+      - transactionId
+    outputs:
+      - ruleType
+      - confidenceScore
+      - evidenceSummary
+      - gpsLocationAtFill
+      - routeDeviationMiles
+      - driverName
+      - driverId
+      - vehicleId
+      - routeName
+      - routeId
+      - priorTransactionCount
+      - telematicsFuelReading
+      - telematicsConsistency
+      - cardLast4
+      - anomalyId
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: FuelTransactions
+        filter: crd_transaction_id eq transactionId
+        output: transaction_record
+      - action: get_row
+        connector: Dataverse
+        table: FuelAnomalies
+        filter: crd_transaction_id eq transactionId
+        order_by: crd_confidence_score desc
+        output: anomaly_record
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/gps-at-time
+        params:
+          vehicleId: "{transaction_record.vehicle_id}"
+          timestamp: "{transaction_record.timestamp}"
+        output: gps_context
+      - action: get_row
+        connector: Dataverse
+        table: DriverMaster
+        filter: crd_driver_id eq transaction_record.driver_id
+        output: driver_record
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /route/history
+        params:
+          vehicleId: "{transaction_record.vehicle_id}"
+          timestamp: "{transaction_record.timestamp}"
+        output: route_history
+      - action: count_rows
+        connector: Dataverse
+        table: FuelTransactions
+        filter: >
+          crd_card_number eq transaction_record.card_number
+          and crd_timestamp ge prior_30_days
+          and crd_transaction_id ne transactionId
+        output: prior_transaction_count
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/fuel-level-at-time
+        params:
+          vehicleId: "{transaction_record.vehicle_id}"
+          timestamp: "{transaction_record.timestamp}"
+        output: telematics_fuel
+      - action: connector_action
+        connector: FuelCardConnector
+        action_name: GetMerchantInfo
+        params:
+          merchantId: "{transaction_record.merchant_id}"
+        output: merchant_record
+      - action: respond_to_agent
+
+  - name: ProactiveAnomalyAlert
+    trigger: on_fuelanomalies_create
+    description: >
+      Proactively notifies fleet managers via Teams adaptive card when a new
+      high or critical severity anomaly is written to the FuelAnomalies table.
+      The card includes evidence details and one-click actions: Investigate,
+      Suspend Card, and Dismiss.
+    steps:
+      - action: condition
+        if: anomaly_record.severity in ('high', 'critical')
+        then:
+          - action: get_row
+            connector: Dataverse
+            table: FuelTransactions
+            filter: crd_transaction_id eq anomaly_record.transaction_id
+            output: transaction_record
+          - action: get_row
+            connector: Dataverse
+            table: FuelCards
+            filter: crd_card_number eq transaction_record.card_number
+            output: card_record
+          - action: send_adaptive_card
+            channel: teams
+            recipient_env_var: FinanceAlertEmail
+            title: "Fuel Anomaly Detected — {anomaly_record.rule_type}"
+            body: >
+              Anomaly ID: {anomaly_record.anomaly_id}
+              Transaction: {anomaly_record.transaction_id}
+              Vehicle: {transaction_record.vehicle_id}
+              Card ending: {card_record.card_last4}
+              Confidence: {anomaly_record.confidence_score}
+              Evidence: {anomaly_record.evidence_json}
+            actions:
+              - type: Action.Submit
+                title: Investigate
+                data:
+                  action: investigate
+                  transaction_id: "{anomaly_record.transaction_id}"
+              - type: Action.Submit
+                title: Suspend Card
+                data:
+                  action: suspend_card
+                  card_last4: "{card_record.card_last4}"
+              - type: Action.Submit
+                title: Dismiss
+                data:
+                  action: dismiss
+                  anomaly_id: "{anomaly_record.anomaly_id}"
 
 channels:
   - name: teams

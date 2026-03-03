@@ -61,7 +61,7 @@ Provision and validate the following tables before enabling production traffic:
 - `FuelTransactions`
 - `VehicleFuelProfiles`
 - `FuelAnomalies`
-- `AnomalyRules`
+- `FuelAnomalyRules`
 - `FuelCards`
 
 ### Validation Steps

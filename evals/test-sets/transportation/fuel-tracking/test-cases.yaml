@@ -1,5 +1,6 @@
 # Test cases for transportation/fuel-tracking agent
-# Covers fuel consumption queries and fuel cost analysis.
+# Covers fuel consumption queries, fuel cost analysis, anomaly detection,
+# transaction investigation, and fuel card management.
 #
 # Tiers:
 #   critical   -- fuel consumption facts that must always be present
@@ -147,3 +148,135 @@
   description: >
     Tests that the agent handles a vehicle-specific fuel cost report request
     correctly with the appropriate reporting period.
+
+- id: trans-ft-crit-005
+  tier: critical
+  query: "Show fuel anomalies detected this week."
+  expected_keywords:
+    - anomaly
+    - detected
+    - transaction
+    - week
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fuel tracking agent queries the FuelAnomalies Dataverse table for open
+    and under-review records within the requested period. It presents rule type,
+    confidence score, and flagged transaction details. An adaptive card with
+    Investigate, Suspend Card, and Dismiss actions is returned.
+  description: >
+    Verifies that the agent returns a structured anomaly summary for the week
+    and that the response references detected anomalies and transactions.
+
+- id: trans-ft-crit-006
+  tier: critical
+  query: "Investigate transaction TXN-20260301-0042."
+  expected_keywords:
+    - transaction
+    - TXN-20260301-0042
+    - evidence
+    - driver
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fuel tracking agent invokes the InvestigateFuelTransaction flow which
+    retrieves the anomaly record, GPS location at time of fill, driver
+    assignment, route history, prior transaction count, and telematics fuel
+    reading. Results are presented in an adaptive card with escalate, suspend,
+    and dismiss actions.
+  description: >
+    Verifies that the agent triggers the investigation workflow for a specific
+    transaction ID and returns a response that references evidence and the
+    assigned driver.
+
+- id: trans-ft-crit-007
+  tier: critical
+  query: "Suspend fuel card ending 4872."
+  expected_keywords:
+    - card
+    - suspend
+    - 4872
+    - confirm
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The fuel tracking agent requires explicit confirmation before suspending a
+    fuel card. It calls the FuelCardConnector SuspendCard action after the user
+    confirms. Only fleet managers and finance analysts are authorized to
+    perform card management actions.
+  description: >
+    Verifies that the agent initiates the card suspension flow for the specified
+    card and asks for confirmation before executing.
+
+- id: trans-ft-func-004
+  tier: functional
+  query: "A fill was recorded for vehicle VH-0312 at 2 AM on Saturday — is that suspicious?"
+  expected_keywords:
+    - anomaly
+    - after-hours
+    - suspicious
+    - transaction
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The after-hours fueling anomaly rule flags transactions where the local fill
+    time falls outside configured operating hours. A 2 AM Saturday fill is
+    likely outside normal fleet operating windows and should trigger an
+    after_hours_fueling anomaly with a recommendation to investigate.
+  description: >
+    Tests that the agent recognizes after-hours fueling as a potential anomaly
+    and provides appropriate guidance on investigation steps.
+
+- id: trans-ft-func-005
+  tier: functional
+  query: "Vehicle VH-0501 filled up 95 gallons but its tank capacity is 80 gallons. What does this mean?"
+  expected_keywords:
+    - tank
+    - capacity
+    - overfill
+    - anomaly
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The volume anomaly rule flags transactions where the gallons dispensed exceed
+    the vehicle tank capacity by more than the configured threshold. A fill of
+    95 gallons for an 80-gallon tank exceeds capacity and should be identified
+    as a tank_capacity_overfill anomaly requiring investigation.
+  description: >
+    Tests that the agent correctly identifies an overfill scenario as a volume
+    anomaly and explains the significance and next steps.
+
+- id: trans-ft-func-006
+  tier: functional
+  query: "Card ending 3391 had three fuel transactions in under two hours. Is this normal?"
+  expected_keywords:
+    - frequency
+    - multiple
+    - transactions
+    - anomaly
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The frequency anomaly rule flags cards with multiple fill transactions
+    within a short time window. Three transactions in under two hours on the
+    same card number is a strong signal for a multiple_fills_short_period
+    anomaly and should prompt the agent to recommend investigation and
+    potential card suspension.
+  description: >
+    Tests that the agent identifies rapid repeat transactions as a frequency
+    anomaly and recommends appropriate follow-up action.
