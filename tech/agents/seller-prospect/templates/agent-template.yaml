@@ -25,6 +25,14 @@ variables:
       type: boolean
     - name: Global.SalesforceUserId
       type: string
+    - name: Global.SalesforceTokenExpiry
+      type: string
+    - name: Global.SalesforceAuthMethod
+      type: string
+    - name: Global.B2CObjectId
+      type: string
+    - name: Global.SalesforceLeadId
+      type: string
   topic:
     - name: Topic.Budget
       type: string
@@ -56,6 +64,18 @@ tools:
   - name: EscalateToSalesQueue
     type: flow
     description: Sends handoff package to live sales team queue in Teams.
+  - name: GetDelegatedSalesforceToken
+    type: flow
+    description: Exchanges the authenticated Entra user identity for a Salesforce delegated access token using the JWT Bearer grant.
+  - name: GetServiceAccountSalesforceToken
+    type: flow
+    description: Obtains a Salesforce access token using the service account credentials for batch and scheduled operations.
+  - name: RefreshSalesforceToken
+    type: flow
+    description: Refreshes a Salesforce access token before expiry using the proactive refresh strategy.
+  - name: MapB2CIdentityToSalesforceLead
+    type: flow
+    description: Links an Azure AD B2C authenticated prospect to an existing Salesforce Lead record by updating the B2C_Object_Id__c custom field.
 
 topics:
   - name: Greeting
@@ -311,3 +331,53 @@ topics:
       - kind: SendMessage
         message: >
           I have escalated your request to our live sales queue. A representative will follow up shortly.
+
+  - name: Identity Federation
+    description: >
+      Manages Salesforce identity federation for authenticated users. Acquires a delegated
+      Salesforce token for internal reps and maps Azure AD B2C prospect identities to
+      Salesforce Lead records after external authentication.
+    triggerPhrases:
+      - link my account
+      - connect my salesforce identity
+      - verify my salesforce access
+      - update my profile in salesforce
+    flow:
+      - kind: ConditionGroup
+        id: branchByAuthContext
+        conditions:
+          - id: internalDelegatedToken
+            condition: =Global.IsInternalUser = true && Global.Authenticated = true
+            actions:
+              - kind: InvokeTool
+                tool: GetDelegatedSalesforceToken
+                inputs:
+                  userEmail: =User.Email
+                  userUpn: =User.PrincipalName
+                outputs:
+                  salesforceAccessToken: Topic.SalesforceAccessToken
+                  tokenExpiresAt: Global.SalesforceTokenExpiry
+              - kind: SetVariable
+                variable: Global.SalesforceAuthMethod
+                value: delegated
+              - kind: SendMessage
+                message: >
+                  Your Salesforce identity has been verified. I can now access your opportunities and pipeline with your permissions.
+          - id: externalB2CMapping
+            condition: =Global.IsInternalUser = false && Global.Authenticated = true && !IsBlank(Global.B2CObjectId)
+            actions:
+              - kind: InvokeTool
+                tool: MapB2CIdentityToSalesforceLead
+                inputs:
+                  b2cObjectId: =Global.B2CObjectId
+                  prospectEmail: =User.Email
+                  salesforceLeadId: =Global.SalesforceLeadId
+                outputs:
+                  mappingStatus: Topic.MappingStatus
+                  confirmedSalesforceLeadId: Global.SalesforceLeadId
+              - kind: SendMessage
+                message: >
+                  Your identity has been linked. Your qualification details and interactions are now associated with your profile.
+        elseActions:
+          - kind: SendMessage
+            message: Please sign in before I can verify your Salesforce identity.

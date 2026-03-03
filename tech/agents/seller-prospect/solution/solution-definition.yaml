@@ -34,6 +34,41 @@ environmentVariables:
     required: true
     isSecret: false
     description: Allowed external domain for website channel.
+  - name: SalesforceServiceAccountUsername
+    type: string
+    required: true
+    isSecret: false
+    description: Salesforce integration user username for service account fallback flows.
+  - name: SalesforceServiceAccountPassword
+    type: secret
+    required: true
+    isSecret: true
+    description: Salesforce integration user password for service account fallback flows.
+  - name: SalesforceServiceAccountToken
+    type: secret
+    required: true
+    isSecret: true
+    description: Salesforce integration user security token appended during Username-Password OAuth grant.
+  - name: SalesforceFederationTokenEndpoint
+    type: string
+    required: true
+    isSecret: false
+    description: Salesforce OAuth token endpoint used for JWT Bearer and delegated token exchange.
+  - name: SalesforceConnectedAppPrivateKey
+    type: secret
+    required: true
+    isSecret: true
+    description: Private key for signing JWT assertions in the delegated token exchange flow.
+  - name: SessionTimeoutMinutes
+    type: string
+    required: false
+    isSecret: false
+    description: Idle session timeout in minutes for the external web chat channel. Defaults to 30.
+  - name: TokenRefreshBufferMinutes
+    type: string
+    required: false
+    isSecret: false
+    description: Minutes before Salesforce token expiry at which flows proactively refresh. Defaults to 5.
 
 dataverse:
   tables:
@@ -54,6 +89,14 @@ dataverse:
           type: multiline
         - name: crf_createdon
           type: datetime
+        - name: crf_b2cobjectid
+          type: string
+          maxLength: 255
+          description: Azure AD B2C object ID linked after prospect authenticates.
+        - name: crf_salesforceleadid
+          type: string
+          maxLength: 100
+          description: Salesforce Lead record ID associated with this interaction.
     - logicalName: crf_LeadQualificationScores
       displayName: LeadQualificationScores
       description: Stores BANT scoring outcomes and recommendation status.
@@ -82,6 +125,16 @@ integrations:
   salesforce:
     connector: power-automate-salesforce
     authType: oauth2
+    federation:
+      saml:
+        entityId: SalesforceInstanceUrl
+        acsUrl: SalesforceInstanceUrl
+        metadataSource: azure-ad-enterprise-app
+        federationIdAttribute: user.userprincipalname
+      oidc:
+        tokenEndpointRef: SalesforceFederationTokenEndpoint
+        grantType: urn:ietf:params:oauth:grant-type:jwt-bearer
+        signingKeyRef: SalesforceConnectedAppPrivateKey
     connectedApp:
       clientIdRef: SalesforceClientId
       clientSecretRef: SalesforceClientSecret
@@ -89,6 +142,25 @@ integrations:
       scopes:
         - api
         - refresh_token
+        - openid
+        - profile
+        - email
+    serviceAccount:
+      usernameRef: SalesforceServiceAccountUsername
+      passwordRef: SalesforceServiceAccountPassword
+      securityTokenRef: SalesforceServiceAccountToken
+      loginRestriction: api-only
+      permissionSet: CopilotIntegrationMinimal
+      usedFor:
+        - scheduled-batch-flows
+        - external-prospect-lead-creation
+        - non-interactive-operations
+    tokenManagement:
+      delegatedTokenFlow: GetDelegatedSalesforceToken
+      serviceAccountTokenFlow: GetServiceAccountSalesforceToken
+      tokenRefreshBufferMinutesRef: TokenRefreshBufferMinutes
+      retryOnUnauthorized: true
+      maxRetries: 1
     latencyProfile:
       expectedSecondsMin: 2
       expectedSecondsMax: 6
@@ -168,6 +240,64 @@ powerAutomateFlows:
       - proposedSlots
       - meetingDraftStatus
     timeoutSeconds: 100
+  - name: GetDelegatedSalesforceToken
+    trigger: When an agent calls the flow
+    description: >
+      Exchanges the authenticated Entra user identity for a Salesforce delegated access token
+      using the JWT Bearer grant. The returned token respects the user's Salesforce profile
+      and sharing rules.
+    connectorDependencies:
+      - HTTP
+    inputs:
+      - userEmail
+      - userUpn
+    outputs:
+      - salesforceAccessToken
+      - tokenExpiresAt
+      - tokenType
+    timeoutSeconds: 30
+  - name: GetServiceAccountSalesforceToken
+    trigger: When an agent calls the flow
+    description: >
+      Obtains a Salesforce access token using the service account Username-Password grant.
+      Used for scheduled flows, batch operations, and external prospect lead creation
+      where delegated identity is not available.
+    connectorDependencies:
+      - HTTP
+    inputs: []
+    outputs:
+      - serviceAccountAccessToken
+      - tokenExpiresAt
+    timeoutSeconds: 30
+  - name: RefreshSalesforceToken
+    trigger: When an agent calls the flow
+    description: >
+      Refreshes an existing Salesforce access token before expiry using the stored refresh token.
+      Called proactively when the token age exceeds the TokenRefreshBufferMinutes threshold.
+    connectorDependencies:
+      - HTTP
+    inputs:
+      - tokenType
+    outputs:
+      - newAccessToken
+      - newTokenExpiresAt
+    timeoutSeconds: 30
+  - name: MapB2CIdentityToSalesforceLead
+    trigger: When an agent calls the flow
+    description: >
+      Links an Azure AD B2C authenticated prospect identity to an existing Salesforce Lead record.
+      Updates the Lead custom field B2C_Object_Id__c and the Dataverse ProspectInteractions record.
+    connectorDependencies:
+      - Salesforce
+      - Dataverse
+    inputs:
+      - b2cObjectId
+      - prospectEmail
+      - salesforceLeadId
+    outputs:
+      - mappingStatus
+      - confirmedSalesforceLeadId
+    timeoutSeconds: 100
 
 knowledgeSources:
   - key: public-product-library
@@ -187,12 +317,26 @@ authentication:
     provider: entra-id
     ssoEnabled: true
     audience: internal-sales-users
+    salesforceFederation:
+      enabled: true
+      protocol: oidc
+      delegatedTokenFlow: GetDelegatedSalesforceToken
+      fallbackToServiceAccount: true
   external:
     channel: webchat
     provider: azure-ad-b2c
     tenantIdRef: AzureAdB2cTenantId
     progressiveAuth: true
     anonymousEntryAllowed: true
+    identityMapping:
+      enabled: true
+      mappingFlow: MapB2CIdentityToSalesforceLead
+      triggerAfterAuthentication: true
+  sessionManagement:
+    internalIdleTimeoutMinutes: 480
+    externalIdleTimeoutMinutesRef: SessionTimeoutMinutes
+    tokenRefreshStrategy: proactive
+    onTokenExpiry: retry-once-then-reauthenticate
 
 channels:
   - name: teams
@@ -229,3 +373,4 @@ agentDefinition:
     - Prospect Chat
     - Competitive Intelligence
     - Escalation
+    - Identity Federation

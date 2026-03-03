@@ -60,10 +60,18 @@ Configure the following environment variables immediately after import:
 | SalesforceInstanceUrl | `https://company.my.salesforce.com` | Yes |
 | AzureAdB2cTenantId | `contosoexternal.onmicrosoft.com` | Yes |
 | ProspectWebsiteDomain | `https://www.contoso.com` | Yes |
+| SalesforceServiceAccountUsername | `copilot-integration@company.com` | Yes |
+| SalesforceServiceAccountPassword | Stored as secret | Yes |
+| SalesforceServiceAccountToken | Stored as secret | Yes |
+| SalesforceFederationTokenEndpoint | `https://company.my.salesforce.com/services/oauth2/token` | Yes |
+| SalesforceConnectedAppPrivateKey | Stored as secret | Yes |
+| SessionTimeoutMinutes | `30` | No (defaults to 30) |
+| TokenRefreshBufferMinutes | `5` | No (defaults to 5) |
 
 ## 4.3 Secret Storage
-- Store `SalesforceClientSecret` in environment secret store/Key Vault-backed configuration when available.
+- Store all secret-type variables in environment secret store or Key Vault-backed configuration.
 - Restrict maker access to environments containing production secrets.
+- Rotate `SalesforceClientSecret`, `SalesforceServiceAccountPassword`, `SalesforceServiceAccountToken`, and `SalesforceConnectedAppPrivateKey` every 90 days.
 
 ## 5. Knowledge Source Configuration
 
@@ -93,7 +101,7 @@ Configure the following environment variables immediately after import:
 ## 6.1 Internal Authentication (Teams)
 - Configure agent authentication with Microsoft Entra ID.
 - Enable SSO for Teams channel.
-- Confirm claims include user principal name and display name.
+- Confirm claims include user principal name, email, and display name.
 
 ## 6.2 External Authentication (Web Chat)
 - Configure Azure AD B2C as external identity provider.
@@ -101,6 +109,57 @@ Configure the following environment variables immediately after import:
   - Anonymous entry for discovery
   - Prompted sign-in before sensitive lead operations
 - Enforce domain and redirect URI alignment with `ProspectWebsiteDomain`.
+
+## 6.3 Salesforce SSO Federation (SAML 2.0 or OIDC)
+
+### Configure Azure AD Enterprise Application
+1. In Microsoft Entra ID, open Enterprise Applications.
+2. Create a new application or use the Salesforce gallery app.
+3. Under Single Sign-On, select SAML or OIDC based on your chosen protocol.
+
+For SAML:
+- Identifier (Entity ID): your Salesforce instance URL (for example, `https://company.my.salesforce.com`)
+- Reply URL (ACS URL): your Salesforce instance URL
+- Map attribute `emailaddress` to `user.mail`
+- Map attribute `Unique User Identifier` to `user.userprincipalname`
+- Download Federation Metadata XML for upload to Salesforce
+
+For OIDC (JWT Bearer):
+- Register Connected App with `openid`, `api`, `refresh_token`, `profile`, `email` scopes
+- Generate and store the Connected App private key as `SalesforceConnectedAppPrivateKey`
+- Set `SalesforceFederationTokenEndpoint` to `https://your-instance.my.salesforce.com/services/oauth2/token`
+
+### Configure Salesforce Single Sign-On
+1. In Salesforce Setup, navigate to Single Sign-On Settings.
+2. Enable federated authentication and create a new SAML SSO configuration.
+3. Upload the Azure AD Federation Metadata XML (for SAML) or configure the Connected App (for OIDC).
+4. Set Federation ID field to map to the user UPN from the Azure AD assertion.
+5. Test SSO by logging in to Salesforce via the Azure AD My Apps portal.
+
+## 6.4 Salesforce Service Account Setup
+1. Create a Salesforce user `copilot-integration@your-company.com`.
+2. Assign a permission set with:
+   - API access enabled
+   - Create and edit on Lead and Task
+   - Read-only on Opportunity, Account, Contact
+3. Enable API Only login restriction.
+4. Set `SalesforceServiceAccountUsername`, `SalesforceServiceAccountPassword`, and `SalesforceServiceAccountToken` environment variables.
+5. Validate the `GetServiceAccountSalesforceToken` flow runs successfully.
+
+## 6.5 B2C Identity Mapping Configuration
+1. Ensure the Salesforce Lead object has the custom field `B2C_Object_Id__c` (Text, 255).
+2. Confirm the `crf_ProspectInteractions` Dataverse table includes `crf_b2cobjectid` and `crf_salesforceleadid` columns.
+3. Validate the `MapB2CIdentityToSalesforceLead` flow with a test B2C object ID and an existing Lead record.
+4. Confirm the Identity Federation topic in the agent triggers correctly after B2C sign-in.
+
+## 6.6 Session Management Configuration
+1. In Salesforce Setup, navigate to Session Settings and configure:
+   - Session timeout: 2 hours (or per security policy)
+   - Require HTTPS: enabled
+   - Lock sessions to domain: enabled
+2. Set `SessionTimeoutMinutes` to `30` for external web chat prospects.
+3. Set `TokenRefreshBufferMinutes` to `5` to enable proactive token refresh.
+4. Validate that the `RefreshSalesforceToken` flow successfully renews an expiring token.
 
 ## 7. Channel Configuration
 
@@ -129,6 +188,14 @@ Configure the following environment variables immediately after import:
 | Escalation flow | Handoff creates Teams queue notification | Pending |
 | Teams SSO | User identity resolved without manual re-auth | Pending |
 | B2C journey | Anonymous-to-authenticated transition works | Pending |
+| Salesforce SSO federation | SAML or OIDC exchange completes without Salesforce password prompt | Pending |
+| Delegated token flow | GetDelegatedSalesforceToken returns token scoped to rep identity | Pending |
+| Salesforce data scoping | Opportunity lookup returns only records visible to authenticated rep | Pending |
+| Service account fallback | GetServiceAccountSalesforceToken succeeds for scheduled flow run | Pending |
+| B2C identity mapping | MapB2CIdentityToSalesforceLead updates Lead B2C_Object_Id__c field | Pending |
+| Token refresh | RefreshSalesforceToken called before expiry, downstream flow succeeds | Pending |
+| Session timeout (external) | Web chat session ends after 30 minutes idle | Pending |
+| Credential rotation | Service account password rotated, flows resume without manual intervention | Pending |
 
 ## 9. Monitoring Cadence
 

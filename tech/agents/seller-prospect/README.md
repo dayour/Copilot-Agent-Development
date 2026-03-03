@@ -52,6 +52,9 @@ Seller Prospect is a Copilot Studio agent solution for enterprise sales organiza
 - Copilot Studio orchestrates conversation, topics, tools, and channels.
 - Power Automate flows execute Salesforce actions via prebuilt Salesforce connector.
 - Microsoft Graph integration supports calendar-based scheduling.
+- Salesforce SSO federation uses SAML 2.0 or OIDC JWT Bearer grant to exchange Entra authenticated identity for a scoped Salesforce delegated token.
+- Service account fallback handles scheduled flows and batch operations where delegated identity is not available.
+- Azure AD B2C identity mapping links external prospect B2C object IDs to Salesforce Lead records after authentication.
 - Knowledge split:
   - Public product library (external-safe)
   - Internal competitive intelligence library (internal-only)
@@ -62,6 +65,7 @@ Seller Prospect is a Copilot Studio agent solution for enterprise sales organiza
 tech/agents/seller-prospect/
   README.md
   runbook.md
+  salesforce-sso.md
   templates/
     agent-template.yaml
   solution/
