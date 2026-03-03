@@ -1,0 +1,233 @@
+# Copilot Studio Agent Template — API Gateway (Tech)
+# Import this file as a starting point. Customise trigger phrases,
+# APIM resource references, and allowed domains to match your environment.
+
+agent:
+  name: API Gateway
+  description: >
+    A guided assistant for platform engineers and security operators managing
+    the Azure API Management gateway layer for secure external web chat
+    integrations. Covers APIM configuration, rate limiting, request validation,
+    subscription management, logging, CORS, and WAF integration.
+  language: en-US
+  fallback_message: >
+    I was not able to find an answer to that. Would you like me to search the
+    documentation, open a support ticket, or connect you to the platform
+    engineering team?
+
+topics:
+
+  - name: Greeting and Routing
+    description: >
+      Greets the user and routes them to the correct API gateway topic based on
+      their stated need.
+    trigger_phrases:
+      - Hello
+      - Hi
+      - I need help with the API gateway
+      - API Management help
+      - APIM configuration
+      - Gateway support
+    messages:
+      - text: >
+          Welcome to the API Gateway assistant. I can help with APIM setup,
+          rate limiting, request validation, subscription management, logging,
+          CORS, and WAF configuration. What do you need help with today?
+    quick_replies:
+      - Configure APIM
+      - Set up rate limiting
+      - Validate requests
+      - Manage API keys
+      - Set up logging
+      - Configure CORS
+      - WAF and Front Door setup
+
+  - name: APIM Configuration
+    description: >
+      Guides users through provisioning and configuring the Azure API Management
+      instance, importing API definitions, and setting up products.
+    trigger_phrases:
+      - How do I set up APIM?
+      - Configure API Management
+      - Provision an APIM instance
+      - Import an API into APIM
+    entities:
+      - name: apim_tier
+        type: choice
+        options:
+          - Consumption
+          - Developer
+          - Basic
+          - Standard
+          - Premium
+        prompt: Which APIM pricing tier are you targeting?
+    messages:
+      - text: >
+          To provision APIM, navigate to the Azure portal, select Create a
+          resource, then API Management. Choose your subscription, resource
+          group, region, and pricing tier. Enable system-assigned managed
+          identity for internal agent authentication. Once deployed, import
+          your API definition under APIs and create a Product for web chat
+          consumers.
+    actions:
+      - type: knowledge_search
+        query: "Azure API Management provisioning {apim_tier} tier"
+        source: api-gateway-knowledge-base
+
+  - name: Rate Limiting Setup
+    description: >
+      Assists users with configuring per-IP and per-session rate limiting
+      policies in APIM to prevent abuse of the web chat endpoint.
+    trigger_phrases:
+      - How do I set up rate limiting?
+      - Configure throttling in APIM
+      - Limit requests per IP
+      - Per-session throttling policy
+      - Prevent API abuse
+    messages:
+      - text: >
+          To add rate limiting in APIM, open your API, select All operations,
+          then Inbound processing, and add the rate-limit-by-key policy. Use
+          context.Request.IpAddress as the counter key for per-IP limits and
+          context.Subscription.Id for per-session limits. A typical starting
+          point is 100 calls per 60 seconds per IP and 200 calls per 60
+          seconds per subscription. Adjust based on your expected traffic
+          volume.
+    actions:
+      - type: knowledge_search
+        query: "APIM rate-limit-by-key policy per IP per session throttling"
+        source: api-gateway-knowledge-base
+
+  - name: Request Validation
+    description: >
+      Helps users configure schema validation on all inbound requests before
+      forwarding to Power Automate or Salesforce backends.
+    trigger_phrases:
+      - How do I validate inbound requests?
+      - Schema validation in APIM
+      - Validate JSON body before forwarding
+      - Request validation policy
+      - Block invalid requests
+    messages:
+      - text: >
+          To validate inbound requests, upload your JSON Schema to APIs then
+          Schemas in your APIM instance. Then add the validate-content policy
+          in the inbound processing section, referencing your schema ID. Set
+          the action to prevent so that requests failing schema validation
+          receive an HTTP 400 response before reaching the backend. Test with
+          a malformed payload to confirm the policy is active.
+    actions:
+      - type: knowledge_search
+        query: "APIM validate-content policy JSON schema inbound request validation"
+        source: api-gateway-knowledge-base
+
+  - name: API Key and Subscription Management
+    description: >
+      Walks users through subscription key rotation, managed identity
+      configuration for internal agents, and consumer onboarding.
+    trigger_phrases:
+      - How do I manage API keys?
+      - Rotate subscription keys
+      - Managed identity for internal agent
+      - Onboard a new API consumer
+      - Subscription management in APIM
+    messages:
+      - text: >
+          For web chat consumers, create a Product in APIM with subscription
+          required and manual approval enabled. Issue a subscription key and
+          store it in Azure Key Vault. Reference the Key Vault secret from
+          your web chat configuration rather than hard-coding the key. For
+          internal agents, assign the APIM instance managed identity to the
+          relevant backend resources and use the authentication-managed-identity
+          policy in your inbound processing block. Rotate subscription keys
+          quarterly and revoke compromised keys immediately from the
+          Subscriptions blade.
+    actions:
+      - type: knowledge_search
+        query: "APIM subscription key management managed identity Key Vault"
+        source: api-gateway-knowledge-base
+
+  - name: Logging and Monitoring Setup
+    description: >
+      Connects APIM diagnostic settings to Log Analytics and configures
+      Azure Monitor alerts for security audit and performance monitoring.
+    trigger_phrases:
+      - How do I set up logging for APIM?
+      - APIM Log Analytics integration
+      - Monitor API gateway calls
+      - Alert on high error rate
+      - Security audit logging
+    messages:
+      - text: >
+          To enable logging, go to your APIM instance, select Diagnostic
+          settings, and add a setting that sends GatewayLogs and Metrics to
+          your Log Analytics workspace. In Azure Monitor, create alert rules
+          for high 5xx error rates, rate limit rejections, and elevated backend
+          latency. Configure an action group to notify your platform engineering
+          team via email and Teams. All external API calls will then be
+          available in Log Analytics for security audit and performance review.
+    actions:
+      - type: power_automate_flow
+        flow_name: CreateApimMonitorAlert
+        input:
+          alert_type: "{alert_type}"
+          workspace_id: "${LogAnalyticsWorkspaceId}"
+          action_group_id: "${AlertActionGroupId}"
+        output_message: >
+          Your Azure Monitor alert has been queued for creation. You will
+          receive a confirmation once it is active.
+
+  - name: CORS Configuration
+    description: >
+      Helps users restrict the APIM CORS policy to approved company website
+      domains to prevent cross-origin misuse.
+    trigger_phrases:
+      - How do I configure CORS in APIM?
+      - Restrict allowed origins
+      - CORS policy for web chat
+      - Block cross-origin requests
+      - Add allowed domain to APIM
+    entities:
+      - name: allowed_origin
+        type: string
+        prompt: What is the allowed origin domain you want to add (for example, https://www.contoso.com)?
+    messages:
+      - text: >
+          To configure CORS, add the cors policy to your APIM inbound
+          processing section. Set allowed-origins to include only your approved
+          company website domains. Enable allow-credentials if your web chat
+          sends cookies or authorisation headers. Allowed methods should be
+          limited to GET, POST, and OPTIONS. Test with a preflight OPTIONS
+          request from the approved origin to confirm the correct
+          Access-Control-Allow-Origin header is returned, and verify that a
+          request from a non-approved origin receives HTTP 403.
+    actions:
+      - type: knowledge_search
+        query: "APIM cors policy allowed origins configuration {allowed_origin}"
+        source: api-gateway-knowledge-base
+
+  - name: WAF and Front Door Integration
+    description: >
+      Guides users through provisioning Azure Front Door with WAF rules for
+      DDoS protection and bot mitigation on the public APIM endpoint.
+    trigger_phrases:
+      - How do I set up WAF for APIM?
+      - Azure Front Door WAF integration
+      - DDoS protection for API gateway
+      - Configure WAF rules
+      - Bot protection for web chat
+    messages:
+      - text: >
+          To add WAF protection, create an Azure Front Door Premium instance
+          and add an Origin group pointing to your APIM gateway URL. Under
+          Security, create a WAF policy in Prevention mode and enable the
+          Microsoft_DefaultRuleSet and Microsoft_BotManagerRuleSet managed
+          rule sets. Associate the WAF policy with your Front Door endpoint.
+          Then restrict your APIM built-in firewall to accept traffic only
+          from the AzureFrontDoor.Backend service tag so that all external
+          traffic passes through the WAF. Update your DNS to point the public
+          web chat endpoint to the Front Door hostname.
+    actions:
+      - type: knowledge_search
+        query: "Azure Front Door WAF policy APIM DDoS bot protection managed rule sets"
+        source: api-gateway-knowledge-base

@@ -11,6 +11,7 @@ Showcase library of Copilot Studio agents for the Tech vertical. Each agent incl
 | [SupportBot](./agents/support-bot/) | Multi-agent orchestration primary support agent with WarrantyGuard handoff and generative AI routing |
 | [Policy Advisor](./agents/policy-advisor/) | HR, Legal, and company policy knowledge retrieval with cited guidance, micro-stepping instructions, and ALM lifecycle |
 | [Power Platform Advisor](./agents/power-platform-advisor/) | Power Platform guidance covering connectors, MCP flows, and platform best practices |
+| [API Gateway](./agents/api-gateway/) | Guided assistant for configuring and operating the Azure API Management gateway layer covering rate limiting, request validation, subscription management, logging, CORS, and WAF integration |
 
 ## Folder Structure
 
@@ -45,7 +46,14 @@ tech/
     │   │   └── agent-template.yaml
     │   └── solution/
     │       └── solution-definition.yaml
-    └── power-platform-advisor/
+    ├── power-platform-advisor/
+        ├── README.md
+        ├── runbook.md
+        ├── templates/
+        │   └── agent-template.yaml
+        └── solution/
+            └── solution-definition.yaml
+    └── api-gateway/
         ├── README.md
         ├── runbook.md
         ├── templates/

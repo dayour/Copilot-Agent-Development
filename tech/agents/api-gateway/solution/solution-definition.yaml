@@ -1,0 +1,125 @@
+# Copilot Studio Solution Definition — API Gateway (Tech)
+# This file defines the exportable solution components for the API Gateway agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: TechApiGateway
+  display_name: "Tech — API Gateway"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Showcase solution for the API Gateway agent in the Tech vertical.
+    Provides guided assistance for configuring and operating the Azure API
+    Management layer used to secure external web chat integrations. Covers
+    APIM provisioning, rate limiting, request validation, subscription
+    management, Log Analytics logging, CORS, and Azure Front Door WAF
+    integration.
+
+environment_variables:
+  - name: ApimGatewayUrl
+    display_name: APIM Gateway URL
+    type: string
+    description: >
+      Base URL of the Azure API Management gateway endpoint
+      (for example, https://contoso.azure-api.net).
+    default_value: ""
+
+  - name: ApimResourceId
+    display_name: APIM Resource ID
+    type: string
+    description: >
+      Azure resource ID of the APIM instance used for management-plane
+      operations and diagnostic settings configuration.
+    default_value: ""
+
+  - name: FrontDoorEndpointUrl
+    display_name: Azure Front Door Endpoint URL
+    type: string
+    description: >
+      Public hostname of the Azure Front Door endpoint fronting the APIM
+      gateway (for example, https://contoso.azurefd.net).
+    default_value: ""
+
+  - name: LogAnalyticsWorkspaceId
+    display_name: Log Analytics Workspace ID
+    type: string
+    description: >
+      Resource ID of the Log Analytics workspace that receives APIM gateway
+      logs and metrics for security audit and performance monitoring.
+    default_value: ""
+
+  - name: AllowedCorsOrigins
+    display_name: Allowed CORS Origins
+    type: string
+    description: >
+      Comma-separated list of approved company website domains for the APIM
+      CORS policy (for example, https://www.contoso.com,https://portal.contoso.com).
+    default_value: ""
+
+  - name: ApimSubscriptionKeyVaultUri
+    display_name: APIM Subscription Key Vault URI
+    type: string
+    description: >
+      Azure Key Vault secret URI for the web chat APIM subscription key.
+      The web chat application retrieves this secret at runtime.
+    default_value: ""
+
+  - name: AlertActionGroupId
+    display_name: Monitor Alert Action Group ID
+    type: string
+    description: >
+      Azure resource ID of the Azure Monitor action group used to notify
+      the platform engineering team when APIM alert thresholds are breached.
+    default_value: ""
+
+components:
+  agents:
+    - name: ApiGateway
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: api-gateway-knowledge-base
+          type: sharepoint
+          url: "${ApimGatewayUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: CreateApimMonitorAlert
+      description: >
+        Creates an Azure Monitor alert rule in the target subscription for
+        the specified APIM metric threshold using the Azure Management API.
+      trigger: copilot_studio_topic_action
+      connector: http
+
+    - name: RotateApimSubscriptionKey
+      description: >
+        Rotates the primary or secondary subscription key for the specified
+        APIM subscription and updates the corresponding Key Vault secret.
+      trigger: copilot_studio_topic_action
+      connector: http
+
+    - name: NotifyPlatformEngineering
+      description: >
+        Posts an alert or status notification to the platform engineering
+        Microsoft Teams channel when a gateway issue is detected.
+      trigger: copilot_studio_topic_action
+      connector: microsoft_teams
+
+connections:
+  - connector: azure_ad
+    display_name: Microsoft Entra ID
+  - connector: http
+    display_name: HTTP (Azure Management API)
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+  - connector: azure_key_vault
+    display_name: Azure Key Vault
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+  - type: web_chat
+    enabled: true
+    security: token_based
