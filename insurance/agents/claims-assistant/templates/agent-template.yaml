@@ -26,6 +26,10 @@ global_variables:
     type: boolean
   - name: conversation_summary
     type: string
+  - name: initial_reserve_amount
+    type: number
+  - name: reserve_confidence_level
+    type: string
 
 topics:
   - name: Greeting
@@ -166,6 +170,24 @@ topics:
         output:
           claim_reference: claim_reference
           intake_sla_due: intake_sla_due
+
+      - type: action
+        action: EstimateInitialReserve
+        visibility: internal_only
+        input:
+          claim_reference: "{claim_reference}"
+          line_of_business: "{line_of_business}"
+          state_code: "{customer_state}"
+          incident_date: "{incident_date}"
+          injuries_reported: "{auto_injuries_reported}"
+          attorney_involved: "{casualty_attorney_involved}"
+          emergency_services_called: "{property_emergency_services_called}"
+          property_uninhabitable: "{property_current_habitability}"
+        output:
+          initial_reserve_amount: initial_reserve_amount
+          reserve_confidence_level: reserve_confidence_level
+          reserve_basis: reserve_basis
+
       - type: message
         text: >
           Your claim has been created. Claim number: {claim_reference}.
@@ -369,3 +391,133 @@ topics:
           fraud_score: "{fraud_score}"
           sla_status: "{sla_status}"
           conversation_summary: "{conversation_summary}"
+
+  - name: IBNR and Loss Development
+    description: >
+      Handler and actuary topic to retrieve incurred-but-not-reported reserve
+      estimates and loss development data for a reporting period and line of business.
+      Answers questions such as "What is the current IBNR estimate for this quarter?"
+    trigger_phrases:
+      - What is the IBNR estimate?
+      - What is our IBNR for this quarter?
+      - Show loss development data
+      - What are the reserving estimates?
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: ibnr_period
+        prompt: Which reporting period would you like? Please use YYYY-QN format, for example 2026-Q1.
+      - type: question
+        variable: ibnr_line_of_business
+        prompt: Which line of business?
+        entity: choice
+        options: [auto, property, casualty, all]
+      - type: question
+        variable: ibnr_state_code
+        prompt: Would you like to filter by state? Enter a two-letter state code or leave blank for all states.
+      - type: action
+        action: GetIbnrEstimate
+        input:
+          period: "{ibnr_period}"
+          line_of_business: "{ibnr_line_of_business}"
+          state_code: "{ibnr_state_code}"
+        output:
+          ibnr_estimate: ibnr_estimate
+          ibnr_low: ibnr_low
+          ibnr_high: ibnr_high
+          development_method: development_method
+          evaluated_through: evaluated_through
+      - type: message
+        text: >
+          IBNR estimate for {ibnr_period} ({ibnr_line_of_business}):
+          Estimate: {ibnr_estimate} USD.
+          Confidence interval: {ibnr_low} to {ibnr_high} USD.
+          Method: {development_method}.
+          Data evaluated through: {evaluated_through}.
+
+  - name: Claims Trend Analysis
+    description: >
+      Handler and management topic to surface claims frequency, severity, and loss
+      ratio trend data by line of business and geographic region.
+    trigger_phrases:
+      - Show claims trends
+      - What are the frequency and severity trends?
+      - What is the loss ratio trend?
+      - Show claims analytics by region
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: trend_line_of_business
+        prompt: Which line of business?
+        entity: choice
+        options: [auto, property, casualty, all]
+      - type: question
+        variable: trend_region
+        prompt: >
+          Which region? Enter a two-letter state code, a multi-state region code
+          (for example SE for Southeast), or type "national" for all regions.
+      - type: question
+        variable: trend_trailing_months
+        prompt: How many trailing months should the analysis cover? Default is 12.
+        entity: number
+      - type: action
+        action: GetClaimsTrendAnalysis
+        input:
+          line_of_business: "{trend_line_of_business}"
+          region: "{trend_region}"
+          trailing_months: "{trend_trailing_months}"
+        output:
+          claim_frequency: claim_frequency
+          claim_frequency_trend_pct: claim_frequency_trend_pct
+          average_severity: average_severity
+          severity_trend_pct: severity_trend_pct
+          loss_ratio: loss_ratio
+          loss_ratio_trend_pct: loss_ratio_trend_pct
+          top_contributing_causes: top_contributing_causes
+      - type: message
+        text: >
+          Claims trends for {trend_line_of_business} in {trend_region}
+          over the past {trend_trailing_months} months:
+          Claim frequency: {claim_frequency} per 1,000 exposures ({claim_frequency_trend_pct}% trend).
+          Average severity: {average_severity} USD ({severity_trend_pct}% trend).
+          Loss ratio: {loss_ratio} ({loss_ratio_trend_pct}% trend).
+          Top contributing causes: {top_contributing_causes}.
+
+  - name: Peer Claim Comparison
+    description: >
+      Handler topic to compare a specific claim's reserve amount and open duration
+      against similar historical claims. Surfaces reserve adequacy percentile and
+      average peer settlement timeline.
+    trigger_phrases:
+      - Compare this claim to similar claims
+      - How does this claim's reserve compare?
+      - What is the peer comparison for this claim?
+      - Show reserve benchmarking for a claim
+    audience: internal_handlers
+    steps:
+      - type: question
+        variable: peer_claim_reference
+        prompt: Please provide the claim number to compare.
+      - type: action
+        action: GetPeerClaimComparison
+        input:
+          claim_reference: "{peer_claim_reference}"
+        output:
+          peer_claim_count: peer_claim_count
+          current_reserve: current_reserve
+          peer_average_reserve: peer_average_reserve
+          reserve_percentile: reserve_percentile
+          current_open_days: current_open_days
+          peer_average_close_days: peer_average_close_days
+          timeline_percentile: timeline_percentile
+          peer_match_criteria: peer_match_criteria
+      - type: message
+        text: >
+          Peer comparison for claim {peer_claim_reference}
+          (based on {peer_claim_count} comparable historical claims):
+          Current reserve: {current_reserve} USD.
+          Peer average reserve at same development age: {peer_average_reserve} USD
+          (reserve percentile: {reserve_percentile}th).
+          Claim open for {current_open_days} days.
+          Peer average days to close: {peer_average_close_days} days
+          (timeline percentile: {timeline_percentile}th).

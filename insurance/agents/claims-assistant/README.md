@@ -23,11 +23,26 @@ The Claims Assistant is a Microsoft Copilot Studio solution for a large multi-li
 | Document upload prompting and status tracking | Yes | No | Includes OCR extraction for intake acceleration |
 | Automated assignment for low-complexity claims | Yes | Conditional | Uses workload/capacity rules; supervisor override allowed |
 | Payment status communication | Yes | No | Communicates status only; does not authorize payment decisions |
+| Initial reserve estimation | Yes | Review required | Actuarial API calculates suggested reserve; adjuster must approve before booking |
+| IBNR and loss development queries | Yes | No | Returns actuarial system data to authorized handlers |
+| Claims trend analysis | Yes | No | Surfaces frequency, severity, and loss ratio analytics |
+| Peer claim comparison | Yes | No | Benchmarks claim reserve and timeline against historical peers |
 | Coverage denial letter generation | No | Yes | Regulatory and legal control point |
 | Bodily injury valuation | No | Yes | Requires licensed adjuster decisioning |
 | Liability decisions with disputed facts | No | Yes | Must be handled by adjuster/investigator |
 | Recorded statements | No | Yes | Human-led process |
 | Claims with attorney representation | No | Yes | Immediate escalation with full context |
+
+## Actuarial and Reserving Integration
+
+The Claims Assistant connects to the carrier actuarial and reserving system through a Power Platform custom connector (`connectors/actuarial-system-connector.yaml`) secured with OAuth 2.0 client credentials.
+
+| Capability | Agent Topic | Description |
+|-----------|-------------|-------------|
+| Reserve Estimation | First Notice of Loss (FNOL) | During FNOL intake, a Power Automate flow calls the actuarial API with claim type, severity indicators, and historical context to generate a suggested reserve. The result is stored in Dataverse for adjuster review. |
+| IBNR and Loss Development | IBNR and Loss Development | Handlers and actuaries can query current IBNR estimates for any reporting period and line of business, with confidence intervals and the actuarial development method applied. |
+| Trend Analysis | Claims Trend Analysis | Surfaces claims frequency, severity, and loss ratio trend data by line of business and geographic region over a configurable trailing period. |
+| Peer Claim Comparison | Peer Claim Comparison | Compares a specific claim's reserve amount and open duration against similar historical claims, returning reserve adequacy percentile and average peer settlement timeline. |
 
 ## Regulatory Compliance Engine
 
@@ -45,6 +60,7 @@ This solution includes a state-driven compliance engine backed by Dataverse rule
 - Payment system API for claim disbursement status
 - Optional valuation enrichment (CCC ONE or Mitchell)
 - AI Builder OCR for extraction from police reports and repair estimates
+- Actuarial and reserving system REST API for reserve estimation, IBNR queries, trend analysis, and peer comparison
 
 ## Repository Structure
 
@@ -52,10 +68,13 @@ This solution includes a state-driven compliance engine backed by Dataverse rule
 claims-assistant/
 ├── README.md
 ├── runbook.md
+├── CHANGELOG.md
 ├── templates/
 │   └── agent-template.yaml
-└── solution/
-    └── solution-definition.yaml
+├── solution/
+│   └── solution-definition.yaml
+└── connectors/
+    └── actuarial-system-connector.yaml
 ```
 
 ## Quick Start

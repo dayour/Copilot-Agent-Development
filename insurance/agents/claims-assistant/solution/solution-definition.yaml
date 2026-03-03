@@ -3,7 +3,7 @@
 solution:
   name: InsuranceClaimsAssistant
   display_name: "Insurance - Claims Assistant Enterprise"
-  version: "2.0.0"
+  version: "2.1.0"
   publisher: Copilot Agent Development
   description: >
     Enterprise multi-line P&C claims assistant solution with FNOL intake,
@@ -52,6 +52,30 @@ environment_variables:
     type: string
     description: Default timezone for SLA deadline calculation.
     default_value: "America/Chicago"
+
+  - name: ActuarialApiBaseUrl
+    display_name: Actuarial API Base URL
+    type: string
+    description: Base URL of the actuarial and reserving system REST API.
+    default_value: ""
+
+  - name: ActuarialApiTokenUrl
+    display_name: Actuarial API OAuth Token URL
+    type: string
+    description: OAuth 2.0 token endpoint for the actuarial system client credentials flow.
+    default_value: ""
+
+  - name: ActuarialApiClientId
+    display_name: Actuarial API OAuth Client ID
+    type: string
+    description: OAuth client ID registered with the actuarial system identity provider.
+    default_value: ""
+
+  - name: ActuarialApiClientSecret
+    display_name: Actuarial API OAuth Client Secret
+    type: secret
+    description: OAuth client secret for the actuarial system. Stored as a secret environment variable.
+    default_value: ""
 
 components:
   dataverse_tables:
@@ -116,6 +140,35 @@ components:
         - MaxOpenClaims
         - CurrentOpenClaims
         - AvailabilityStatus
+
+    - name: ActuarialReserveEstimates
+      display_name: Actuarial Reserve Estimates
+      description: Initial reserve estimates returned by the actuarial system during FNOL intake.
+      columns:
+        - ClaimReference
+        - SuggestedReserveAmount
+        - ReserveConfidenceLevel
+        - ComparableClaimCount
+        - ReserveBasis
+        - CalculatedAt
+        - AdjusterReviewedFlag
+        - AdjusterApprovedReserve
+        - ReviewedBy
+        - ReviewedOn
+
+    - name: LossDevelopmentData
+      display_name: Loss Development Data
+      description: IBNR estimates and loss development query results cached from the actuarial system.
+      columns:
+        - PeriodLabel
+        - LineOfBusiness
+        - StateCode
+        - IbnrEstimate
+        - IbnrLow
+        - IbnrHigh
+        - DevelopmentMethod
+        - EvaluatedThrough
+        - RetrievedOn
 
   ai_builder:
     - name: ClaimDocumentOCR
@@ -183,6 +236,58 @@ components:
         - StateComplianceRules
         - AdjusterCapacity
 
+    - name: EstimateInitialReserve
+      description: >
+        Calls the actuarial system API to calculate an initial reserve amount during
+        FNOL intake. Passes claim type, severity indicators, and historical context
+        to the actuarial API and returns the suggested reserve for adjuster review.
+        Result is stored in ActuarialReserveEstimates table.
+      trigger: copilot_studio_topic_action
+      connector: ActuarialSystemConnector
+      dependencies:
+        - ActuarialApiBaseUrl
+        - ActuarialApiClientId
+        - ActuarialApiClientSecret
+        - ActuarialApiTokenUrl
+        - ActuarialReserveEstimates
+
+    - name: GetIbnrEstimate
+      description: >
+        Queries the actuarial reserving system for the IBNR estimate for a specified
+        reporting period and line of business. Caches results in LossDevelopmentData.
+      trigger: copilot_studio_topic_action
+      connector: ActuarialSystemConnector
+      dependencies:
+        - ActuarialApiBaseUrl
+        - ActuarialApiClientId
+        - ActuarialApiClientSecret
+        - ActuarialApiTokenUrl
+        - LossDevelopmentData
+
+    - name: GetClaimsTrendAnalysis
+      description: >
+        Retrieves claims frequency, severity, and loss ratio trend data from the
+        actuarial analytics API for a specified line of business and region.
+      trigger: copilot_studio_topic_action
+      connector: ActuarialSystemConnector
+      dependencies:
+        - ActuarialApiBaseUrl
+        - ActuarialApiClientId
+        - ActuarialApiClientSecret
+        - ActuarialApiTokenUrl
+
+    - name: GetPeerClaimComparison
+      description: >
+        Compares a specific claim's reserve and open duration against a peer set
+        of similar historical claims using the actuarial API peer comparison endpoint.
+      trigger: copilot_studio_topic_action
+      connector: ActuarialSystemConnector
+      dependencies:
+        - ActuarialApiBaseUrl
+        - ActuarialApiClientId
+        - ActuarialApiClientSecret
+        - ActuarialApiTokenUrl
+
 connections:
   - connector: http
     display_name: HTTP (Claims and Payment APIs)
@@ -194,6 +299,11 @@ connections:
     display_name: AI Builder OCR
   - connector: office365_outlook
     display_name: Office 365 Outlook
+  - connector: ActuarialSystemConnector
+    display_name: Actuarial System API
+    connector_file: ../connectors/actuarial-system-connector.yaml
+    connection_reference: cr_actuarial_insurance
+    authentication: oauth2_client_credentials
 
 channels:
   - type: custom_website

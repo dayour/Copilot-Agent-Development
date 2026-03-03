@@ -25,6 +25,7 @@ This runbook defines deployment, compliance configuration, validation, and opera
 | Payment gateway/API | Claim payment status endpoint with claim ID lookup and disbursement status fields |
 | OCR processing | AI Builder model configured for police reports and repair estimates |
 | Optional valuation | CCC ONE or Mitchell connector/API for estimate context |
+| Actuarial and reserving API | REST API base URL, OAuth2 token endpoint, client ID and client secret for the carrier actuarial platform |
 
 ### Security and operations prerequisites
 
@@ -56,7 +57,24 @@ This runbook defines deployment, compliance configuration, validation, and opera
 3. Configure payment status connector and test with known claim IDs.
 4. Confirm OCR action can process sample police reports and estimates.
 
-### 4. Load state regulatory compliance rules
+### 4. Configure actuarial system integration
+1. Import the custom connector from `connectors/actuarial-system-connector.yaml` into the solution.
+2. In the solution, open the ActuarialSystemConnector custom connector and enter:
+   - `ActuarialApiBaseUrl` — base URL of the actuarial REST API.
+   - `ActuarialApiTokenUrl` — OAuth 2.0 token endpoint.
+   - `ActuarialApiClientId` — registered application client ID.
+   - `ActuarialApiClientSecret` — client secret (stored as a secret environment variable).
+3. Create the connection reference `cr_actuarial_insurance` bound to the custom connector.
+4. Test connectivity using the connector test panel with the `/health` probe.
+5. Validate each operation:
+   - `EstimateInitialReserve`: send a POST request with sample auto claim parameters and confirm a reserve amount is returned.
+   - `GetIbnrEstimate`: query the current quarter and confirm IBNR estimate and confidence interval fields are populated.
+   - `GetClaimsTrendAnalysis`: query auto, national, 12 months and confirm frequency, severity, and loss ratio fields are populated.
+   - `GetPeerClaimComparison`: query a known claim reference and confirm peer set size and percentile ranks are returned.
+6. Confirm the four Power Automate flows (`EstimateInitialReserve`, `GetIbnrEstimate`, `GetClaimsTrendAnalysis`, `GetPeerClaimComparison`) are enabled and bound to the correct connection reference.
+7. Verify that `ActuarialReserveEstimates` and `LossDevelopmentData` Dataverse tables are created and accessible.
+
+### 5. Load state regulatory compliance rules
 1. Populate Dataverse table `StateComplianceRules` with one row per state and line of business.
 2. Include required fields:
    - `StateCode`
@@ -68,7 +86,7 @@ This runbook defines deployment, compliance configuration, validation, and opera
 3. Validate table integrity with mandatory-field and duplicate-key checks.
 4. Publish and smoke-test disclosure rendering in FNOL.
 
-### 5. Configure fraud signal collection
+### 6. Configure fraud signal collection
 1. Enable Dataverse table `FraudSignals`.
 2. Configure flow `CalculateFraudScore` to populate:
    - report delay (incident-to-report delta)
@@ -78,7 +96,7 @@ This runbook defines deployment, compliance configuration, validation, and opera
 3. Mark fraud fields as internal-only (not displayed to policyholder).
 4. Verify escalation logic on high-risk threshold.
 
-### 6. Configure SLA monitoring
+### 7. Configure SLA monitoring
 1. Enable Dataverse table `SlaTracking`.
 2. Configure flow `CheckSlaCompliance` to compute:
    - acknowledgment due timestamp
@@ -87,12 +105,12 @@ This runbook defines deployment, compliance configuration, validation, and opera
 3. Schedule monitoring flow at 15-minute interval.
 4. Publish Teams notifications for handler queues nearing breach.
 
-### 7. Configure authentication and channels
+### 8. Configure authentication and channels
 1. External channel: configure Azure AD B2C for policyholder web portal access.
 2. Internal channel: configure Azure AD tenant restriction for Teams handlers.
 3. Validate role-based access for handler-only topics (SLA status, CAT mode).
 
-### 8. Publish
+### 9. Publish
 1. Publish to custom website channel for policyholder intake.
 2. Publish to Teams for claims handlers and supervisors.
 3. Run post-publish smoke tests in both channels.
@@ -107,6 +125,10 @@ This runbook defines deployment, compliance configuration, validation, and opera
 - [ ] Claim status returns status, adjuster contact, payment status, and next steps.
 - [ ] Document upload works and OCR extracts structured fields.
 - [ ] Escalation passes full context to human handler.
+- [ ] FNOL EstimateInitialReserve action returns a suggested reserve and stores result in ActuarialReserveEstimates.
+- [ ] IBNR and Loss Development topic returns estimate, confidence interval, and development method for a given period.
+- [ ] Claims Trend Analysis topic returns frequency, severity, and loss ratio metrics for a specified line and region.
+- [ ] Peer Claim Comparison topic returns reserve and timeline percentile ranks for a valid claim reference.
 
 ### Regulatory and compliance validation
 - [ ] State-required fraud disclosure text is rendered for all supported states.
@@ -166,6 +188,7 @@ Use this procedure for declared catastrophe events (for example, hurricane, wild
 | API and flow health checks | Continuous + daily review | Platform Engineering |
 | OCR extraction quality review | Weekly | Claims Intake Product Owner |
 | Access and DLP review | Quarterly | Security Governance Team |
+| Actuarial API health and reserve estimate accuracy review | Weekly | Actuarial and Platform Engineering |
 
 ---
 
@@ -178,6 +201,7 @@ Use this procedure for declared catastrophe events (for example, hurricane, wild
 | Fraud scoring anomaly | SIU Lead | Data Science and Risk Governance |
 | PII incident or privacy request breach | DPO | CISO and Legal |
 | Channel auth failure | IAM Team | Security Operations |
+| Actuarial API outage or reserve estimation failure | Platform Engineering | Actuarial Systems Vendor and Claims Operations Lead |
 
 ---
 

@@ -1,0 +1,394 @@
+# Custom Connector — Actuarial System REST API
+# Power Platform custom connector definition for the carrier actuarial and reserving platform.
+# Authentication: OAuth 2.0 client credentials flow (service-to-service).
+
+connector:
+  name: ActuarialSystemConnector
+  display_name: Actuarial System API
+  description: >
+    Custom connector for the carrier actuarial and reserving platform REST API.
+    Provides reserve estimation, loss development (IBNR), trend analysis,
+    and peer claim comparison capabilities to the Claims Assistant agent via
+    Power Automate flows. Authenticated with OAuth 2.0 client credentials.
+  icon_color: "#1A6B3E"
+  publisher: Copilot Agent Development
+  version: "1.0.0"
+
+host: "${ActuarialApiBaseUrl}"
+base_path: /v1
+
+authentication:
+  type: oauth2
+  flow: client_credentials
+  token_url: "${ActuarialApiTokenUrl}"
+  client_id: "${ActuarialApiClientId}"
+  client_secret: "${ActuarialApiClientSecret}"
+  scope: "actuarial.read reserving.read"
+  token_placement: header
+  token_header_name: Authorization
+  token_prefix: "Bearer"
+
+security:
+  - oauth2: []
+
+definitions:
+  ReserveEstimateRequest:
+    type: object
+    required:
+      - claim_reference
+      - claim_type
+      - line_of_business
+      - incident_date
+      - state_code
+    properties:
+      claim_reference:
+        type: string
+        description: Unique claim identifier generated at FNOL.
+      claim_type:
+        type: string
+        description: Detailed claim type classification (e.g., auto_collision, property_fire, casualty_slip_fall).
+      line_of_business:
+        type: string
+        enum: [auto, property, casualty]
+        description: Primary line of business for the claim.
+      incident_date:
+        type: string
+        format: date
+        description: Date of the insured incident.
+      state_code:
+        type: string
+        minLength: 2
+        maxLength: 2
+        description: Two-letter US state code where the incident occurred.
+      severity_indicators:
+        type: object
+        description: Optional severity signals that refine the reserve estimate.
+        properties:
+          injuries_reported:
+            type: boolean
+          attorney_involved:
+            type: boolean
+          emergency_services_called:
+            type: boolean
+          property_uninhabitable:
+            type: boolean
+          estimated_damage_amount:
+            type: number
+
+  ReserveEstimateResponse:
+    type: object
+    properties:
+      claim_reference:
+        type: string
+      suggested_reserve_amount:
+        type: number
+        description: Initial reserve amount in USD recommended for adjuster review.
+      reserve_confidence_level:
+        type: string
+        enum: [low, medium, high]
+        description: Model confidence in the reserve estimate.
+      comparable_claim_count:
+        type: integer
+        description: Number of historical claims used in the estimate calculation.
+      reserve_basis:
+        type: string
+        description: Brief actuarial rationale for the suggested reserve.
+      calculated_at:
+        type: string
+        format: date-time
+
+  IbnrEstimateResponse:
+    type: object
+    properties:
+      period_label:
+        type: string
+        description: Label for the reporting period (e.g., "Q1 2026").
+      line_of_business:
+        type: string
+      ibnr_estimate:
+        type: number
+        description: Incurred but not reported reserve estimate in USD.
+      ibnr_low:
+        type: number
+        description: Lower bound of the IBNR confidence interval.
+      ibnr_high:
+        type: number
+        description: Upper bound of the IBNR confidence interval.
+      development_method:
+        type: string
+        description: Actuarial method applied (e.g., chain_ladder, bornhuetter_ferguson).
+      evaluated_through:
+        type: string
+        format: date
+        description: Evaluation date through which loss development data is included.
+
+  TrendAnalysisResponse:
+    type: object
+    properties:
+      line_of_business:
+        type: string
+      region:
+        type: string
+      period_months:
+        type: integer
+        description: Number of trailing months included in the analysis.
+      claim_frequency:
+        type: number
+        description: Claims per 1,000 earned exposures.
+      claim_frequency_trend_pct:
+        type: number
+        description: Period-over-period frequency trend as a percentage.
+      average_severity:
+        type: number
+        description: Average paid loss per closed claim in USD.
+      severity_trend_pct:
+        type: number
+        description: Period-over-period severity trend as a percentage.
+      loss_ratio:
+        type: number
+        description: Incurred losses divided by earned premium.
+      loss_ratio_trend_pct:
+        type: number
+        description: Period-over-period loss ratio trend as a percentage.
+      top_contributing_causes:
+        type: array
+        items:
+          type: string
+        description: Top three loss causes by incurred amount for the period and region.
+
+  PeerComparisonResponse:
+    type: object
+    properties:
+      claim_reference:
+        type: string
+      peer_claim_count:
+        type: integer
+        description: Number of historical peer claims in the comparison set.
+      current_reserve:
+        type: number
+        description: Current reserve on the queried claim in USD.
+      peer_average_reserve:
+        type: number
+        description: Average reserve on peer claims at the same development age.
+      reserve_percentile:
+        type: integer
+        description: Percentile rank of the current reserve within the peer set (0-100).
+      current_open_days:
+        type: integer
+        description: Number of calendar days the claim has been open.
+      peer_average_close_days:
+        type: number
+        description: Average days to close for peer claims.
+      timeline_percentile:
+        type: integer
+        description: Percentile rank of current open duration within the peer set (0-100).
+      peer_match_criteria:
+        type: object
+        description: Criteria used to select the peer comparison set.
+        properties:
+          line_of_business:
+            type: string
+          claim_type:
+            type: string
+          state_code:
+            type: string
+          incident_year:
+            type: integer
+
+operations:
+  - operation_id: EstimateInitialReserve
+    display_name: Estimate Initial Reserve
+    description: >
+      Calculates a suggested initial reserve amount for a new claim based on
+      claim type, severity indicators, and historical loss development patterns.
+      Called during FNOL intake to support adjuster reserve-setting.
+    method: POST
+    path: /reserve/estimate
+    request_body:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/definitions/ReserveEstimateRequest"
+    responses:
+      200:
+        description: Reserve estimate calculated successfully.
+        content:
+          application/json:
+            schema:
+              $ref: "#/definitions/ReserveEstimateResponse"
+      400:
+        description: Invalid request parameters.
+      401:
+        description: Authentication failure. Verify OAuth2 client credentials.
+      503:
+        description: Actuarial API temporarily unavailable.
+
+  - operation_id: GetIbnrEstimate
+    display_name: Get IBNR Estimate
+    description: >
+      Returns the current incurred-but-not-reported (IBNR) reserve estimate
+      for a specified reporting period and line of business. Supports loss
+      development queries from the Claims Assistant agent.
+    method: GET
+    path: /reserving/ibnr
+    parameters:
+      - name: period
+        in: query
+        required: true
+        type: string
+        description: >
+          Reporting period in YYYY-QN format (e.g., 2026-Q1) or YYYY-MM for monthly.
+      - name: line_of_business
+        in: query
+        required: true
+        type: string
+        enum: [auto, property, casualty, all]
+        description: Line of business to query. Use "all" for aggregate IBNR.
+      - name: state_code
+        in: query
+        required: false
+        type: string
+        description: Optional two-letter state code to filter results by jurisdiction.
+    responses:
+      200:
+        description: IBNR estimate returned successfully.
+        content:
+          application/json:
+            schema:
+              $ref: "#/definitions/IbnrEstimateResponse"
+      400:
+        description: Invalid period or line of business parameter.
+      401:
+        description: Authentication failure.
+      404:
+        description: No IBNR data available for the specified period and filters.
+
+  - operation_id: GetClaimsTrendAnalysis
+    display_name: Get Claims Trend Analysis
+    description: >
+      Returns claims frequency, severity, and loss ratio trend data for a
+      specified line of business and geographic region over a trailing period.
+      Used to surface portfolio-level analytics to adjusters and management.
+    method: GET
+    path: /analytics/trends
+    parameters:
+      - name: line_of_business
+        in: query
+        required: true
+        type: string
+        enum: [auto, property, casualty, all]
+        description: Line of business for trend analysis.
+      - name: region
+        in: query
+        required: false
+        type: string
+        description: >
+          Geographic region filter. Accepts a two-letter US state code, a
+          multi-state region code (e.g., SE for Southeast), or "national".
+          Defaults to "national" when omitted.
+      - name: trailing_months
+        in: query
+        required: false
+        type: integer
+        default: 12
+        description: Number of trailing months to include in trend calculations. Defaults to 12.
+    responses:
+      200:
+        description: Trend data returned successfully.
+        content:
+          application/json:
+            schema:
+              $ref: "#/definitions/TrendAnalysisResponse"
+      400:
+        description: Invalid parameters.
+      401:
+        description: Authentication failure.
+
+  - operation_id: GetPeerClaimComparison
+    display_name: Get Peer Claim Comparison
+    description: >
+      Compares a specific claim's current reserve and open duration against
+      similar historical claims. Returns percentile rankings and peer set
+      statistics to support adjuster reserve adequacy review.
+    method: GET
+    path: /reserve/peer-comparison/{claim_reference}
+    parameters:
+      - name: claim_reference
+        in: path
+        required: true
+        type: string
+        description: The claim number to compare against historical peers.
+    responses:
+      200:
+        description: Peer comparison data returned successfully.
+        content:
+          application/json:
+            schema:
+              $ref: "#/definitions/PeerComparisonResponse"
+      401:
+        description: Authentication failure.
+      404:
+        description: Claim not found or insufficient peer data available.
+
+health_check:
+  path: /health
+  method: GET
+  expected_status: 200
+
+connection_parameters:
+  - name: ActuarialApiBaseUrl
+    display_name: Actuarial API Base URL
+    description: Base URL of the actuarial system REST API (e.g., https://actuarial.example.com).
+    type: string
+    ui_definition:
+      display_name: Actuarial API Base URL
+      description: >
+        The root URL for the actuarial system REST API, without a trailing slash.
+        Example: https://actuarial.example.com
+
+  - name: ActuarialApiTokenUrl
+    display_name: OAuth Token Endpoint URL
+    description: OAuth 2.0 token endpoint for client credentials authentication.
+    type: string
+    ui_definition:
+      display_name: OAuth Token URL
+      description: >
+        The token endpoint provided by the actuarial system identity provider.
+        Example: https://auth.actuarial.example.com/oauth2/token
+
+  - name: ActuarialApiClientId
+    display_name: OAuth Client ID
+    description: Application (client) ID registered with the actuarial system identity provider.
+    type: string
+    ui_definition:
+      display_name: OAuth Client ID
+      description: >
+        The client ID issued when registering the Power Platform connector
+        as an OAuth application with the actuarial system identity provider.
+
+  - name: ActuarialApiClientSecret
+    display_name: OAuth Client Secret
+    description: OAuth client secret. Stored as a Power Platform secret environment variable.
+    type: secret
+    ui_definition:
+      display_name: OAuth Client Secret
+      description: >
+        The client secret issued with the OAuth client ID. Store in a
+        Power Platform environment variable of type Secret or reference
+        an Azure Key Vault secret.
+
+policy_templates:
+  - type: set_header
+    name: CorrelationIdHeader
+    description: Passes Power Automate flow run ID as a correlation header for end-to-end tracing.
+    header_name: x-correlation-id
+    header_value: "@workflow()['run']['name']"
+
+  - type: retry
+    name: TransientRetryPolicy
+    description: Retries transient 5xx failures with exponential backoff.
+    retry_on_status_codes: [500, 502, 503, 504]
+    max_retries: 3
+    initial_interval_seconds: 2
+    backoff_multiplier: 2
