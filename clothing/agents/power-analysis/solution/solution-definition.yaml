@@ -5,7 +5,7 @@
 solution:
   name: ClothingPowerAnalysis
   display_name: "Clothing — Power Analysis"
-  version: "2.0.0"
+  version: "2.1.0"
   publisher: Copilot Agent Development
   description: >
     Deep reasoning analytics solution for the Power Analysis agent in the
