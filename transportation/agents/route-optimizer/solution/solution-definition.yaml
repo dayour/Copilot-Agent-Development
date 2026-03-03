@@ -4,6 +4,9 @@ solution:
   version: 1.0.0.0
   publisher: transportation-platform
   managed: true
+  dependencies:
+    - solution_name: TransportationSharedDataverse
+      minimum_version: "1.0.0.0"
 
 environment_variables:
   - schema_name: MappingApiUrl
@@ -52,6 +55,11 @@ environment_variables:
     type: string
     required: true
     default_value: fleet-dispatch@contoso.com
+  - schema_name: FuelTrackingFlowBaseUrl
+    display_name: Fuel Tracking Flow Base URL
+    type: string
+    required: true
+    default_value: ""
 
 dataverse:
   tables:
@@ -106,6 +114,15 @@ dataverse:
           display_name: required_certification
           type: text
           max_length: 100
+        - name: crd_reroute_active
+          display_name: reroute_active
+          type: boolean
+          default_value: false
+        - name: crd_estimated_fuel_cost
+          display_name: estimated_fuel_cost
+          type: currency
+          precision: 2
+          required: false
       indexes:
         - name: idx_routes_driver_departure
           columns:
@@ -294,6 +311,14 @@ connectors:
   - name: Dataverse
     type: first_party
     description: Dataverse connector for routes, stops, driver assignments, and HOS records.
+  - name: FuelTrackingHttp
+    type: http
+    description: >
+      HTTP connector for calling Fuel Tracking Power Automate flows
+      (GetFuelPrices) during fuel-route correlation.
+    configuration:
+      base_url_env_var: FuelTrackingFlowBaseUrl
+      authentication: managed_identity
 
 flows:
   - name: OptimizeRoute
@@ -415,6 +440,192 @@ flows:
         connector: Dataverse
         table: DriverAssignments
       - action: respond_to_agent
+
+  - name: CheckVehicleMaintenanceStatus
+    trigger: instant_from_agent
+    description: >
+      Reads VehicleMaster.maintenance_status for the vehicle assigned to the
+      given route. Returns whether the vehicle is on a maintenance hold and the
+      hold reason. Used by the Driver Assignment topic before accepting new
+      route assignments.
+    inputs:
+      - routeId
+    outputs:
+      - vehicleOnMaintenanceHold
+      - maintenanceHoldReason
+      - maintenanceStatus
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+        filter: crd_route_id eq routeId
+      - action: get_row
+        connector: Dataverse
+        table: VehicleMaster
+        key: crd_vehicle_id
+      - action: evaluate_maintenance_status
+      - action: respond_to_agent
+
+  - name: GetVehicleTankLevel
+    trigger: instant_from_agent
+    description: >
+      Reads current tank level percentage from VehicleMaster for a given
+      vehicle. Used by the Fuel Route Correlation topic to decide whether fuel
+      stop insertion is needed.
+    inputs:
+      - vehicleId
+    outputs:
+      - tankLevelPct
+      - tankCapacityGallons
+      - fuelType
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: VehicleMaster
+        key: crd_vehicle_id
+        filter: crd_vehicle_id eq vehicleId
+      - action: respond_to_agent
+
+  - name: GetFuelPricesForRoute
+    trigger: instant_from_agent
+    description: >
+      Calls Fuel Tracking's GetFuelPrices flow with the active route corridor
+      to return price-ranked fuel station recommendations. Filters results to
+      stations that can be inserted without violating existing stop time windows.
+    inputs:
+      - routeId
+      - vehicleId
+      - tankLevelPct
+    outputs:
+      - fuelStopRecommendations
+      - estimatedFuelCostSaving
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: http_post
+        connector: FuelTrackingHttp
+        path: /flows/GetFuelPrices/trigger
+        body:
+          routeId: "{routeId}"
+          vehicleId: "{vehicleId}"
+      - action: filter_by_time_window_safety
+      - action: respond_to_agent
+
+  - name: InsertFuelStopsIntoRoute
+    trigger: instant_from_agent
+    description: >
+      Inserts recommended fuel stops as RouteStop records at logically
+      appropriate positions in the optimized stop sequence and recalculates
+      total travel time. Persists updated sequence to the Routes table.
+    inputs:
+      - routeId
+      - fuelStopRecommendations
+    outputs:
+      - insertedFuelStopCount
+      - fuelStopSummaryTable
+      - timeWindowImpactSummary
+      - updatedTotalTravelTime
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: insert_fuel_stops_in_sequence
+      - action: create_rows
+        connector: Dataverse
+        table: RouteStops
+      - action: update_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+      - action: respond_to_agent
+
+  - name: FindActiveRoutesForVehicle
+    trigger: instant_from_agent
+    description: >
+      Returns all Routes records with status planned or in_progress for the
+      given vehicle. Called by the escalation handler when a breakdown is
+      reported from Fleet Coordinator.
+    inputs:
+      - vehicleId
+    outputs:
+      - affectedRouteCount
+      - affectedRoutes
+      - affectedRouteIds
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: Routes
+        filter: crd_vehicle_id eq vehicleId and crd_status in ('planned','in_progress')
+      - action: respond_to_agent
+
+  - name: RerouteAffectedDeliveries
+    trigger: instant_from_agent
+    description: >
+      For each route in affectedRoutes, finds an alternative available vehicle
+      from VehicleMaster (operational status) or reassigns drivers, then
+      triggers re-optimization and sends Teams notifications to dispatchers.
+      Supports the automated escalation chain initiated by Fleet Coordinator.
+    inputs:
+      - vehicleId
+      - affectedRoutes
+    outputs:
+      - reroutingStatusTable
+      - newEtaSummary
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: VehicleMaster
+        filter: crd_maintenance_status eq 'operational' and crd_active eq true
+      - action: match_replacement_vehicles
+      - action: update_rows
+        connector: Dataverse
+        table: Routes
+      - action: http_post
+        connector: MappingApiHttp
+        path: /route/alternative
+      - action: send_teams_notification
+        to_env_var: DispatchAlertEmail
+      - action: respond_to_agent
+
+  - name: HandleFleetIncidentEscalation
+    trigger: http_post
+    description: >
+      HTTP-triggered entry point called by Fleet Coordinator's
+      TriggerCrossAgentEscalation and NotifyVehicleUnavailable flows. Resolves
+      the vehicle, finds affected routes, initiates re-routing, and returns a
+      summary. This flow is exposed as an HTTP endpoint so Fleet Coordinator
+      can call it without a direct Dataverse dependency.
+    inputs:
+      - vehicle_id
+      - incident_type
+      - hold_reason
+    outputs:
+      - affected_route_count
+      - rerouting_initiated
+      - summary
+    steps:
+      - action: call_flow
+        flow: FindActiveRoutesForVehicle
+        input:
+          vehicleId: "{vehicle_id}"
+      - action: condition
+        if: affectedRouteCount > 0
+        then:
+          - action: call_flow
+            flow: RerouteAffectedDeliveries
+            input:
+              vehicleId: "{vehicle_id}"
+              affectedRoutes: "{affectedRoutes}"
+      - action: http_response
+        status: 200
+        body:
+          affected_route_count: "{affectedRouteCount}"
+          rerouting_initiated: true
+          summary: "{reroutingStatusTable}"
 
 channels:
   - name: teams
