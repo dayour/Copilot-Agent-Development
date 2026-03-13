@@ -1,7 +1,7 @@
 # Master Validation Script for Copilot Studio Agent Suite
 # This script runs comprehensive validation across all agents and components
 
-Write-Host "🎯 Copilot Studio Agent Suite - Master Validation" -ForegroundColor Green
+Write-Host " Copilot Studio Agent Suite - Master Validation" -ForegroundColor Green
 Write-Host "=================================================" -ForegroundColor Green
 Write-Host ""
 
@@ -22,7 +22,7 @@ $agentDirs = @(
 $validationResults = @{}
 
 # 1. Agent Structure Validation
-Write-Host "🏗️  Step 1: Agent Structure Validation" -ForegroundColor Cyan
+Write-Host "  Step 1: Agent Structure Validation" -ForegroundColor Cyan
 Write-Host "--------------------------------------" -ForegroundColor Gray
 
 foreach ($agentDir in $agentDirs) {
@@ -46,16 +46,16 @@ foreach ($agentDir in $agentDirs) {
         
         $validationResults[$agentDir].StructureValid = $agentYml -and $settingsYml -and $readme -and $icon -and $topicsDir -and $mcsDir
         
-        Write-Host "  $agentDir`: $(if($validationResults[$agentDir].StructureValid){'✓ PASS'}else{'✗ FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].StructureValid){'Green'}else{'Red'})
+        Write-Host "  $agentDir`: $(if($validationResults[$agentDir].StructureValid){'[x] PASS'}else{'[ ] FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].StructureValid){'Green'}else{'Red'})
     } else {
-        Write-Host "  $agentDir`: ✗ DIRECTORY NOT FOUND" -ForegroundColor Red
+        Write-Host "  $agentDir`: [ ] DIRECTORY NOT FOUND" -ForegroundColor Red
     }
 }
 
 Write-Host ""
 
 # 2. Topics Validation
-Write-Host "📝 Step 2: Topics Validation" -ForegroundColor Cyan
+Write-Host " Step 2: Topics Validation" -ForegroundColor Cyan
 Write-Host "----------------------------" -ForegroundColor Gray
 
 foreach ($agentDir in $agentDirs) {
@@ -71,14 +71,14 @@ foreach ($agentDir in $agentDirs) {
         
         $validationResults[$agentDir].TopicsValid = $actualTopicCount -ge $expectedTopicCount
         
-        Write-Host "  $agentDir`: $actualTopicCount topics $(if($validationResults[$agentDir].TopicsValid){'✓ PASS'}else{'✗ FAIL (need ' + $expectedTopicCount + ')'})" -ForegroundColor $(if($validationResults[$agentDir].TopicsValid){'Green'}else{'Red'})
+        Write-Host "  $agentDir`: $actualTopicCount topics $(if($validationResults[$agentDir].TopicsValid){'[x] PASS'}else{'[ ] FAIL (need ' + $expectedTopicCount + ')'})" -ForegroundColor $(if($validationResults[$agentDir].TopicsValid){'Green'}else{'Red'})
     }
 }
 
 Write-Host ""
 
 # 3. Configuration Validation
-Write-Host "⚙️  Step 3: Configuration Validation" -ForegroundColor Cyan
+Write-Host "  Step 3: Configuration Validation" -ForegroundColor Cyan
 Write-Host "------------------------------------" -ForegroundColor Gray
 
 foreach ($agentDir in $agentDirs) {
@@ -97,11 +97,11 @@ foreach ($agentDir in $agentDirs) {
             
             $validationResults[$agentDir].ConfigValid = $agentValid -and $settingsValid
             
-            Write-Host "  $agentDir`: $(if($validationResults[$agentDir].ConfigValid){'✓ PASS'}else{'✗ FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].ConfigValid){'Green'}else{'Red'})
+            Write-Host "  $agentDir`: $(if($validationResults[$agentDir].ConfigValid){'[x] PASS'}else{'[ ] FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].ConfigValid){'Green'}else{'Red'})
         }
         catch {
             $validationResults[$agentDir].ConfigValid = $false
-            Write-Host "  $agentDir`: ✗ FAIL (YAML parsing error)" -ForegroundColor Red
+            Write-Host "  $agentDir`: [ ] FAIL (YAML parsing error)" -ForegroundColor Red
         }
     }
 }
@@ -109,7 +109,7 @@ foreach ($agentDir in $agentDirs) {
 Write-Host ""
 
 # 4. MCS Configuration Validation
-Write-Host "🔧 Step 4: MCS Configuration Validation" -ForegroundColor Cyan
+Write-Host " Step 4: MCS Configuration Validation" -ForegroundColor Cyan
 Write-Host "---------------------------------------" -ForegroundColor Gray
 
 foreach ($agentDir in $agentDirs) {
@@ -123,14 +123,14 @@ foreach ($agentDir in $agentDirs) {
         
         $validationResults[$agentDir].McsValid = $connJson -and $botDef -and $changeToken
         
-        Write-Host "  $agentDir`: $(if($validationResults[$agentDir].McsValid){'✓ PASS'}else{'✗ FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].McsValid){'Green'}else{'Red'})
+        Write-Host "  $agentDir`: $(if($validationResults[$agentDir].McsValid){'[x] PASS'}else{'[ ] FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].McsValid){'Green'}else{'Red'})
     }
 }
 
 Write-Host ""
 
 # 5. Documentation Validation
-Write-Host "📚 Step 5: Documentation Validation" -ForegroundColor Cyan
+Write-Host " Step 5: Documentation Validation" -ForegroundColor Cyan
 Write-Host "-----------------------------------" -ForegroundColor Gray
 
 foreach ($agentDir in $agentDirs) {
@@ -146,10 +146,10 @@ foreach ($agentDir in $agentDirs) {
             
             $validationResults[$agentDir].ReadmeValid = $hasTitle -and $hasDescription
             
-            Write-Host "  $agentDir`: $(if($validationResults[$agentDir].ReadmeValid){'✓ PASS'}else{'✗ FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].ReadmeValid){'Green'}else{'Red'})
+            Write-Host "  $agentDir`: $(if($validationResults[$agentDir].ReadmeValid){'[x] PASS'}else{'[ ] FAIL'})" -ForegroundColor $(if($validationResults[$agentDir].ReadmeValid){'Green'}else{'Red'})
         } else {
             $validationResults[$agentDir].ReadmeValid = $false
-            Write-Host "  $agentDir`: ✗ FAIL (README missing)" -ForegroundColor Red
+            Write-Host "  $agentDir`: [ ] FAIL (README missing)" -ForegroundColor Red
         }
     }
 }
@@ -157,7 +157,7 @@ foreach ($agentDir in $agentDirs) {
 Write-Host ""
 
 # Summary Report
-Write-Host "📊 Validation Summary Report" -ForegroundColor Green
+Write-Host " Validation Summary Report" -ForegroundColor Green
 Write-Host "============================" -ForegroundColor Green
 Write-Host ""
 
@@ -182,12 +182,12 @@ foreach ($agentDir in $agentDirs) {
         $fullyValid++
     }
     
-    $status = if ($result.StructureValid -and $result.ConfigValid -and $result.TopicsValid -and $result.McsValid -and $result.ReadmeValid) { "✅ READY" } else { "⚠️  ISSUES" }
-    Write-Host "  $agentDir`: $status" -ForegroundColor $(if($status -eq "✅ READY"){'Green'}else{'Yellow'})
+    $status = if ($result.StructureValid -and $result.ConfigValid -and $result.TopicsValid -and $result.McsValid -and $result.ReadmeValid) { "[x] READY" } else { "Warning  ISSUES" }
+    Write-Host "  $agentDir`: $status" -ForegroundColor $(if($status -eq "[x] READY"){'Green'}else{'Yellow'})
 }
 
 Write-Host ""
-Write-Host "📈 Statistics:" -ForegroundColor Yellow
+Write-Host " Statistics:" -ForegroundColor Yellow
 Write-Host "  ├─ Total Agents: $totalAgents" -ForegroundColor White
 Write-Host "  ├─ Structure Valid: $passedStructure/$totalAgents" -ForegroundColor White
 Write-Host "  ├─ Configuration Valid: $passedConfig/$totalAgents" -ForegroundColor White
@@ -199,18 +199,18 @@ Write-Host "  └─ Fully Ready: $fullyValid/$totalAgents" -ForegroundColor Whi
 Write-Host ""
 
 if ($fullyValid -eq $totalAgents) {
-    Write-Host "🎉 SUCCESS: All agents are fully validated and ready for deployment!" -ForegroundColor Green
+    Write-Host " SUCCESS: All agents are fully validated and ready for deployment!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "✨ Next Steps:" -ForegroundColor Yellow
+    Write-Host " Next Steps:" -ForegroundColor Yellow
     Write-Host "  1. Import agents into Copilot Studio environment" -ForegroundColor Gray
     Write-Host "  2. Update environment-specific configuration" -ForegroundColor Gray
     Write-Host "  3. Test each agent individually" -ForegroundColor Gray
     Write-Host "  4. Implement cross-agent orchestration" -ForegroundColor Gray
     Write-Host "  5. Conduct integration testing" -ForegroundColor Gray
 } else {
-    Write-Host "⚠️  WARNING: $($totalAgents - $fullyValid) agents have validation issues." -ForegroundColor Yellow
-    Write-Host "💡 Review the detailed output above and fix any FAIL items before deployment." -ForegroundColor Gray
+    Write-Host "Warning  WARNING: $($totalAgents - $fullyValid) agents have validation issues." -ForegroundColor Yellow
+    Write-Host " Review the detailed output above and fix any FAIL items before deployment." -ForegroundColor Gray
 }
 
 Write-Host ""
-Write-Host "🏁 Master Validation Complete!" -ForegroundColor Green
+Write-Host " Master Validation Complete!" -ForegroundColor Green

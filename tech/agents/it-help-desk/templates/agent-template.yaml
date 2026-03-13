@@ -22,7 +22,7 @@ topics:
       - IT support
     messages:
       - text: >
-          Hi! 💻 I'm your IT Help Desk assistant. I can help with account issues,
+          Hi!  I'm your IT Help Desk assistant. I can help with account issues,
           software, hardware, and more. What do you need?
     quick_replies:
       - Reset my password

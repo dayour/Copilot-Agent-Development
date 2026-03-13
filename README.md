@@ -2,29 +2,28 @@
 
 > A production-ready library of **18 Copilot Studio agents** across **5 industry verticals**, with deployment runbooks, conversation templates, solution definitions, evaluation frameworks, and browser-automation tooling — all importable into Microsoft Power Platform / Copilot Studio.
 
-[![Monowiki](https://img.shields.io/badge/📖_Monowiki-Browse_All_Docs-blue)](#-monowiki) [![Agents](https://img.shields.io/badge/🤖_Agents-18_Total-green)](#-agent-inventory) [![Verticals](https://img.shields.io/badge/🏢_Verticals-5-purple)](#-repository-structure)
+Monowiki: [Browse all docs](./docs/index.html) | Agents: 18 | Verticals: 5
 
 ---
 
-## 📖 Monowiki
+## Monowiki
 
 All repository documentation is compiled into a **single-file searchable wiki**:
-
-👉 **[`docs/index.html`](./docs/index.html)** — 152 documents, 13 sections, full-text search, collapsible articles, dark theme
+**[`docs/index.html`](./docs/index.html)** — 152 documents, 13 sections, full-text search, collapsible articles, dark theme
 
 Open it locally or serve via GitHub Pages (`layout: null` Jekyll front matter included).
 
 ---
 
-## 🏢 Repository Structure
+## Repository Structure
 
 | Folder | Vertical | Agents |
 |--------|----------|--------|
-| [coffee/](./coffee/) | ☕ Coffee | [Virtual Coach](./coffee/agents/virtual-coach/) |
-| [clothing/](./clothing/) | 👔 Clothing | [Power Analysis](./clothing/agents/power-analysis/) |
-| [insurance/](./insurance/) | 🛡️ Insurance | [Claims Assistant](./insurance/agents/claims-assistant/) |
-| [tech/](./tech/) | 💻 Tech | 11 agents — see [inventory](#-agent-inventory) |
-| [transportation/](./transportation/) | 🚛 Transportation | [Fleet Coordinator](./transportation/agents/fleet-coordinator/), [Fuel Tracking](./transportation/agents/fuel-tracking/), [Route Optimizer](./transportation/agents/route-optimizer/) |
+| [coffee/](./coffee/) |  Coffee | [Virtual Coach](./coffee/agents/virtual-coach/) |
+| [clothing/](./clothing/) |  Clothing | [Power Analysis](./clothing/agents/power-analysis/) |
+| [insurance/](./insurance/) |  Insurance | [Claims Assistant](./insurance/agents/claims-assistant/) |
+| [tech/](./tech/) |  Tech | 11 agents — see [inventory](#-agent-inventory) |
+| [transportation/](./transportation/) |  Transportation | [Fleet Coordinator](./transportation/agents/fleet-coordinator/), [Fuel Tracking](./transportation/agents/fuel-tracking/), [Route Optimizer](./transportation/agents/route-optimizer/) |
 
 ### Supporting Directories
 
@@ -41,24 +40,24 @@ Open it locally or serve via GitHub Pages (`layout: null` Jekyll front matter in
 
 ---
 
-## 🤖 Agent Inventory
+## Agent Inventory
 
-### ☕ Coffee
+### Coffee
 | Agent | Description |
 |-------|-------------|
 | [Virtual Coach](./coffee/agents/virtual-coach/) | Barista training, brew guides, and quality coaching |
 
-### 👔 Clothing
+### Clothing
 | Agent | Description |
 |-------|-------------|
 | [Power Analysis](./clothing/agents/power-analysis/) | BI agent for sales, inventory, and trend analytics via Power BI |
 
-### 🛡️ Insurance
+### Insurance
 | Agent | Description |
 |-------|-------------|
 | [Claims Assistant](./insurance/agents/claims-assistant/) | Claims intake, status tracking, and policyholder support |
 
-### 💻 Tech (11 agents)
+### Tech (11 agents)
 | Agent | Description |
 |-------|-------------|
 | [IT Help Desk](./tech/agents/it-help-desk/) | Tier-1 IT support, ticket routing, and self-service resolution |
@@ -73,7 +72,7 @@ Open it locally or serve via GitHub Pages (`layout: null` Jekyll front matter in
 | [Kusto Analytics](./tech/agents/kusto-analytics/) | KQL-powered analytics and data exploration |
 | darbot-mcp-builder | MCP tool builder (in development) |
 
-### 🚛 Transportation (3 agents)
+### Transportation (3 agents)
 | Agent | Description |
 |-------|-------------|
 | [Fleet Coordinator](./transportation/agents/fleet-coordinator/) | Fleet management, driver assignment, and dispatch |
@@ -82,7 +81,7 @@ Open it locally or serve via GitHub Pages (`layout: null` Jekyll front matter in
 
 ---
 
-## 🏗️ Agent Scaffold
+## Agent Scaffold
 
 Every fully-documented agent follows the same four-file scaffold:
 
@@ -98,7 +97,7 @@ Every fully-documented agent follows the same four-file scaffold:
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 1. Browse to the vertical folder that matches your industry.
 2. Open the agent folder and read the `README.md` for an overview.
@@ -111,7 +110,7 @@ Every fully-documented agent follows the same four-file scaffold:
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 ### Core Guides
 
@@ -187,7 +186,7 @@ Governance and strategy documents for managing the agent fleet at scale:
 
 ---
 
-## 🧪 Evaluation Framework
+## Evaluation Framework
 
 The [`evals/`](./evals/) directory contains a cross-vertical agent evaluation framework:
 
@@ -197,7 +196,7 @@ The [`evals/`](./evals/) directory contains a cross-vertical agent evaluation fr
 
 ---
 
-## ⚡ Power MCP UI Topic Builder
+## Power MCP UI Topic Builder
 
 The [`Power MCP UI Topic Builder/`](./Power%20MCP%20UI%20Topic%20Builder/) provides browser-automation tooling for Copilot Studio:
 
@@ -210,7 +209,7 @@ The [`Power MCP UI Topic Builder/`](./Power%20MCP%20UI%20Topic%20Builder/) provi
 
 ---
 
-## 🔧 Tools
+## Tools
 
 | Tool | Description |
 |------|-------------|
@@ -221,7 +220,7 @@ The [`Power MCP UI Topic Builder/`](./Power%20MCP%20UI%20Topic%20Builder/) provi
 
 ---
 
-## 📝 Runbook Steps
+## Runbook Steps
 
 Step-by-step Copilot Studio procedures in [`runbook_steps/`](./runbook_steps/):
 

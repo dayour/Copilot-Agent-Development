@@ -15,27 +15,27 @@ The Azure Subscriptions agent is designed to help cloud teams with:
 
 ## Key Capabilities
 
-### 💳 Subscription Administration
+###  Subscription Administration
 - Multi-subscription organization and management
 - Subscription transfers and organizational changes
 - Management group configuration
 
-### 💰 Cost Management
+###  Cost Management
 - Cost analysis and optimization recommendations
 - Budget setup and monitoring
 - Resource cost allocation and chargeback
 
-### 🏛️ Governance & Compliance
+###  Governance & Compliance
 - Azure Policy implementation
 - Compliance framework alignment
 - Resource governance and standards
 
-### 📊 Analytics & Reporting
+###  Analytics & Reporting
 - Usage analytics and trends
 - Cost reporting and forecasting
 - Governance compliance reporting
 
-### 🚨 Alert & Monitoring
+### Alert Alert & Monitoring
 
 - Billing alert configuration and management
 - Cost threshold monitoring and notifications

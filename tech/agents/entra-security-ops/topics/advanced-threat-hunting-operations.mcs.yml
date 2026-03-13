@@ -20,31 +20,31 @@ beginDialog:
     - kind: SendActivity
       id: hunting_intro
       activity: |
-        🎯 **Advanced Threat Hunting Operations Center**
+         **Advanced Threat Hunting Operations Center**
         
         Welcome to proactive threat hunting operations. I'll guide you through sophisticated hunting methodologies to discover hidden threats in your environment.
         
         **Hunting Capabilities:**
         
-        **🔍 Hypothesis-Driven Hunting**
+        ** Hypothesis-Driven Hunting**
         - Structured hunting methodologies
         - MITRE ATT&CK framework mapping
         - Behavioral analytics and anomaly detection
         - Custom hunting query development
         
-        **📊 Advanced Analytics**
+        ** Advanced Analytics**
         - Machine learning-powered detection
         - Statistical analysis and correlation
         - Time-series analysis for patterns
         - Graph analytics for relationship mapping
         
-        **🎯 Specialized Hunt Types**
+        ** Specialized Hunt Types**
         - APT and nation-state actor hunting
         - Insider threat investigations
         - Supply chain compromise detection
         - Living-off-the-land technique identification
         
-        **🛠️ Hunt Management**
+        ** Hunt Management**
         - Campaign planning and coordination
         - Hunt team collaboration tools
         - Results validation and tuning
@@ -62,13 +62,13 @@ beginDialog:
         activity: |
           Select your hunting operation:
           
-          **1.** 🎯 Hypothesis-Driven Hunt Campaign
-          **2.** 🔍 Behavioral Anomaly Investigation  
-          **3.** 👤 APT/Nation-State Actor Hunt
-          **4.** 🕵️ Insider Threat Investigation
-          **5.** 🔗 Supply Chain Compromise Hunt
-          **6.** 🤖 Living-off-the-Land Detection
-          **7.** 📊 Custom Hunt Query Development
+          **1.**  Hypothesis-Driven Hunt Campaign
+          **2.**  Behavioral Anomaly Investigation  
+          **3.**  APT/Nation-State Actor Hunt
+          **4.**  Insider Threat Investigation
+          **5.**  Supply Chain Compromise Hunt
+          **6.**  Living-off-the-Land Detection
+          **7.**  Custom Hunt Query Development
           
           Type the number or describe your hunting objective.
 
@@ -147,7 +147,7 @@ dialogs:
     steps:
       - kind: SendActivity
         activity: |
-          🎯 **Hypothesis-Driven Threat Hunt Campaign**
+           **Hypothesis-Driven Threat Hunt Campaign**
           
           I'll guide you through a structured hypothesis-driven hunting methodology using the PEAK framework.
 
@@ -196,22 +196,22 @@ dialogs:
             Which data sources will provide the best visibility for this hunt?
             
             **Available Sources:**
-            - 🔍 Windows Event Logs (Security, System, Application)
-            - 🛡️ Microsoft Defender XDR (Endpoint, Email, Identity)
-            - 🌐 Network Traffic Logs (Firewall, DNS, Proxy)
-            - ☁️ Cloud Audit Logs (Azure AD, M365, AWS CloudTrail)
-            - 📧 Email Security Logs (ATP, EOP)
-            - 🔒 Authentication Logs (ADFS, SAML, OAuth)
+            -  Windows Event Logs (Security, System, Application)
+            -  Microsoft Defender XDR (Endpoint, Email, Identity)
+            -  Network Traffic Logs (Firewall, DNS, Proxy)
+            -  Cloud Audit Logs (Azure AD, M365, AWS CloudTrail)
+            -  Email Security Logs (ATP, EOP)
+            -  Authentication Logs (ADFS, SAML, OAuth)
 
       - kind: SendActivity
         activity: |
-          🎯 **Hunt Campaign Plan Generated**
+           **Hunt Campaign Plan Generated**
           
           **Hypothesis:** {Dialog.huntingHypothesis}
           **MITRE ATT&CK Phase:** {Dialog.attackPhase}
           **Data Sources:** {Dialog.dataSource}
           
-          ## 📋 **PEAK Methodology Implementation**
+          ##  **PEAK Methodology Implementation**
           
           ### **P - Prepare**
           
@@ -291,7 +291,7 @@ dialogs:
           
           **Deliverables:**
           
-          **📊 Hunt Report Template:**
+          ** Hunt Report Template:**
           ```
           Executive Summary:
           - Hunt hypothesis validation (Confirmed/Refuted/Inconclusive)
@@ -312,13 +312,13 @@ dialogs:
           - Training recommendations
           ```
           
-          **🔄 Continuous Monitoring:**
+          ** Continuous Monitoring:**
           - Convert successful hunt queries to automated alerts
           - Establish baseline metrics for ongoing detection
           - Schedule regular hunt campaign reviews
           - Update threat intelligence with findings
           
-          **📚 Knowledge Sharing:**
+          ** Knowledge Sharing:**
           - Document lessons learned for future hunts
           - Share IOCs with threat intelligence community
           - Update security awareness training materials
@@ -329,7 +329,7 @@ dialogs:
     steps:
       - kind: SendActivity
         activity: |
-          👤 **Advanced Persistent Threat (APT) Hunt Campaign**
+           **Advanced Persistent Threat (APT) Hunt Campaign**
           
           I'll guide you through a sophisticated APT hunting operation targeting nation-state and advanced threat actors.
 
@@ -358,11 +358,11 @@ dialogs:
 
       - kind: SendActivity
         activity: |
-          👤 **APT Hunt Campaign: {Dialog.aptTarget}**
+           **APT Hunt Campaign: {Dialog.aptTarget}**
           
-          ## 🎯 **APT-Specific Hunting Strategy**
+          ##  **APT-Specific Hunting Strategy**
           
-          ### **🔍 APT Behavioral Indicators**
+          ### ** APT Behavioral Indicators**
           
           **Operational Characteristics:**
           - **Persistence:** Long-term access maintenance (months/years)
@@ -384,7 +384,7 @@ dialogs:
           Exfiltration:       Encrypted channels, DNS tunneling, cloud storage
           ```
           
-          ### **🔍 Advanced Hunt Queries**
+          ### ** Advanced Hunt Queries**
           
           **APT Persistence Detection:**
           ```kql
@@ -463,7 +463,7 @@ dialogs:
           | where FirstSeen > ago(90d)  // Recently established infrastructure
           ```
           
-          ### **🕵️ APT Investigation Workflow**
+          ### ** APT Investigation Workflow**
           
           **Phase 1: Initial Detection (Hours 1-4)**
           1. Run APT-specific detection queries
@@ -489,7 +489,7 @@ dialogs:
           3. Network segmentation and monitoring
           4. Threat hunting for persistence mechanisms
           
-          ### **📊 APT Hunt Metrics**
+          ### ** APT Hunt Metrics**
           
           **Detection Effectiveness:**
           - Time to initial detection

@@ -39,7 +39,7 @@ try {
     Import-Module powershell-yaml -Force -ErrorAction Stop
 }
 catch {
-    Write-Host "❌ Failed to import required modules: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[ ] Failed to import required modules: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Please install required modules:" -ForegroundColor Yellow
     Write-Host "  Install-Module Az.Accounts, Az.Resources, Az.CognitiveServices, powershell-yaml -Force" -ForegroundColor Yellow
     exit 1
@@ -531,10 +531,10 @@ function Start-AgentSuiteDeployment {
     Write-DeploymentLog "Failed Deployments: $($deploymentResults.FailedDeployments)/$($deploymentResults.TotalAgents)"
     
     if ($deploymentResults.FailedDeployments -eq 0) {
-        Write-DeploymentLog "🎉 ALL AGENTS DEPLOYED SUCCESSFULLY! 🎉" -Level "SUCCESS"
+        Write-DeploymentLog " ALL AGENTS DEPLOYED SUCCESSFULLY! " -Level "SUCCESS"
     }
     else {
-        Write-DeploymentLog "⚠️  Some deployments failed - review logs for details" -Level "WARNING"
+        Write-DeploymentLog "Warning  Some deployments failed - review logs for details" -Level "WARNING"
     }
     
     # Generate detailed report

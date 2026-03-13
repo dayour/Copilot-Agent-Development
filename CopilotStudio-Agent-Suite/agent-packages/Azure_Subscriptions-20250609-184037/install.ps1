@@ -16,5 +16,5 @@ foreach ($File in $RequiredFiles) {
     }
 }
 
-Write-Host "✅ Agent package validated successfully"
-Write-Host "📖 Please refer to Readme.md for manual import instructions"
+Write-Host "[x] Agent package validated successfully"
+Write-Host " Please refer to Readme.md for manual import instructions"

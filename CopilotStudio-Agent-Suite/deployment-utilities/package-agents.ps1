@@ -18,7 +18,7 @@ param(
     [switch]$ValidatePackage = $true
 )
 
-Write-Host "📦 Copilot Studio Agent Package Creator" -ForegroundColor Green
+Write-Host " Copilot Studio Agent Package Creator" -ForegroundColor Green
 Write-Host "======================================" -ForegroundColor Green
 Write-Host ""
 
@@ -46,10 +46,10 @@ function New-AgentPackage {
     $PackageName = "$Agent-$(Get-Date -Format 'yyyyMMdd-HHmmss').zip"
     $PackagePath = Join-Path $OutputDir $PackageName
     
-    Write-Host "📦 Creating package for: $Agent" -ForegroundColor Cyan
+    Write-Host " Creating package for: $Agent" -ForegroundColor Cyan
     
     if (!(Test-Path $AgentPath)) {
-        Write-Host "❌ Agent path not found: $AgentPath" -ForegroundColor Red
+        Write-Host "[ ] Agent path not found: $AgentPath" -ForegroundColor Red
         return $null
     }
     
@@ -104,8 +104,8 @@ foreach (`$File in `$RequiredFiles) {
     }
 }
 
-Write-Host "✅ Agent package validated successfully"
-Write-Host "📖 Please refer to Readme.md for manual import instructions"
+Write-Host "[x] Agent package validated successfully"
+Write-Host " Please refer to Readme.md for manual import instructions"
 "@
         
         Set-Content -Path (Join-Path $StagingDir "install.ps1") -Value $InstallScript
@@ -116,11 +116,11 @@ Write-Host "📖 Please refer to Readme.md for manual import instructions"
         # Cleanup staging
         Remove-Item $StagingDir -Recurse -Force
         
-        Write-Host "✅ Package created: $PackageName" -ForegroundColor Green
+        Write-Host "[x] Package created: $PackageName" -ForegroundColor Green
         return $PackagePath
         
     } catch {
-        Write-Host "❌ Failed to create package for $Agent`: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[ ] Failed to create package for $Agent`: $($_.Exception.Message)" -ForegroundColor Red
         return $null
     }
 }
@@ -128,7 +128,7 @@ Write-Host "📖 Please refer to Readme.md for manual import instructions"
 function Test-AgentPackage {
     param([string]$PackagePath)
     
-    Write-Host "🔍 Validating package: $(Split-Path $PackagePath -Leaf)" -ForegroundColor Yellow
+    Write-Host " Validating package: $(Split-Path $PackagePath -Leaf)" -ForegroundColor Yellow
     
     try {
         # Extract to temporary location for validation
@@ -159,7 +159,7 @@ function Test-AgentPackage {
         } else {
             $TopicFiles = Get-ChildItem $TopicsPath -Filter "*.mcs.yml"
             if ($TopicFiles.Count -lt 16) {
-                Write-Host "⚠️  Warning: Only $($TopicFiles.Count) topic files found (expected 16+)" -ForegroundColor Yellow
+                Write-Host "Warning  Warning: Only $($TopicFiles.Count) topic files found (expected 16+)" -ForegroundColor Yellow
             }
         }
         
@@ -173,10 +173,10 @@ function Test-AgentPackage {
         Remove-Item $TempDir -Recurse -Force
         
         if ($MissingFiles.Count -eq 0) {
-            Write-Host "✅ Package validation passed" -ForegroundColor Green
+            Write-Host "[x] Package validation passed" -ForegroundColor Green
             return $true
         } else {
-            Write-Host "❌ Package validation failed. Missing files:" -ForegroundColor Red
+            Write-Host "[ ] Package validation failed. Missing files:" -ForegroundColor Red
             foreach ($File in $MissingFiles) {
                 Write-Host "   • $File" -ForegroundColor Red
             }
@@ -184,7 +184,7 @@ function Test-AgentPackage {
         }
         
     } catch {
-        Write-Host "❌ Package validation error: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[ ] Package validation error: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -194,19 +194,19 @@ try {
     # Create output directory
     if (!(Test-Path $OutputPath)) {
         New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
-        Write-Host "📁 Created output directory: $OutputPath" -ForegroundColor Green
+        Write-Host " Created output directory: $OutputPath" -ForegroundColor Green
     }
     
     $AgentsToPackage = @()
     
     if ($PackageAll) {
         $AgentsToPackage = $AvailableAgents
-        Write-Host "📦 Packaging all $($AgentsToPackage.Count) agents..." -ForegroundColor Yellow
+        Write-Host " Packaging all $($AgentsToPackage.Count) agents..." -ForegroundColor Yellow
     } elseif ($AgentName -and $AgentName -in $AvailableAgents) {
         $AgentsToPackage = @($AgentName)
-        Write-Host "📦 Packaging single agent: $AgentName..." -ForegroundColor Yellow
+        Write-Host " Packaging single agent: $AgentName..." -ForegroundColor Yellow
     } else {
-        Write-Host "❌ Please specify a valid agent name or use -PackageAll" -ForegroundColor Red
+        Write-Host "[ ] Please specify a valid agent name or use -PackageAll" -ForegroundColor Red
         Write-Host "Available agents:" -ForegroundColor Gray
         foreach ($Agent in $AvailableAgents) {
             Write-Host "  • $Agent" -ForegroundColor Gray
@@ -240,49 +240,49 @@ try {
     
     # Summary report
     Write-Host ""
-    Write-Host "📊 Packaging Summary" -ForegroundColor Green
+    Write-Host " Packaging Summary" -ForegroundColor Green
     Write-Host "===================" -ForegroundColor Green
     
     $SuccessCount = ($PackageResults.Values | Where-Object { $_.Success }).Count
     $TotalCount = $PackageResults.Count
     
     Write-Host ""
-    Write-Host "📈 Statistics:" -ForegroundColor Yellow
+    Write-Host " Statistics:" -ForegroundColor Yellow
     Write-Host "  ├─ Total Agents: $TotalCount" -ForegroundColor White
     Write-Host "  ├─ Successful: $SuccessCount" -ForegroundColor Green
     Write-Host "  ├─ Failed: $($TotalCount - $SuccessCount)" -ForegroundColor Red
     Write-Host "  └─ Output Path: $OutputPath" -ForegroundColor White
     
     Write-Host ""
-    Write-Host "📦 Package Details:" -ForegroundColor Yellow
+    Write-Host " Package Details:" -ForegroundColor Yellow
     
     foreach ($Agent in $PackageResults.Keys) {
         $Result = $PackageResults[$Agent]
         
         if ($Result.Success) {
             $PackageFile = Split-Path $Result.PackagePath -Leaf
-            $ValidationStatus = if ($Result.Validated) { "✅ VALID" } else { "⚠️  NOT VALIDATED" }
+            $ValidationStatus = if ($Result.Validated) { "[x] VALID" } else { "Warning  NOT VALIDATED" }
             $ValidationColor = if ($Result.Validated) { "Green" } else { "Yellow" }
             
             Write-Host "  $Agent`:" -ForegroundColor White
             Write-Host "    ├─ Package: $PackageFile" -ForegroundColor Gray
             Write-Host "    └─ Status: $ValidationStatus" -ForegroundColor $ValidationColor
         } else {
-            Write-Host "  $Agent`: ❌ FAILED" -ForegroundColor Red
+            Write-Host "  $Agent`: [ ] FAILED" -ForegroundColor Red
         }
     }
     
     Write-Host ""
-    Write-Host "🎯 Next Steps:" -ForegroundColor Yellow
+    Write-Host " Next Steps:" -ForegroundColor Yellow
     Write-Host "  1. Review package contents before deployment" -ForegroundColor Gray
     Write-Host "  2. Use deploy-agents.ps1 for automated deployment" -ForegroundColor Gray
     Write-Host "  3. Or manually import packages into Copilot Studio" -ForegroundColor Gray
     
     Write-Host ""
-    Write-Host "🏁 Packaging Complete!" -ForegroundColor Green
+    Write-Host " Packaging Complete!" -ForegroundColor Green
     
 } catch {
     Write-Host ""
-    Write-Host "💥 Packaging failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host " Packaging failed: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }

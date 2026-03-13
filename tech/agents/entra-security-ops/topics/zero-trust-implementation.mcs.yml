@@ -22,18 +22,18 @@ beginDialog:
     - kind: SendActivity
       id: zerotrust_intro
       activity: |
-        🛡️ **Zero Trust Architecture Implementation Center**
+         **Zero Trust Architecture Implementation Center**
         
         **Core Zero Trust Principles:**
-        ✅ **Never Trust, Always Verify** - Continuous verification of all access requests
-        ✅ **Least Privilege Access** - Minimal necessary permissions for each user/device
-        ✅ **Assume Breach** - Design with the assumption that perimeter has been compromised
+        [x] **Never Trust, Always Verify** - Continuous verification of all access requests
+        [x] **Least Privilege Access** - Minimal necessary permissions for each user/device
+        [x] **Assume Breach** - Design with the assumption that perimeter has been compromised
         
         **Implementation Components:**
-        🔐 **Identity Verification** - Multi-factor authentication and risk assessment
-        📱 **Device Compliance** - Device health and compliance validation
-        🌐 **Network Security** - Conditional access and network segmentation
-        📊 **Data Protection** - Information protection and data loss prevention
+         **Identity Verification** - Multi-factor authentication and risk assessment
+         **Device Compliance** - Device health and compliance validation
+         **Network Security** - Conditional access and network segmentation
+         **Data Protection** - Information protection and data loss prevention
         
         What aspect of Zero Trust would you like to implement?
 
@@ -47,10 +47,10 @@ beginDialog:
         activity: |
           **Select Zero Trust Implementation Focus:**
           
-          🎯 **1. Conditional Access Policies** - Configure risk-based access controls
-          🔒 **2. Device Compliance Framework** - Establish device trust and compliance
-          📊 **3. Risk Assessment & Analytics** - Implement continuous risk evaluation
-          🚀 **4. Complete Zero Trust Assessment** - Comprehensive security posture evaluation
+           **1. Conditional Access Policies** - Configure risk-based access controls
+           **2. Device Compliance Framework** - Establish device trust and compliance
+           **3. Risk Assessment & Analytics** - Implement continuous risk evaluation
+           **4. Complete Zero Trust Assessment** - Comprehensive security posture evaluation
           
           Please choose your implementation priority:
 
@@ -93,7 +93,7 @@ beginDialog:
         - kind: SendActivity
           id: invalid_selection
           activity: |
-            ⚠️ Please select a valid Zero Trust implementation option from the list above.
+            Warning Please select a valid Zero Trust implementation option from the list above.
 
 dialogs:
   - kind: AdaptiveDialog
@@ -102,13 +102,13 @@ dialogs:
       - kind: SendActivity
         id: conditional_access_intro
         activity: |
-          🔐 **Conditional Access Policy Implementation**
+           **Conditional Access Policy Implementation**
           
           **Policy Categories:**
-          📋 **1. User Risk Policies** - High-risk user detection and remediation
-          🌍 **2. Sign-in Risk Policies** - Anomalous sign-in pattern detection
-          📱 **3. Device Compliance Policies** - Device health and compliance verification
-          🌐 **4. Location-based Policies** - Geographical and network-based access controls
+           **1. User Risk Policies** - High-risk user detection and remediation
+           **2. Sign-in Risk Policies** - Anomalous sign-in pattern detection
+           **3. Device Compliance Policies** - Device health and compliance verification
+           **4. Location-based Policies** - Geographical and network-based access controls
           
           **PowerShell Implementation Commands:**
           ```powershell
@@ -148,7 +148,7 @@ dialogs:
       - kind: SendActivity
         id: policy_configuration
         activity: |
-          🎯 **Advanced Policy Configuration for: {Dialog.policyType}**
+           **Advanced Policy Configuration for: {Dialog.policyType}**
           
           **Microsoft Graph API Endpoints:**
           - **Create Policy:** `POST /identity/conditionalAccess/policies`
@@ -161,7 +161,7 @@ dialogs:
           - `User.Read.All`
           
           **Integration with Microsoft Security Stack:**
-          📊 **Microsoft Sentinel Integration:**
+           **Microsoft Sentinel Integration:**
           ```kql
           // Monitor conditional access policy violations
           SigninLogs
@@ -182,13 +182,13 @@ dialogs:
       - kind: SendActivity
         id: device_compliance_intro
         activity: |
-          📱 **Device Compliance Framework Implementation**
+           **Device Compliance Framework Implementation**
           
           **Device Trust Components:**
-          🔐 **Device Registration** - Entra ID device registration and management
-          🛡️ **Compliance Policies** - Device health and security requirements
-          📊 **Device Analytics** - Risk assessment and behavioral analysis
-          🚨 **Non-compliance Response** - Automated remediation and blocking
+           **Device Registration** - Entra ID device registration and management
+           **Compliance Policies** - Device health and security requirements
+           **Device Analytics** - Risk assessment and behavioral analysis
+          Alert **Non-compliance Response** - Automated remediation and blocking
           
           **PowerShell Device Management:**
           ```powershell
@@ -222,7 +222,7 @@ dialogs:
       - kind: SendActivity
         id: device_implementation_guide
         activity: |
-          🎯 **Device Compliance Implementation Guide**
+           **Device Compliance Implementation Guide**
           
           **Microsoft Intune Integration:**
           ```powershell
@@ -253,13 +253,13 @@ dialogs:
       - kind: SendActivity
         id: risk_assessment_intro
         activity: |
-          📊 **Continuous Risk Assessment & Analytics**
+           **Continuous Risk Assessment & Analytics**
           
           **Risk Evaluation Framework:**
-          🧠 **Machine Learning Models** - Behavioral analysis and anomaly detection
-          📈 **Risk Scoring** - Dynamic risk calculation based on multiple factors
-          🔍 **Threat Intelligence** - Integration with Microsoft Threat Intelligence
-          ⚡ **Real-time Assessment** - Continuous risk evaluation during access requests
+           **Machine Learning Models** - Behavioral analysis and anomaly detection
+           **Risk Scoring** - Dynamic risk calculation based on multiple factors
+           **Threat Intelligence** - Integration with Microsoft Threat Intelligence
+           **Real-time Assessment** - Continuous risk evaluation during access requests
           
           **Microsoft Graph Risk APIs:**
           ```powershell
@@ -284,7 +284,7 @@ dialogs:
       - kind: SendActivity
         id: risk_analytics_implementation
         activity: |
-          🎯 **Advanced Risk Analytics Implementation**
+           **Advanced Risk Analytics Implementation**
           
           **Microsoft Sentinel Integration:**
           ```kql
@@ -307,9 +307,9 @@ dialogs:
           ```
           
           **Automated Risk Response:**
-          🚨 **High Risk Detection** → Immediate account suspension
-          ⚠️ **Medium Risk Detection** → Additional authentication required
-          📊 **Risk Pattern Analysis** → Proactive hunting and investigation
+          Alert **High Risk Detection** → Immediate account suspension
+          Warning **Medium Risk Detection** → Additional authentication required
+           **Risk Pattern Analysis** → Proactive hunting and investigation
           
           **Integration with Microsoft Security Stack:**
           - **Defender for Identity** - On-premises risk correlation
@@ -322,27 +322,27 @@ dialogs:
       - kind: SendActivity
         id: complete_assessment_intro
         activity: |
-          🛡️ **Comprehensive Zero Trust Security Posture Assessment**
+           **Comprehensive Zero Trust Security Posture Assessment**
           
           **Assessment Domains:**
           
-          **🏢 Identity & Access Management**
-          ✅ Multi-factor authentication coverage: 98%
-          ✅ Conditional access policy deployment: Complete
-          ✅ Privileged access management: Configured
-          ⚠️ Legacy authentication protocols: 2% remaining
+          ** Identity & Access Management**
+          [x] Multi-factor authentication coverage: 98%
+          [x] Conditional access policy deployment: Complete
+          [x] Privileged access management: Configured
+          Warning Legacy authentication protocols: 2% remaining
           
-          **📱 Device Security**
-          ✅ Device compliance policies: Active
-          ✅ Mobile device management: 95% enrolled
-          ✅ Device encryption: 100% corporate devices
-          ⚠️ BYOD policy enforcement: In progress
+          ** Device Security**
+          [x] Device compliance policies: Active
+          [x] Mobile device management: 95% enrolled
+          [x] Device encryption: 100% corporate devices
+          Warning BYOD policy enforcement: In progress
           
-          **🌐 Network & Data Protection**
-          ✅ Network segmentation: Implemented
-          ✅ Data classification: 85% complete
-          ✅ Information protection policies: Active
-          ⚠️ Shadow IT discovery: Ongoing monitoring
+          ** Network & Data Protection**
+          [x] Network segmentation: Implemented
+          [x] Data classification: 85% complete
+          [x] Information protection policies: Active
+          Warning Shadow IT discovery: Ongoing monitoring
 
       - kind: Question
         id: assessment_priority
@@ -355,30 +355,30 @@ dialogs:
       - kind: SendActivity
         id: comprehensive_roadmap
         activity: |
-          🚀 **Zero Trust Implementation Roadmap**
+           **Zero Trust Implementation Roadmap**
           
           **Phase 1: Foundation (0-3 months)**
-          - ✅ Enable MFA for all users
-          - ✅ Deploy conditional access policies
-          - ✅ Implement device compliance
-          - 📋 Complete identity governance review
+          - [x] Enable MFA for all users
+          - [x] Deploy conditional access policies
+          - [x] Implement device compliance
+          -  Complete identity governance review
           
           **Phase 2: Enhancement (3-6 months)**
-          - 🔄 Advanced threat protection deployment
-          - 🔄 Risk-based authentication implementation
-          - 🔄 Data classification and protection
-          - 🔄 Network micro-segmentation
+          -  Advanced threat protection deployment
+          -  Risk-based authentication implementation
+          -  Data classification and protection
+          -  Network micro-segmentation
           
           **Phase 3: Optimization (6-12 months)**
-          - 🎯 Machine learning risk models
-          - 🎯 Advanced analytics and automation
-          - 🎯 Continuous compliance monitoring
-          - 🎯 Zero trust maturity measurement
+          -  Machine learning risk models
+          -  Advanced analytics and automation
+          -  Continuous compliance monitoring
+          -  Zero trust maturity measurement
           
           **Success Metrics:**
-          📊 **Security Improvement:** 85% reduction in identity-related incidents
-          📈 **Compliance Score:** Target 95% Zero Trust maturity
-          ⚡ **Response Time:** <5 minutes for high-risk detection and response
+           **Security Improvement:** 85% reduction in identity-related incidents
+           **Compliance Score:** Target 95% Zero Trust maturity
+           **Response Time:** <5 minutes for high-risk detection and response
           
           **Next Steps:**
           1. Schedule executive briefing on Zero Trust progress

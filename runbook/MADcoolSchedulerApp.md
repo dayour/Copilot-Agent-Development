@@ -1,4 +1,4 @@
-## MAD Cool Scheduler - Power App Analysis & Demo Potential 🎯
+## MAD Cool Scheduler - Power App Analysis & Demo Potential 
 
 Based on my examination of the **MAD Cool Scheduler** app and your MeetingAssist ecosystem, here's a comprehensive summary:
 
@@ -35,7 +35,7 @@ The app displays a **meeting scheduling interface** with:
 4. **AI Assistant Response**:
    - "I'd be happy to help you with that. Do you already have a date and time in mind, or would you like the next available slot?"
 
-## **Enhanced Integration Architecture** 🏗️
+## **Enhanced Integration Architecture** 
 
 ### **Room Assist Agent Integration**
 
@@ -100,7 +100,7 @@ graph TD
     H --> I[Confirmation to Meeting Assist]
 ```
 
-### **Meeting Assist Chat Window Integration** 💬
+### **Meeting Assist Chat Window Integration** 
 
 The **"Meeting Assistant"** section will be replaced with a **live chat window** powered by the **MeetingAssist orchestrator agent** from Copilot Studio.
 
@@ -122,16 +122,16 @@ The **"Meeting Assistant"** section will be replaced with a **live chat window**
 
 2. **Multi-Agent Orchestration Display**:
    ```
-   🗓️ Calendar Coordinator: Checking availability across timezones...
-   🏢 Room & Resource Booker: Finding suitable conference room...
-   📧 Invite & RSVP Manager: Preparing invitation templates...
+    Calendar Coordinator: Checking availability across timezones...
+    Room & Resource Booker: Finding suitable conference room...
+    Invite & RSVP Manager: Preparing invitation templates...
    ```
 
 3. **Real-time Status Updates**:
    ```
-   ✅ Found optimal time slot: Wednesday 3:00-4:00 PM GMT
-   🏢 Conf 3 (Hybrid Center) reserved for 16 attendees
-   📧 Invitations sent to 12 EMEA leadership members
+   [x] Found optimal time slot: Wednesday 3:00-4:00 PM GMT
+    Conf 3 (Hybrid Center) reserved for 16 attendees
+    Invitations sent to 12 EMEA leadership members
    ```
 
 4. **Interactive Suggestions**:
@@ -187,25 +187,25 @@ This app perfectly aligns with your **Room & Resource Booker** agent from the Me
    - Feeds into the **Invite & RSVP Manager** for sending invitations
    - Coordinates with **A/V Control Agent** for room setup
 
-## **Enhanced Demo Scenarios** 🎬
+## **Enhanced Demo Scenarios** 
 
 ### **Scenario 1: Executive QBR Setup**
 ```
 User Input: "Set up a 60 min QBR with EMEA leadership next week"
 
 Chat Response:
-🎯 MeetingAssist: "I'll coordinate your EMEA QBR. Let me work with my specialist agents..."
+ MeetingAssist: "I'll coordinate your EMEA QBR. Let me work with my specialist agents..."
 
-📅 Calendar Coordinator: "Analyzing 12 EMEA executives' calendars across 5 timezones..."
-✅ Found optimal slot: Wednesday 3:00-4:00 PM GMT (covers London-Dubai window)
+ Calendar Coordinator: "Analyzing 12 EMEA executives' calendars across 5 timezones..."
+[x] Found optimal slot: Wednesday 3:00-4:00 PM GMT (covers London-Dubai window)
 
-🏢 Room Assistant: "Conf 1 (Executive Suite) recommended for 12 attendees"
-🎯 Room Assist Conf1: "Configuring executive setup: Surface Hub, catering, A/V check"
+ Room Assistant: "Conf 1 (Executive Suite) recommended for 12 attendees"
+ Room Assist Conf1: "Configuring executive setup: Surface Hub, catering, A/V check"
 
-📧 Invite Manager: "Sending personalized invitations with Teams link and agenda"
-📋 Content Prep: "Generating QBR agenda from previous quarter's action items"
+ Invite Manager: "Sending personalized invitations with Teams link and agenda"
+ Content Prep: "Generating QBR agenda from previous quarter's action items"
 
-✅ Complete: Meeting scheduled, room configured, invitations sent!
+[x] Complete: Meeting scheduled, room configured, invitations sent!
 ```
 
 ### **Scenario 2: Conflict Resolution**
@@ -213,15 +213,15 @@ Chat Response:
 User Input: "Move the 2pm meeting to 3pm"
 
 Chat Response:
-⚠️ MeetingAssist: "Conflict detected: Conf 2 already booked at 3pm"
+Warning MeetingAssist: "Conflict detected: Conf 2 already booked at 3pm"
 
-🔄 Suggesting alternatives:
+ Suggesting alternatives:
    • Option A: Keep 2pm, move to Conf 3 (Hybrid Center)
    • Option B: Move to 4pm, keep Conf 2
    • Option C: Split into virtual meeting
 
 User: "Option A"
-✅ Re-booking to Conf 3, notifying all attendees of room change
+[x] Re-booking to Conf 3, notifying all attendees of room change
 ```
 
 ### **Scenario 3: Multi-Room Training Event**
@@ -229,22 +229,22 @@ User: "Option A"
 User Input: "Set up training for 50 people next Friday"
 
 Chat Response:
-📊 MeetingAssist: "50 attendees requires multi-room setup..."
+ MeetingAssist: "50 attendees requires multi-room setup..."
 
-🏢 Room Strategy:
+ Room Strategy:
    • Main session: Conf 4 (Training Room) - 24 people
    • Overflow: Conf 3 (Hybrid Center) - 16 people  
    • Virtual attendees: Teams broadcast - 10 people
 
-🎥 A/V Coordination:
+ A/V Coordination:
    • Conf 4: Recording enabled, main presenter setup
    • Conf 3: Synchronized video feed from Conf 4
    • Teams: Live stream with Q&A integration
 
-📧 Registration: Sending location assignments to all attendees
+ Registration: Sending location assignments to all attendees
 ```
 
-### **Technical Implementation Details** ⚙️
+### **Technical Implementation Details** 
 
 #### **Power Apps Connector Configuration**
 ```json
@@ -297,7 +297,7 @@ RoomStatus = ForAll(
 )
 ```
 
-### **Meeting Invites Table - Detailed Configuration** 📊
+### **Meeting Invites Table - Detailed Configuration** 
 
 #### **Table Overview**
 - **Table Name**: Meeting Invites (<publisher>_MeetingInvite)
@@ -310,7 +310,7 @@ RoomStatus = ForAll(
 1. **Display Name**: Meeting Invite
 2. **Plural Name**: Meeting Invites  
 3. **Description**: "This table contains records of meeting invites sent."
-4. **Enable attachments (including notes and files)**: ✅ Enabled
+4. **Enable attachments (including notes and files)**: [x] Enabled
 5. **Advanced Options**: Available for additional configurations
 
 #### **Complete Column Structure**
@@ -319,20 +319,20 @@ RoomStatus = ForAll(
 
 | Column Name | Data Type | Required | System Field | Description |
 |-------------|-----------|----------|-------------|-------------|
-| **Invite Subject** | Text | ⭐ Required | No | Primary identifier for meeting invites |
+| **Invite Subject** | Text | * Required | No | Primary identifier for meeting invites |
 | **Sent Date** | Date | No | No | When the invitation was sent |
 | **Status** | Choice | No | No | Current status of the invitation |
 | **Recipient** | Text | No | No | Who received the invitation |
-| **Created By** | Lookup | No | ✅ Yes | User who created the record |
-| **Created By (Delegate)** | Lookup | No | ✅ Yes | Delegate who created on behalf |
-| **Created On** | Date | No | ✅ Yes | Record creation timestamp |
-| **Import Sequence Number** | Number | No | ✅ Yes | Import tracking number |
-| **Meeting Invite** | Unique Identifier | ⭐ Required | No | Unique ID for the invite |
-| **Owner** | Owner | ⭐ Required | ✅ Yes | Record owner |
-| **Owning Business Unit** | Lookup | No | ✅ Yes | Business unit that owns record |
-| **Owning Team** | Lookup | No | ✅ Yes | Team that owns the record |
-| **Owning User** | Lookup | No | ✅ Yes | User that owns the record |
-| **Version Number** | Number | No | ✅ Yes | Record version tracking |
+| **Created By** | Lookup | No | [x] Yes | User who created the record |
+| **Created By (Delegate)** | Lookup | No | [x] Yes | Delegate who created on behalf |
+| **Created On** | Date | No | [x] Yes | Record creation timestamp |
+| **Import Sequence Number** | Number | No | [x] Yes | Import tracking number |
+| **Meeting Invite** | Unique Identifier | * Required | No | Unique ID for the invite |
+| **Owner** | Owner | * Required | [x] Yes | Record owner |
+| **Owning Business Unit** | Lookup | No | [x] Yes | Business unit that owns record |
+| **Owning Team** | Lookup | No | [x] Yes | Team that owns the record |
+| **Owning User** | Lookup | No | [x] Yes | User that owns the record |
+| **Version Number** | Number | No | [x] Yes | Record version tracking |
 
 **Additional Available Columns (8 more):**
 1. **Modified By** - Lookup (System)
@@ -347,11 +347,11 @@ RoomStatus = ForAll(
 #### **Table Sidebar Settings & Features**
 
 **Left Sidebar - Table Columns Panel:**
-- ✅ **Search Functionality**: Column search with real-time filtering
-- ✅ **New Table Column**: Quick column creation button
-- ✅ **Show Only Unused Columns**: Toggle to filter unused columns
-- 📋 **Column Tree View**: Hierarchical display of all available columns
-- 🔄 **Real-time Updates**: Dynamic column visibility management
+- [x] **Search Functionality**: Column search with real-time filtering
+- [x] **New Table Column**: Quick column creation button
+- [x] **Show Only Unused Columns**: Toggle to filter unused columns
+-  **Column Tree View**: Hierarchical display of all available columns
+-  **Real-time Updates**: Dynamic column visibility management
 
 **Action Bar Options:**
 1. **Back** - Return to previous view
@@ -362,11 +362,11 @@ RoomStatus = ForAll(
 6. **Edit Table Properties** - Access table configuration
 
 **Table Management Features:**
-- 🏷️ **Edit Table Name**: Rename table functionality
-- 📊 **Data Grid View**: Real-time data viewing and editing
-- ➕ **Expandable Columns**: "+3 more" reveals additional columns
-- 🔍 **Column Sorting**: Click headers to sort data
-- 🎯 **Column Type Icons**: Visual indicators for data types
+-  **Edit Table Name**: Rename table functionality
+-  **Data Grid View**: Real-time data viewing and editing
+- + **Expandable Columns**: "+3 more" reveals additional columns
+-  **Column Sorting**: Click headers to sort data
+-  **Column Type Icons**: Visual indicators for data types
 
 #### **Data Type Distribution**
 - **Text Fields**: 4 columns (Invite Subject, Recipient, etc.)
@@ -378,7 +378,7 @@ RoomStatus = ForAll(
 - **Owner Field**: 1 column (Record ownership)
 
 #### **Required Fields Summary**
-⭐ **3 Required Fields**:
+* **3 Required Fields**:
 1. **Invite Subject** (Text) - Primary meeting identifier
 2. **Meeting Invite** (Unique Identifier) - System-generated unique ID  
 3. **Owner** (Owner) - Record ownership assignment

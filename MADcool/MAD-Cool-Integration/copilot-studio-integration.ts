@@ -210,8 +210,8 @@ const CopilotStudioIntegration: React.FC<CopilotStudioIntegrationProps> = ({
         message: 'Successfully connected to your Copilot Studio agent'
       });
 
-      console.log('🤖 MeetingAssist Copilot Studio connection established');
-      console.log('📋 Agent Schema:', COPILOT_STUDIO_CONFIG.agentSchema);
+      console.log(' MeetingAssist Copilot Studio connection established');
+      console.log(' Agent Schema:', COPILOT_STUDIO_CONFIG.agentSchema);
       console.log('🆔 Session ID:', directLineData.conversationId);
 
     } catch (error) {
@@ -443,7 +443,7 @@ const CopilotStudioIntegration: React.FC<CopilotStudioIntegrationProps> = ({
         }
       });
 
-      console.log(`🔄 Coordinated with local agents: ${taskId}`);
+      console.log(` Coordinated with local agents: ${taskId}`);
 
       // Notify Copilot Studio about local agent involvement
       await sendSystemMessage('local_agent_coordination', {

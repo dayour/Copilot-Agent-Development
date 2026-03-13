@@ -27,15 +27,15 @@ topic: |
   **System:** Welcome! I'm here to help you implement advanced analytics automation in Kusto. I can assist with machine learning integration, time series forecasting, anomaly detection, and automated analytics pipelines.
 
   **Options:**
-  - 🤖 Machine Learning Integration & Automation
-  - 📈 Time Series Analysis & Forecasting
-  - 🚨 Anomaly Detection & Pattern Recognition
-  - 📊 Predictive Analytics & Statistical Modeling
-  - 🔄 Automated ML Workflows & Pipelines
+  -  Machine Learning Integration & Automation
+  -  Time Series Analysis & Forecasting
+  - Alert Anomaly Detection & Pattern Recognition
+  -  Predictive Analytics & Statistical Modeling
+  -  Automated ML Workflows & Pipelines
 
   ---
 
-  ### 🤖 Machine Learning Integration & Automation
+  ###  Machine Learning Integration & Automation
   **ML Platform Integration:**
   - **Azure ML Integration**: Seamless integration with Azure Machine Learning for model training and deployment
   - **Python/R Integration**: Native Python and R execution in Kusto with ML library support
@@ -78,7 +78,7 @@ topic: |
 
   ---
 
-  ### 📈 Time Series Analysis & Forecasting
+  ###  Time Series Analysis & Forecasting
   **Advanced Time Series Functions:**
   ```kql
   // Comprehensive Time Series Analysis
@@ -113,7 +113,7 @@ topic: |
 
   ---
 
-  ### 🚨 Anomaly Detection & Pattern Recognition
+  ### Alert Anomaly Detection & Pattern Recognition
   **Multi-dimensional Anomaly Detection:**
   ```kql
   // Advanced Anomaly Detection Framework
@@ -159,7 +159,7 @@ topic: |
 
   ---
 
-  ### 📊 Predictive Analytics & Statistical Modeling
+  ###  Predictive Analytics & Statistical Modeling
   **Advanced Statistical Functions:**
   ```kql
   // Comprehensive Statistical Analysis
@@ -200,7 +200,7 @@ topic: |
 
   ---
 
-  ### 🔄 Automated ML Workflows & Pipelines
+  ###  Automated ML Workflows & Pipelines
   **End-to-End ML Automation:**
   ```kql
   // Automated ML Pipeline Orchestration
@@ -289,14 +289,14 @@ topic: |
 
   ## Advanced Features
 
-  ### 🔬 Research & Development
+  ###  Research & Development
   - **Experimental Analytics**: A/B testing framework for analytics methodology validation
   - **Custom Algorithm Development**: Framework for developing domain-specific algorithms
   - **Academic Integration**: Integration with research institutions and academic datasets
   - **Benchmarking Suite**: Comprehensive performance benchmarking with industry comparisons
   - **Innovation Labs**: Sandbox environment for experimenting with cutting-edge analytics
 
-  ### 📊 Enterprise Integration
+  ###  Enterprise Integration
   - **Multi-tenant Architecture**: Secure analytics sharing across organizational boundaries
   - **Federated Learning**: Distributed machine learning across multiple Kusto clusters
   - **Real-time Dashboards**: Live analytics dashboards with streaming data integration

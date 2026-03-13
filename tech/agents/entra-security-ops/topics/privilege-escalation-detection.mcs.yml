@@ -22,21 +22,21 @@ beginDialog:
     - kind: SendActivity
       id: privilege_escalation_intro
       activity: |
-        🚨 **Advanced Privilege Escalation Detection Center**
+        Alert **Advanced Privilege Escalation Detection Center**
         
         **Critical Security Focus:** Detecting and preventing unauthorized privilege elevation attempts
         
         **Detection Capabilities:**
-        🔍 **Real-time Monitoring** - Continuous privilege usage analysis
-        🤖 **ML-based Anomaly Detection** - Behavioral analysis for unusual elevation patterns
-        ⚡ **Automated Response** - Immediate containment and investigation workflows
-        📊 **Forensic Analysis** - Deep investigation and evidence collection
+         **Real-time Monitoring** - Continuous privilege usage analysis
+         **ML-based Anomaly Detection** - Behavioral analysis for unusual elevation patterns
+         **Automated Response** - Immediate containment and investigation workflows
+         **Forensic Analysis** - Deep investigation and evidence collection
         
         **Threat Vectors Monitored:**
-        🎯 **Direct Role Assignment** - Unauthorized administrative role grants
-        🎯 **Group Membership Changes** - Suspicious group elevation activities
-        🎯 **Application Permissions** - Service principal privilege escalation
-        🎯 **Delegation Abuse** - Constrained/unconstrained delegation exploitation
+         **Direct Role Assignment** - Unauthorized administrative role grants
+         **Group Membership Changes** - Suspicious group elevation activities
+         **Application Permissions** - Service principal privilege escalation
+         **Delegation Abuse** - Constrained/unconstrained delegation exploitation
         
         What type of privilege escalation investigation do you need?
 
@@ -50,11 +50,11 @@ beginDialog:
         activity: |
           **Select Investigation Focus:**
           
-          🚨 **1. Active Threat Investigation** - Investigate ongoing privilege escalation attempt
-          📊 **2. Anomaly Detection Analysis** - Review ML-detected privilege anomalies
-          🔍 **3. Proactive Hunting** - Search for potential escalation indicators
-          🛡️ **4. Prevention Configuration** - Configure escalation prevention controls
-          📈 **5. Behavioral Baseline** - Establish normal privilege usage patterns
+          Alert **1. Active Threat Investigation** - Investigate ongoing privilege escalation attempt
+           **2. Anomaly Detection Analysis** - Review ML-detected privilege anomalies
+           **3. Proactive Hunting** - Search for potential escalation indicators
+           **4. Prevention Configuration** - Configure escalation prevention controls
+           **5. Behavioral Baseline** - Establish normal privilege usage patterns
           
           Choose your investigation priority:
 
@@ -105,7 +105,7 @@ beginDialog:
         - kind: SendActivity
           id: invalid_escalation_selection
           activity: |
-            ⚠️ Please select a valid investigation option from the list above.
+            Warning Please select a valid investigation option from the list above.
 
 dialogs:
   - kind: AdaptiveDialog
@@ -114,9 +114,9 @@ dialogs:
       - kind: SendActivity
         id: active_threat_intro
         activity: |
-          🚨 **ACTIVE PRIVILEGE ESCALATION INVESTIGATION**
+          Alert **ACTIVE PRIVILEGE ESCALATION INVESTIGATION**
           
-          **⚠️ IMMEDIATE CONTAINMENT PROTOCOL INITIATED**
+          **Warning IMMEDIATE CONTAINMENT PROTOCOL INITIATED**
           
           **Investigation Workflow:**
           1. **Rapid Assessment** - Identify escalation scope and impact
@@ -138,7 +138,7 @@ dialogs:
       - kind: SendActivity
         id: investigation_commands
         activity: |
-          🔍 **Advanced Investigation Commands**
+           **Advanced Investigation Commands**
           
           **PowerShell Investigation Script:**
           ```powershell
@@ -182,7 +182,7 @@ dialogs:
       - kind: SendActivity
         id: automated_response
         activity: |
-          ⚡ **AUTOMATED INCIDENT RESPONSE EXECUTED**
+           **AUTOMATED INCIDENT RESPONSE EXECUTED**
           
           **Containment Actions for: {Dialog.incidentId}**
           
@@ -205,15 +205,15 @@ dialogs:
           ```
           
           **Integration with Microsoft Security Stack:**
-          📊 **Microsoft Sentinel Playbook:** Automated investigation and evidence collection
-          🛡️ **Defender for Identity:** Enhanced monitoring for lateral movement
-          🔐 **Azure AD PIM:** Emergency access review for all privileged accounts
+           **Microsoft Sentinel Playbook:** Automated investigation and evidence collection
+           **Defender for Identity:** Enhanced monitoring for lateral movement
+           **Azure AD PIM:** Emergency access review for all privileged accounts
           
           **Evidence Collection:**
-          ✅ **Audit Logs Secured** - 90-day retention for forensic analysis
-          ✅ **Network Traffic Analysis** - Defender for Endpoint correlation
-          ✅ **Behavioral Analysis** - User and Entity Behavior Analytics (UEBA)
-          ✅ **Timeline Reconstruction** - Complete attack timeline documentation
+          [x] **Audit Logs Secured** - 90-day retention for forensic analysis
+          [x] **Network Traffic Analysis** - Defender for Endpoint correlation
+          [x] **Behavioral Analysis** - User and Entity Behavior Analytics (UEBA)
+          [x] **Timeline Reconstruction** - Complete attack timeline documentation
 
   - kind: AdaptiveDialog
     id: AnomalyAnalysisDialog
@@ -221,19 +221,19 @@ dialogs:
       - kind: SendActivity
         id: anomaly_analysis_intro
         activity: |
-          🤖 **Machine Learning-Based Privilege Anomaly Analysis**
+           **Machine Learning-Based Privilege Anomaly Analysis**
           
           **Advanced Analytics Engine:**
-          📊 **Behavioral Modeling** - ML algorithms analyzing privilege usage patterns
-          🎯 **Anomaly Scoring** - Risk-based scoring for privilege activities
-          📈 **Trend Analysis** - Historical pattern comparison and deviation detection
-          🔍 **Correlation Engine** - Multi-dimensional risk factor analysis
+           **Behavioral Modeling** - ML algorithms analyzing privilege usage patterns
+           **Anomaly Scoring** - Risk-based scoring for privilege activities
+           **Trend Analysis** - Historical pattern comparison and deviation detection
+           **Correlation Engine** - Multi-dimensional risk factor analysis
           
           **Detection Models:**
-          🧠 **Temporal Anomalies** - Unusual timing of privilege usage
-          🌍 **Geographical Anomalies** - Location-based privilege access patterns
-          👤 **Behavioral Anomalies** - Deviation from user's normal privilege patterns
-          🔗 **Relationship Anomalies** - Unusual privilege delegation or sharing
+           **Temporal Anomalies** - Unusual timing of privilege usage
+           **Geographical Anomalies** - Location-based privilege access patterns
+           **Behavioral Anomalies** - Deviation from user's normal privilege patterns
+           **Relationship Anomalies** - Unusual privilege delegation or sharing
 
       - kind: Question
         id: anomaly_timeframe
@@ -246,7 +246,7 @@ dialogs:
       - kind: SendActivity
         id: ml_analysis_results
         activity: |
-          📊 **Advanced ML Analysis Results**
+           **Advanced ML Analysis Results**
           
           **Microsoft Sentinel ML Detection Query:**
           ```kql
@@ -286,15 +286,15 @@ dialogs:
           ```
           
           **Anomaly Risk Scoring:**
-          🔴 **Critical Risk (9-10)** - Multiple high-severity anomalies detected
-          🟠 **High Risk (7-8)** - Significant deviation from baseline behavior
-          🟡 **Medium Risk (4-6)** - Moderate anomalies requiring investigation
-          🟢 **Low Risk (1-3)** - Minor deviations within acceptable variance
+          Critical **Critical Risk (9-10)** - Multiple high-severity anomalies detected
+          Significant **High Risk (7-8)** - Significant deviation from baseline behavior
+          Major **Medium Risk (4-6)** - Moderate anomalies requiring investigation
+          Normal **Low Risk (1-3)** - Minor deviations within acceptable variance
           
           **Recommended Actions:**
-          ✅ **Immediate Investigation** for Critical/High risk anomalies
-          📋 **Enhanced Monitoring** for Medium risk anomalies
-          📊 **Baseline Adjustment** for Low risk anomalies with business justification
+          [x] **Immediate Investigation** for Critical/High risk anomalies
+           **Enhanced Monitoring** for Medium risk anomalies
+           **Baseline Adjustment** for Low risk anomalies with business justification
 
   - kind: AdaptiveDialog
     id: ProactiveHuntingDialog
@@ -302,13 +302,13 @@ dialogs:
       - kind: SendActivity
         id: proactive_hunting_intro
         activity: |
-          🔍 **Proactive Privilege Escalation Hunting**
+           **Proactive Privilege Escalation Hunting**
           
           **Advanced Hunting Methodologies:**
-          🎯 **Hypothesis-driven Hunting** - Structured threat hunting based on TTPs
-          🔗 **Chain Analysis** - Multi-stage attack pattern identification
-          🕵️ **Behavioral Hunting** - Anomalous privilege usage pattern detection
-          📈 **Trend Hunting** - Long-term privilege escalation trend analysis
+           **Hypothesis-driven Hunting** - Structured threat hunting based on TTPs
+           **Chain Analysis** - Multi-stage attack pattern identification
+           **Behavioral Hunting** - Anomalous privilege usage pattern detection
+           **Trend Hunting** - Long-term privilege escalation trend analysis
           
           **MITRE ATT&CK Techniques Targeted:**
           - **T1078** - Valid Accounts
@@ -327,7 +327,7 @@ dialogs:
       - kind: SendActivity
         id: hunting_queries
         activity: |
-          🎯 **Advanced Privilege Escalation Hunting Queries**
+           **Advanced Privilege Escalation Hunting Queries**
           
           **Microsoft Sentinel Hunting Queries:**
           
@@ -380,9 +380,9 @@ dialogs:
           ```
           
           **Hunting Playbook Integration:**
-          📋 **Automated Investigation** - SOAR playbooks for immediate response
-          🔍 **Evidence Collection** - Comprehensive artifact gathering
-          📊 **Threat Intelligence** - IOC enrichment and attribution analysis
+           **Automated Investigation** - SOAR playbooks for immediate response
+           **Evidence Collection** - Comprehensive artifact gathering
+           **Threat Intelligence** - IOC enrichment and attribution analysis
           
           **Next Steps:**
           1. Execute hunting queries against your environment
@@ -396,21 +396,21 @@ dialogs:
       - kind: SendActivity
         id: prevention_config_intro
         activity: |
-          🛡️ **Privilege Escalation Prevention Configuration**
+           **Privilege Escalation Prevention Configuration**
           
           **Prevention Strategy Framework:**
-          🔐 **Privileged Identity Management (PIM)** - Just-in-time privilege activation
-          ⚡ **Conditional Access** - Risk-based privilege access controls
-          📊 **Monitoring & Alerting** - Real-time privilege usage monitoring
-          🎯 **Zero Standing Privileges** - Eliminate persistent administrative access
+           **Privileged Identity Management (PIM)** - Just-in-time privilege activation
+           **Conditional Access** - Risk-based privilege access controls
+           **Monitoring & Alerting** - Real-time privilege usage monitoring
+           **Zero Standing Privileges** - Eliminate persistent administrative access
           
           **Microsoft Azure AD PIM Configuration:**
           
           **Core Prevention Controls:**
-          ✅ **Eligible vs Permanent Assignments** - Remove permanent admin roles
-          ✅ **Approval Workflows** - Multi-stage approval for privilege activation
-          ✅ **Time-bound Access** - Automatic privilege expiration
-          ✅ **MFA for Activation** - Strong authentication for privilege elevation
+          [x] **Eligible vs Permanent Assignments** - Remove permanent admin roles
+          [x] **Approval Workflows** - Multi-stage approval for privilege activation
+          [x] **Time-bound Access** - Automatic privilege expiration
+          [x] **MFA for Activation** - Strong authentication for privilege elevation
 
       - kind: Question
         id: prevention_scope
@@ -423,7 +423,7 @@ dialogs:
       - kind: SendActivity
         id: prevention_implementation
         activity: |
-          🎯 **Advanced Prevention Implementation**
+           **Advanced Prevention Implementation**
           
           **Azure AD PIM PowerShell Configuration:**
           ```powershell
@@ -490,16 +490,16 @@ dialogs:
           ```
           
           **Real-time Monitoring Configuration:**
-          📊 **Microsoft Sentinel Alert Rules:**
+           **Microsoft Sentinel Alert Rules:**
           - Privilege escalation attempts
           - Unusual administrative activity patterns
           - Failed privilege activation attempts
           - Privileged account compromise indicators
           
           **Automated Response Workflows:**
-          🚨 **Immediate Containment** - Automatic account lockdown for high-risk activities
-          📧 **Executive Notifications** - Real-time alerts for critical privilege events
-          🔍 **Automated Investigation** - SOAR-driven evidence collection and analysis
+          Alert **Immediate Containment** - Automatic account lockdown for high-risk activities
+           **Executive Notifications** - Real-time alerts for critical privilege events
+           **Automated Investigation** - SOAR-driven evidence collection and analysis
 
   - kind: AdaptiveDialog
     id: BehavioralBaselineDialog
@@ -507,18 +507,18 @@ dialogs:
       - kind: SendActivity
         id: behavioral_baseline_intro
         activity: |
-          📈 **Behavioral Baseline Establishment for Privilege Usage**
+           **Behavioral Baseline Establishment for Privilege Usage**
           
           **Baseline Components:**
           ⏰ **Temporal Patterns** - Normal working hours and frequency of privilege usage
-          🌍 **Geographical Patterns** - Typical locations for administrative access
-          🎯 **Role Usage Patterns** - Standard roles and permissions for each user
-          🔗 **Relationship Patterns** - Normal delegation and approval workflows
+           **Geographical Patterns** - Typical locations for administrative access
+           **Role Usage Patterns** - Standard roles and permissions for each user
+           **Relationship Patterns** - Normal delegation and approval workflows
           
           **Machine Learning Model Training:**
-          🧠 **Historical Analysis** - 90-day privilege usage pattern analysis
-          📊 **Statistical Modeling** - Variance calculation and anomaly thresholds
-          🎯 **Risk Scoring** - Dynamic risk calculation based on deviation from baseline
+           **Historical Analysis** - 90-day privilege usage pattern analysis
+           **Statistical Modeling** - Variance calculation and anomaly thresholds
+           **Risk Scoring** - Dynamic risk calculation based on deviation from baseline
 
       - kind: Question
         id: baseline_period
@@ -531,7 +531,7 @@ dialogs:
       - kind: SendActivity
         id: baseline_analysis
         activity: |
-          📊 **Comprehensive Behavioral Baseline Analysis**
+           **Comprehensive Behavioral Baseline Analysis**
           
           **Microsoft Sentinel Baseline Establishment Query:**
           ```kql
@@ -582,13 +582,13 @@ dialogs:
           
           **Anomaly Detection Thresholds:**
           
-          **🔴 High Risk Indicators:**
+          **Critical High Risk Indicators:**
           - Role usage 300% above baseline
           - Activity during unusual hours (>3 standard deviations)
           - New geographical locations not seen in baseline
           - Privilege delegation patterns not previously observed
           
-          **🟡 Medium Risk Indicators:**
+          **Major Medium Risk Indicators:**
           - Role usage 200% above baseline
           - Activity frequency 150% above normal
           - Minor geographical deviations
@@ -611,14 +611,14 @@ dialogs:
           ```
           
           **Continuous Improvement:**
-          📈 **Weekly Baseline Updates** - Automatic baseline adjustment for evolving patterns
-          🎯 **Seasonal Adjustments** - Account for business cycles and organizational changes
-          🔍 **False Positive Reduction** - Machine learning refinement based on analyst feedback
+           **Weekly Baseline Updates** - Automatic baseline adjustment for evolving patterns
+           **Seasonal Adjustments** - Account for business cycles and organizational changes
+           **False Positive Reduction** - Machine learning refinement based on analyst feedback
           
           **Executive Reporting:**
-          📊 Monthly privilege usage analytics and risk trend analysis
-          🎯 Quarterly baseline accuracy assessment and model optimization
-          📈 Annual security posture improvement recommendations
+           Monthly privilege usage analytics and risk trend analysis
+           Quarterly baseline accuracy assessment and model optimization
+           Annual security posture improvement recommendations
 
 variables:
   - name: escalationType

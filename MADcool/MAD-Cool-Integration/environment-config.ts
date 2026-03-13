@@ -396,7 +396,7 @@ Meeting Details:
         });
       }
 
-      console.log('🎉 Intelligent booking created successfully!');
+      console.log(' Intelligent booking created successfully!');
 
     } catch (error) {
       console.error('Booking creation failed:', error);

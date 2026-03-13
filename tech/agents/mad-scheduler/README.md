@@ -2,7 +2,7 @@
 
 A sophisticated AI-powered scheduling assistant built with Microsoft Teams AI and integrated with Copilot Studio Calendar Manager for real calendar operations.
 
-## 🚀 Features
+##  Features
 
 - **Multi-Agent Architecture**: Combines local Teams AI logic with remote Copilot Studio Calendar Manager
 - **Real Calendar Integration**: Connected to Copilot Studio Calendar Manager for actual calendar operations
@@ -10,7 +10,7 @@ A sophisticated AI-powered scheduling assistant built with Microsoft Teams AI an
 - **Microsoft Teams Integration**: Native Teams app with chat interface
 - **DevTools Support**: Built-in development and testing tools
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 User Request → Teams AI Agent → Calendar Manager (Copilot Studio) → Microsoft 365 Calendar
@@ -32,7 +32,7 @@ User Request → Teams AI Agent → Calendar Manager (Copilot Studio) → Micros
    - Authentication and communication with Copilot Studio
    - Secure API connections
 
-## 📦 Dependencies
+##  Dependencies
 
 ```json
 {
@@ -43,7 +43,7 @@ User Request → Teams AI Agent → Calendar Manager (Copilot Studio) → Micros
 }
 ```
 
-## 🛠️ Setup
+##  Setup
 
 1. **Install Dependencies**
    ```bash
@@ -64,7 +64,7 @@ User Request → Teams AI Agent → Calendar Manager (Copilot Studio) → Micros
    - Open: http://localhost:3979/devtools
    - Test the chat interface
 
-## 💬 Usage Examples
+##  Usage Examples
 
 ### Schedule Meetings
 ```
@@ -87,7 +87,7 @@ User Request → Teams AI Agent → Calendar Manager (Copilot Studio) → Micros
 "Add John to my client presentation"
 ```
 
-## 🔧 Configuration
+##  Configuration
 
 ### Calendar Manager Connection
 - **Environment ID**: `YOUR_ENVIRONMENT_ID`
@@ -120,7 +120,7 @@ Example scopes for calendar access:
 ]
 ```
 
-## 🚦 Development
+##  Development
 
 ### Local Development
 ```bash
@@ -139,7 +139,7 @@ npm run build
 npm start
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 scheduler-agent/
@@ -153,7 +153,7 @@ scheduler-agent/
 └── package.json          # Dependencies and scripts
 ```
 
-## 🔮 Future Enhancements
+##  Future Enhancements
 
 - [ ] Full Microsoft Graph API integration
 - [ ] Advanced recurring meeting support
@@ -162,17 +162,17 @@ scheduler-agent/
 - [ ] Email notifications
 - [ ] Multi-timezone support
 
-## 📄 License
+##  License
 
 MIT License - See LICENSE file for details
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Submit a pull request
 
-## 📞 Support
+##  Support
 
 For questions or issues, please open a GitHub issue or contact the development team.

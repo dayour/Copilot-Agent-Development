@@ -20,7 +20,7 @@ trigger:
 nodes:
   - action: SendMessage
     message: |
-      🚨 **Security Alert Triage Center** 🚨
+      Alert **Security Alert Triage Center** Alert
       
       Welcome to the Security Operations Alert Triage workflow. I'll help you systematically
       analyze, prioritize, and action security alerts in your environment.
@@ -43,30 +43,30 @@ nodes:
     ifTrue:
       - action: SendMessage
         message: |
-          📊 **Real-time Security Alert Dashboard**
+           **Real-time Security Alert Dashboard**
           
           **Current Alert Status Overview:**
           
-          🔴 **CRITICAL ALERTS** (Immediate Action Required)
-          ▫️ Active credential attacks: 3 alerts
-          ▫️ Data exfiltration attempts: 1 alert  
-          ▫️ Privileged account compromise: 2 alerts
-          ▫️ Malware detection: 1 alert
+          Critical **CRITICAL ALERTS** (Immediate Action Required)
+          ▫ Active credential attacks: 3 alerts
+          ▫ Data exfiltration attempts: 1 alert  
+          ▫ Privileged account compromise: 2 alerts
+          ▫ Malware detection: 1 alert
           
-          🟠 **HIGH PRIORITY ALERTS** (Action within 1 hour)
-          ▫️ Suspicious authentication patterns: 8 alerts
-          ▫️ Policy violations: 5 alerts
-          ▫️ Unusual access patterns: 12 alerts
-          ▫️ Failed authentication spikes: 6 alerts
+          Significant **HIGH PRIORITY ALERTS** (Action within 1 hour)
+          ▫ Suspicious authentication patterns: 8 alerts
+          ▫ Policy violations: 5 alerts
+          ▫ Unusual access patterns: 12 alerts
+          ▫ Failed authentication spikes: 6 alerts
           
-          🟡 **MEDIUM PRIORITY ALERTS** (Action within 4 hours)
-          ▫️ Configuration changes: 15 alerts
-          ▫️ Application access anomalies: 23 alerts
-          ▫️ Geographic access variations: 18 alerts
+          Major **MEDIUM PRIORITY ALERTS** (Action within 4 hours)
+          ▫ Configuration changes: 15 alerts
+          ▫ Application access anomalies: 23 alerts
+          ▫ Geographic access variations: 18 alerts
           
-          🟢 **LOW PRIORITY ALERTS** (Action within 24 hours)
-          ▫️ Informational events: 45 alerts
-          ▫️ Routine security events: 32 alerts
+          Normal **LOW PRIORITY ALERTS** (Action within 24 hours)
+          ▫ Informational events: 45 alerts
+          ▫ Routine security events: 32 alerts
           
           **Recommended Actions:**
           1. Address all CRITICAL alerts immediately
@@ -79,25 +79,25 @@ nodes:
     ifTrue:
       - action: SendMessage
         message: |
-          🔥 **High Priority Alert Review**
+           **High Priority Alert Review**
           
           **Critical Alerts Requiring Immediate Attention:**
           
-          **Alert #SOC-2025-0609-001** 🔴 CRITICAL
+          **Alert #SOC-2025-0609-001** Critical CRITICAL
           - **Type:** Possible credential attack
           - **User:** admin@company.com
           - **Location:** Multiple countries (US, Russia, China)
           - **Time:** Last 30 minutes
           - **Action:** Investigate immediately
           
-          **Alert #SOC-2025-0609-002** 🔴 CRITICAL  
+          **Alert #SOC-2025-0609-002** Critical CRITICAL  
           - **Type:** Data access anomaly
           - **Resource:** SharePoint sensitive files
           - **User:** contractor@external.com
           - **Volume:** 500+ files accessed
           - **Action:** Contain and investigate
           
-          **Alert #SOC-2025-0609-003** 🟠 HIGH
+          **Alert #SOC-2025-0609-003** Significant HIGH
           - **Type:** Privileged escalation attempt
           - **User:** user@company.com
           - **Target:** Global Admin role
@@ -142,33 +142,33 @@ nodes:
 
       - action: SendMessage
         message: |
-          🔍 **Alert Investigation: {alertId}**
+           **Alert Investigation: {alertId}**
           
           **Investigation Protocol for {investigationDepth}:**
           
           **Step 1: Alert Context Analysis**
-          ✅ Retrieve alert details and metadata
-          ✅ Identify affected users, systems, resources
-          ✅ Determine alert source and detection method
-          ✅ Review alert confidence score and indicators
+          [x] Retrieve alert details and metadata
+          [x] Identify affected users, systems, resources
+          [x] Determine alert source and detection method
+          [x] Review alert confidence score and indicators
           
           **Step 2: Timeline Analysis**
-          ✅ Map event timeline and sequence
-          ✅ Identify related events and correlations
-          ✅ Check for pattern repetition or escalation
-          ✅ Review historical context for user/system
+          [x] Map event timeline and sequence
+          [x] Identify related events and correlations
+          [x] Check for pattern repetition or escalation
+          [x] Review historical context for user/system
           
           **Step 3: Impact Assessment**
-          ✅ Assess potential security impact
-          ✅ Identify affected business processes
-          ✅ Evaluate data or system exposure risk
-          ✅ Determine containment requirements
+          [x] Assess potential security impact
+          [x] Identify affected business processes
+          [x] Evaluate data or system exposure risk
+          [x] Determine containment requirements
           
           **Step 4: Evidence Collection**
-          ✅ Preserve relevant logs and artifacts
-          ✅ Capture system state and configurations
-          ✅ Document investigation findings
-          ✅ Prepare evidence for potential escalation
+          [x] Preserve relevant logs and artifacts
+          [x] Capture system state and configurations
+          [x] Document investigation findings
+          [x] Prepare evidence for potential escalation
 
   - action: Condition
     condition: triageScope == "Alert Trend Analysis"
@@ -187,33 +187,33 @@ nodes:
 
       - action: SendMessage
         message: |
-          📈 **Security Alert Trend Analysis - {timeframe}**
+           **Security Alert Trend Analysis - {timeframe}**
           
           **Alert Volume Trends:**
           
           **Authentication Alerts:**
-          - Failed login attempts: ↗️ 45% increase
-          - Geographic anomalies: ↘️ 12% decrease  
-          - MFA challenges: ↗️ 23% increase
+          - Failed login attempts: ↗ 45% increase
+          - Geographic anomalies: ↘ 12% decrease  
+          - MFA challenges: ↗ 23% increase
           - Impossible travel: → Stable
           
           **Access Control Alerts:**
-          - Privilege escalations: ↗️ 67% increase
-          - Policy violations: ↘️ 8% decrease
-          - Unusual access patterns: ↗️ 34% increase
-          - After-hours access: ↗️ 19% increase
+          - Privilege escalations: ↗ 67% increase
+          - Policy violations: ↘ 8% decrease
+          - Unusual access patterns: ↗ 34% increase
+          - After-hours access: ↗ 19% increase
           
           **Application Security:**
-          - Suspicious app installations: ↗️ 28% increase
+          - Suspicious app installations: ↗ 28% increase
           - API access anomalies: → Stable
-          - Data access alerts: ↗️ 156% increase
-          - File sharing violations: ↘️ 15% decrease
+          - Data access alerts: ↗ 156% increase
+          - File sharing violations: ↘ 15% decrease
           
           **Key Insights:**
-          🔍 Significant increase in privilege escalation attempts
-          🔍 Data access activity shows concerning spike
-          🔍 Authentication challenges rising - possible attack campaign
-          🔍 After-hours activity requires investigation
+           Significant increase in privilege escalation attempts
+           Data access activity shows concerning spike
+           Authentication challenges rising - possible attack campaign
+           After-hours activity requires investigation
           
           **Recommended Actions:**
           1. Investigate privilege escalation pattern
@@ -238,7 +238,7 @@ nodes:
     ifTrue:
       - action: SendMessage
         message: |
-          🚀 **Escalating to Incident Response Team**
+           **Escalating to Incident Response Team**
           
           **Escalation Package Prepared:**
           - Alert details and analysis
@@ -255,7 +255,7 @@ nodes:
     ifTrue:
       - action: SendMessage
         message: |
-          📋 **Security Alert Triage Summary Report**
+           **Security Alert Triage Summary Report**
           
           **Triage Session Details:**
           - **Date/Time:** {CurrentDateTime}
@@ -264,16 +264,16 @@ nodes:
           - **Priority Actions Identified:** Critical and High priority items
           
           **Key Findings:**
-          ▫️ Critical alerts require immediate attention
-          ▫️ Authentication attack patterns detected
-          ▫️ Data access anomalies identified
-          ▫️ Privilege escalation attempts noted
+          ▫ Critical alerts require immediate attention
+          ▫ Authentication attack patterns detected
+          ▫ Data access anomalies identified
+          ▫ Privilege escalation attempts noted
           
           **Actions Completed:**
-          ✅ Alert prioritization and categorization
-          ✅ Threat analysis and context review
-          ✅ Investigation recommendations provided
-          ✅ Escalation paths identified
+          [x] Alert prioritization and categorization
+          [x] Threat analysis and context review
+          [x] Investigation recommendations provided
+          [x] Escalation paths identified
           
           **Follow-up Required:**
           - Continue monitoring critical alerts
@@ -283,7 +283,7 @@ nodes:
 
   - action: SendMessage
     message: |
-      🎯 **Triage Session Complete**
+       **Triage Session Complete**
       
       **Security Operations Recommendations:**
       

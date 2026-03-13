@@ -180,7 +180,7 @@ topics:
                   delayMinutes: =Topic.DelayMinutes
                   alternativeRoute: =Topic.AlternativeRouteSummary
               - type: message
-                text: "⚠️ Re-routing alert sent for vehicle {Topic.vehicle_id}. Delay: {Topic.DelayMinutes} minutes. Alternative route: {Topic.AlternativeRouteSummary}."
+                text: "Warning Re-routing alert sent for vehicle {Topic.vehicle_id}. Delay: {Topic.DelayMinutes} minutes. Alternative route: {Topic.AlternativeRouteSummary}."
         else_actions:
           - type: message
             text: "No re-routing required. Current delay for vehicle {Topic.vehicle_id} is {Topic.DelayMinutes} minutes, within the {Global.RerouteDelayThresholdMinutes}-minute threshold."
@@ -220,10 +220,10 @@ topics:
           - condition: =Topic.HosCompliant = true
             actions:
               - type: message
-                text: "✅ Driver {Topic.driver_id} is within HOS limits. Hours remaining: {Topic.HoursRemaining}. Route can be assigned."
+                text: "[x] Driver {Topic.driver_id} is within HOS limits. Hours remaining: {Topic.HoursRemaining}. Route can be assigned."
         else_actions:
           - type: message
-            text: "🚫 Driver {Topic.driver_id} cannot be assigned. Remaining HOS: {Topic.HoursRemaining} hours. Route requires {Topic.estimated_route_hours} hours. Assignment blocked to prevent regulatory violation."
+            text: " Driver {Topic.driver_id} cannot be assigned. Remaining HOS: {Topic.HoursRemaining} hours. Route requires {Topic.estimated_route_hours} hours. Assignment blocked to prevent regulatory violation."
 
   - name: Driver Assignment
     description: Assigns an available, qualified driver to a route, validating HOS availability and required certifications such as hazmat.

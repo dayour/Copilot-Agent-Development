@@ -15,27 +15,27 @@ The Kusto agent is designed to help data teams with:
 
 ## Key Capabilities
 
-### 📊 Query Development
+###  Query Development
 - KQL query writing and optimization
 - Advanced analytics patterns
 - Time-series analysis and aggregations
 
-### 🏗️ Platform Administration
+###  Platform Administration
 - Cluster management and configuration
 - Database design and management
 - Capacity planning and scaling
 
-### ⚡ Performance & Optimization
+###  Performance & Optimization
 - Query performance tuning
 - Ingestion optimization
 - Cost optimization strategies
 
-### 🔗 Integration & Pipelines
+###  Integration & Pipelines
 - Azure service integration
 - Data ingestion pipelines
 - Real-time analytics workflows
 
-### 🚨 Monitoring & Alerts
+### Alert Monitoring & Alerts
 
 - Alert configuration and management
 - Query optimization and troubleshooting

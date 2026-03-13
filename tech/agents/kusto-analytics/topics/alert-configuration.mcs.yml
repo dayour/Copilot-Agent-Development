@@ -26,15 +26,15 @@ topic: |
   **System:** Hello! I'm here to help you with Kusto alert configuration and monitoring. I can assist with alert rule creation, real-time monitoring, notification setup, and automated response workflows.
 
   **Options:**
-  - 🚨 Alert Rule Design & Configuration
-  - 📊 Real-Time Monitoring & Thresholds
-  - 🔔 Notification Management & Escalation
-  - 🤖 Automated Response & Remediation
-  - 📈 Alert Analytics & Optimization
+  - Alert Alert Rule Design & Configuration
+  -  Real-Time Monitoring & Thresholds
+  -  Notification Management & Escalation
+  -  Automated Response & Remediation
+  -  Alert Analytics & Optimization
 
   ---
 
-  ### 🚨 Alert Rule Design & Configuration
+  ### Alert Alert Rule Design & Configuration
   **Alert Rule Framework:**
   - **KQL-Based Alerts**: Custom alert queries with complex logic and multi-table joins
   - **Threshold Alerts**: Static and dynamic threshold configuration with statistical baselines
@@ -51,7 +51,7 @@ topic: |
 
   ---
 
-  ### 📊 Real-Time Monitoring & Thresholds
+  ###  Real-Time Monitoring & Thresholds
   **Real-Time Processing:**
   - **Streaming Analytics**: Continuous query processing with low-latency alert generation
   - **Hot Path Monitoring**: Real-time data ingestion monitoring with immediate alert capabilities
@@ -68,7 +68,7 @@ topic: |
 
   ---
 
-  ### 🔔 Notification Management & Escalation
+  ###  Notification Management & Escalation
   **Notification Framework:**
   - **Multi-Channel Delivery**: Email, SMS, Teams, Slack, and webhook notifications
   - **Role-Based Routing**: Alert routing based on severity, category, and organizational structure
@@ -85,7 +85,7 @@ topic: |
 
   ---
 
-  ### 🤖 Automated Response & Remediation
+  ###  Automated Response & Remediation
   **Automated Response Framework:**
   - **Workflow Integration**: Logic Apps and Power Automate integration for complex response workflows
   - **Self-Healing Capabilities**: Automated remediation for common issues with rollback mechanisms
@@ -102,7 +102,7 @@ topic: |
 
   ---
 
-  ### 📈 Alert Analytics & Optimization
+  ###  Alert Analytics & Optimization
   **Alert Performance Analysis:**
   - **Alert Effectiveness**: True positive rate analysis with optimization recommendations
   - **Response Time Metrics**: Mean time to detection (MTTD) and mean time to resolution (MTTR) tracking
@@ -119,14 +119,14 @@ topic: |
 
   ## Advanced Features
 
-  ### 🔧 Enterprise Integration
+  ###  Enterprise Integration
   - **SIEM Integration**: Microsoft Sentinel, Splunk, and QRadar integration for security correlation
   - **ITSM Integration**: ServiceNow, Jira, and custom ticket system integration
   - **Monitoring Platforms**: Azure Monitor, Datadog, and New Relic integration
   - **Communication Tools**: Microsoft Teams, Slack, and custom notification system integration
   - **DevOps Tools**: Azure DevOps, GitHub, and CI/CD pipeline integration
 
-  ### 🤖 AI-Powered Alerting
+  ###  AI-Powered Alerting
   - **Intelligent Correlation**: Multi-source event correlation with root cause analysis
   - **Predictive Alerting**: Predictive models for proactive issue detection and prevention
   - **Natural Language Processing**: Alert description and context enhancement with NLP

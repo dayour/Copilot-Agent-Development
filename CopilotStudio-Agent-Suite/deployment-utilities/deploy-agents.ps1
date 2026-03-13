@@ -27,7 +27,7 @@ param(
     [switch]$CreateBackup = $true
 )
 
-Write-Host "🚀 Copilot Studio Agent Suite Deployment" -ForegroundColor Green
+Write-Host " Copilot Studio Agent Suite Deployment" -ForegroundColor Green
 Write-Host "=====================================" -ForegroundColor Green
 Write-Host ""
 
@@ -55,11 +55,11 @@ if ($AgentsToInclude.Count -gt 0) {
 $DeploymentResults = @{}
 
 function Test-Prerequisites {
-    Write-Host "🔍 Checking Prerequisites..." -ForegroundColor Cyan
+    Write-Host " Checking Prerequisites..." -ForegroundColor Cyan
     
     # Check PowerShell version
     if ($PSVersionTable.PSVersion.Major -lt 5) {
-        Write-Host "❌ PowerShell 5.0 or higher is required" -ForegroundColor Red
+        Write-Host "[ ] PowerShell 5.0 or higher is required" -ForegroundColor Red
         return $false
     }
     
@@ -67,24 +67,24 @@ function Test-Prerequisites {
     $RequiredModules = @("Microsoft.PowerApps.Administration.PowerShell", "Microsoft.PowerApps.PowerShell")
     foreach ($Module in $RequiredModules) {
         if (!(Get-Module -ListAvailable -Name $Module)) {
-            Write-Host "⚠️  Installing required module: $Module" -ForegroundColor Yellow
+            Write-Host "Warning  Installing required module: $Module" -ForegroundColor Yellow
             try {
                 Install-Module -Name $Module -Force -Scope CurrentUser
-                Write-Host "✅ Module $Module installed successfully" -ForegroundColor Green
+                Write-Host "[x] Module $Module installed successfully" -ForegroundColor Green
             }
             catch {
-                Write-Host "❌ Failed to install module $Module" -ForegroundColor Red
+                Write-Host "[ ] Failed to install module $Module" -ForegroundColor Red
                 return $false
             }
         }
     }
     
-    Write-Host "✅ All prerequisites met" -ForegroundColor Green
+    Write-Host "[x] All prerequisites met" -ForegroundColor Green
     return $true
 }
 
 function Connect-ToPowerPlatform {
-    Write-Host "🔐 Connecting to Power Platform..." -ForegroundColor Cyan
+    Write-Host " Connecting to Power Platform..." -ForegroundColor Cyan
     
     try {
         if ($UseInteractiveAuth) {
@@ -99,11 +99,11 @@ function Connect-ToPowerPlatform {
             Add-PowerAppsAccount -TenantID $TenantId -ApplicationId $ClientId -ClientSecret $SecureSecret
         }
         
-        Write-Host "✅ Connected to Power Platform successfully" -ForegroundColor Green
+        Write-Host "[x] Connected to Power Platform successfully" -ForegroundColor Green
         return $true
     }
     catch {
-        Write-Host "❌ Failed to connect to Power Platform: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[ ] Failed to connect to Power Platform: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -156,7 +156,7 @@ function Backup-ExistingAgent {
     
     if (!$CreateBackup) { return $true }
     
-    Write-Host "💾 Creating backup for $AgentName..." -ForegroundColor Yellow
+    Write-Host " Creating backup for $AgentName..." -ForegroundColor Yellow
     
     try {
         $BackupPath = Join-Path $PWD "backups"
@@ -169,11 +169,11 @@ function Backup-ExistingAgent {
         
         # Check if agent exists in environment and export it
         # Note: This would require actual Copilot Studio API calls
-        Write-Host "✅ Backup created for $AgentName" -ForegroundColor Green
+        Write-Host "[x] Backup created for $AgentName" -ForegroundColor Green
         return $true
     }
     catch {
-        Write-Host "⚠️  Warning: Could not create backup for $AgentName" -ForegroundColor Yellow
+        Write-Host "Warning  Warning: Could not create backup for $AgentName" -ForegroundColor Yellow
         return $false
     }
 }
@@ -186,13 +186,13 @@ function Deploy-SingleAgent {
     $AgentPath = Join-Path $PWD "$AgentName\Darbot Resource Manager"
     
     Write-Host ""
-    Write-Host "📦 Deploying Agent: $AgentDisplayName" -ForegroundColor Cyan
+    Write-Host " Deploying Agent: $AgentDisplayName" -ForegroundColor Cyan
     Write-Host "   Path: $AgentPath" -ForegroundColor Gray
     
     # Validate agent structure
     $Issues = Test-AgentStructure -AgentPath $AgentPath -AgentName $AgentName
     if ($Issues.Count -gt 0) {
-        Write-Host "❌ Agent validation failed:" -ForegroundColor Red
+        Write-Host "[ ] Agent validation failed:" -ForegroundColor Red
         foreach ($Issue in $Issues) {
             Write-Host "   • $Issue" -ForegroundColor Red
         }
@@ -200,7 +200,7 @@ function Deploy-SingleAgent {
     }
     
     if ($ValidateOnly) {
-        Write-Host "✅ Validation passed for $AgentDisplayName" -ForegroundColor Green
+        Write-Host "[x] Validation passed for $AgentDisplayName" -ForegroundColor Green
         return @{ Success = $true; ValidationOnly = $true }
     }
     
@@ -210,16 +210,16 @@ function Deploy-SingleAgent {
         
         # Import agent using Power Platform CLI or API
         # Note: This is a simplified version - actual implementation would use Copilot Studio APIs
-        Write-Host "📤 Importing agent to Copilot Studio..." -ForegroundColor Yellow
+        Write-Host " Importing agent to Copilot Studio..." -ForegroundColor Yellow
         
         # Simulate deployment process
         Start-Sleep -Seconds 2
         
         # Verify deployment
-        Write-Host "🔍 Verifying deployment..." -ForegroundColor Yellow
+        Write-Host " Verifying deployment..." -ForegroundColor Yellow
         Start-Sleep -Seconds 1
         
-        Write-Host "✅ Successfully deployed $AgentDisplayName" -ForegroundColor Green
+        Write-Host "[x] Successfully deployed $AgentDisplayName" -ForegroundColor Green
         
         return @{ 
             Success = $true
@@ -229,7 +229,7 @@ function Deploy-SingleAgent {
         }
     }
     catch {
-        Write-Host "❌ Failed to deploy $AgentDisplayName`: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[ ] Failed to deploy $AgentDisplayName`: $($_.Exception.Message)" -ForegroundColor Red
         return @{ 
             Success = $false
             Error = $_.Exception.Message
@@ -242,25 +242,25 @@ function Generate-DeploymentReport {
     param($Results)
     
     Write-Host ""
-    Write-Host "📊 Deployment Summary Report" -ForegroundColor Green
+    Write-Host " Deployment Summary Report" -ForegroundColor Green
     Write-Host "============================" -ForegroundColor Green
     
     $SuccessCount = ($Results.Values | Where-Object { $_.Success }).Count
     $TotalCount = $Results.Count
     
     Write-Host ""
-    Write-Host "📈 Statistics:" -ForegroundColor Yellow
+    Write-Host " Statistics:" -ForegroundColor Yellow
     Write-Host "  ├─ Total Agents: $TotalCount" -ForegroundColor White
     Write-Host "  ├─ Successful: $SuccessCount" -ForegroundColor Green
     Write-Host "  ├─ Failed: $($TotalCount - $SuccessCount)" -ForegroundColor Red
     Write-Host "  └─ Success Rate: $(($SuccessCount / $TotalCount * 100).ToString('0.0'))%" -ForegroundColor White
     
     Write-Host ""
-    Write-Host "📋 Agent Details:" -ForegroundColor Yellow
+    Write-Host " Agent Details:" -ForegroundColor Yellow
     
     foreach ($AgentName in $Results.Keys) {
         $Result = $Results[$AgentName]
-        $Status = if ($Result.Success) { "✅ SUCCESS" } else { "❌ FAILED" }
+        $Status = if ($Result.Success) { "[x] SUCCESS" } else { "[ ] FAILED" }
         $Color = if ($Result.Success) { "Green" } else { "Red" }
         
         Write-Host "  $AgentName`: $Status" -ForegroundColor $Color
@@ -278,14 +278,14 @@ function Generate-DeploymentReport {
     
     if ($SuccessCount -eq $TotalCount) {
         Write-Host ""
-        Write-Host "🎉 All agents deployed successfully!" -ForegroundColor Green
-        Write-Host "✨ Next steps:" -ForegroundColor Yellow
+        Write-Host " All agents deployed successfully!" -ForegroundColor Green
+        Write-Host " Next steps:" -ForegroundColor Yellow
         Write-Host "  1. Test each agent in Copilot Studio" -ForegroundColor Gray
         Write-Host "  2. Configure environment-specific settings" -ForegroundColor Gray
         Write-Host "  3. Set up orchestration workflows" -ForegroundColor Gray
     } else {
         Write-Host ""
-        Write-Host "⚠️  Some agents failed to deploy. Review errors above." -ForegroundColor Yellow
+        Write-Host "Warning  Some agents failed to deploy. Review errors above." -ForegroundColor Yellow
     }
 }
 
@@ -302,7 +302,7 @@ try {
     }
     
     Write-Host ""
-    Write-Host "🎯 Deployment Configuration:" -ForegroundColor Yellow
+    Write-Host " Deployment Configuration:" -ForegroundColor Yellow
     Write-Host "  ├─ Environment: $EnvironmentUrl" -ForegroundColor White
     Write-Host "  ├─ Agents to deploy: $($AgentsToProcess.Count)" -ForegroundColor White
     Write-Host "  ├─ Validation only: $ValidateOnly" -ForegroundColor White
@@ -337,10 +337,10 @@ try {
     Generate-DeploymentReport -Results $DeploymentResults
     
     Write-Host ""
-    Write-Host "🏁 Deployment Complete!" -ForegroundColor Green
+    Write-Host " Deployment Complete!" -ForegroundColor Green
     
 } catch {
     Write-Host ""
-    Write-Host "💥 Deployment failed with error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host " Deployment failed with error: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }

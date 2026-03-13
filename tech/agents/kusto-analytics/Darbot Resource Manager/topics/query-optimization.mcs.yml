@@ -26,15 +26,15 @@ topic: |
   **System:** Hello! I'm here to help you with Kusto query optimization and performance tuning. I can assist with KQL optimization, execution plan analysis, performance monitoring, and advanced query techniques.
 
   **Options:**
-  - 🚀 Query Performance Analysis & Tuning
-  - 📊 Execution Plan Interpretation
-  - 🔧 Advanced KQL Operators & Techniques
-  - 📈 Time Series & Analytics Optimization
-  - 🛠️ Query Monitoring & Best Practices
+  -  Query Performance Analysis & Tuning
+  -  Execution Plan Interpretation
+  -  Advanced KQL Operators & Techniques
+  -  Time Series & Analytics Optimization
+  -  Query Monitoring & Best Practices
 
   ---
 
-  ### 🚀 Query Performance Analysis & Tuning
+  ###  Query Performance Analysis & Tuning
   **Performance Assessment Framework:**
   - **Query Metrics Analysis**: Execution time, CPU usage, memory consumption, and data scanned analysis
   - **Resource Utilization**: Cluster resource impact assessment with bottleneck identification
@@ -51,7 +51,7 @@ topic: |
 
   ---
 
-  ### 📊 Execution Plan Interpretation
+  ###  Execution Plan Interpretation
   **Execution Plan Analysis:**
   - **Query Tree Structure**: Operator hierarchy analysis with bottleneck identification
   - **Cost Analysis**: Resource cost breakdown with optimization priority recommendations
@@ -68,7 +68,7 @@ topic: |
 
   ---
 
-  ### 🔧 Advanced KQL Operators & Techniques
+  ###  Advanced KQL Operators & Techniques
   **Advanced Operator Optimization:**
   - **mv-expand and mv-apply**: Multi-value expansion optimization with memory-efficient processing
   - **Join Variations**: Optimal join strategy selection (inner, left, right, full outer, cross) with hints
@@ -85,7 +85,7 @@ topic: |
 
   ---
 
-  ### 📈 Time Series & Analytics Optimization
+  ###  Time Series & Analytics Optimization
   **Time Series Optimization:**
   - **make-series Function**: Time series generation optimization with sparse data handling
   - **series_decompose**: Trend, seasonal, and residual analysis optimization for large datasets
@@ -102,7 +102,7 @@ topic: |
 
   ---
 
-  ### 🛠️ Query Monitoring & Best Practices
+  ###  Query Monitoring & Best Practices
   **Performance Monitoring Framework:**
   - **Real-Time Monitoring**: Live query performance tracking with alerting and intervention
   - **Historical Analysis**: Query performance trend analysis with regression detection
@@ -119,14 +119,14 @@ topic: |
 
   ## Advanced Features
 
-  ### 🔬 Query Intelligence
+  ###  Query Intelligence
   - **Automatic Optimization**: AI-powered query rewriting with performance improvement suggestions
   - **Pattern Recognition**: Common anti-pattern detection with automated fixing recommendations
   - **Resource Prediction**: Query resource requirement prediction with capacity planning
   - **Performance Forecasting**: Query performance trend prediction with proactive optimization
   - **Benchmark Comparison**: Query performance benchmarking with industry standard comparison
 
-  ### 📊 Visualization & Reporting
+  ###  Visualization & Reporting
   - **Performance Dashboards**: Real-time query performance monitoring with drill-down capabilities
   - **Optimization Reports**: Comprehensive optimization analysis with implementation roadmaps
   - **Resource Utilization**: Visual resource usage analysis with optimization opportunities

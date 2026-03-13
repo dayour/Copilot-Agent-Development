@@ -20,7 +20,7 @@ trigger:
 nodes:
   - action: SendMessage
     message: |
-      🚨 **Security Incident Response Command Center** 🚨
+      Alert **Security Incident Response Command Center** Alert
       
       I'm here to help coordinate and manage security incident response activities.
       This workflow supports the full incident response lifecycle from detection through resolution.
@@ -63,7 +63,7 @@ nodes:
 
       - action: SendMessage
         message: |
-          🔍 **Initial Detection & Assessment Protocol**
+           **Initial Detection & Assessment Protocol**
           
           **Detection Summary:**
           - **Source:** {detectionSource}
@@ -73,22 +73,22 @@ nodes:
           **Immediate Assessment Actions:**
           
           **Step 1: Rapid Threat Assessment (5 minutes)**
-          ✅ Verify the alert is not a false positive
-          ✅ Assess immediate threat to business operations
-          ✅ Identify potentially affected systems/users
-          ✅ Determine if containment is urgently needed
+          [x] Verify the alert is not a false positive
+          [x] Assess immediate threat to business operations
+          [x] Identify potentially affected systems/users
+          [x] Determine if containment is urgently needed
           
           **Step 2: Initial Incident Classification**
-          ✅ Assess potential impact (Critical/High/Medium/Low)
-          ✅ Determine incident category (Data breach, malware, etc.)
-          ✅ Evaluate scope and potential spread
-          ✅ Identify required response resources
+          [x] Assess potential impact (Critical/High/Medium/Low)
+          [x] Determine incident category (Data breach, malware, etc.)
+          [x] Evaluate scope and potential spread
+          [x] Identify required response resources
           
           **Step 3: Notification Protocol**
-          ✅ Alert Security Operations Center (SOC)
-          ✅ Notify Incident Commander if high severity
-          ✅ Inform relevant technical teams
-          ✅ Document initial findings in incident system
+          [x] Alert Security Operations Center (SOC)
+          [x] Notify Incident Commander if high severity
+          [x] Inform relevant technical teams
+          [x] Document initial findings in incident system
           
           **Next Step:** Proceed to Incident Classification & Scoping
 
@@ -129,7 +129,7 @@ nodes:
 
       - action: SendMessage
         message: |
-          📊 **Incident Classification Complete**
+           **Incident Classification Complete**
           
           **Incident Details:**
           - **Severity:** {incidentSeverity}
@@ -141,13 +141,13 @@ nodes:
           
           Based on {incidentSeverity} severity:
           
-          ✅ **Core Response Team Activated:**
+          [x] **Core Response Team Activated:**
           - Incident Commander assigned
           - Security Operations Center (SOC) engaged
           - Technical investigation team assembled
           - Communications lead designated
           
-          ✅ **Stakeholder Notifications:**
+          [x] **Stakeholder Notifications:**
           - IT Security Manager notified
           - Affected business unit leads alerted
           - Legal/Compliance team informed (if required)
@@ -175,75 +175,75 @@ nodes:
 
       - action: SendMessage
         message: |
-          🛡️ **Containment & Mitigation Operations**
+           **Containment & Mitigation Operations**
           
           **Strategy:** {containmentStrategy}
           
           **Containment Checklist:**
           
           **Immediate Actions (0-15 minutes):**
-          ✅ Disable compromised user accounts
-          ✅ Reset passwords for affected accounts
-          ✅ Revoke active authentication tokens
-          ✅ Block malicious IP addresses/domains
-          ✅ Isolate affected network segments
+          [x] Disable compromised user accounts
+          [x] Reset passwords for affected accounts
+          [x] Revoke active authentication tokens
+          [x] Block malicious IP addresses/domains
+          [x] Isolate affected network segments
           
           **Short-term Actions (15-60 minutes):**
-          ✅ Update security rules and policies
-          ✅ Deploy additional monitoring tools
-          ✅ Enhance logging for affected systems
-          ✅ Coordinate with affected system owners
-          ✅ Preserve evidence for investigation
+          [x] Update security rules and policies
+          [x] Deploy additional monitoring tools
+          [x] Enhance logging for affected systems
+          [x] Coordinate with affected system owners
+          [x] Preserve evidence for investigation
           
           **Mitigation Measures:**
-          ✅ Implement compensating controls
-          ✅ Increase monitoring frequency
-          ✅ Deploy threat hunting activities
-          ✅ Update incident response procedures
-          ✅ Coordinate with external partners (if needed)
+          [x] Implement compensating controls
+          [x] Increase monitoring frequency
+          [x] Deploy threat hunting activities
+          [x] Update incident response procedures
+          [x] Coordinate with external partners (if needed)
           
           **Containment Validation:**
-          ✅ Verify threat activity has stopped
-          ✅ Confirm systems are secure
-          ✅ Test business process continuity
-          ✅ Document containment effectiveness
+          [x] Verify threat activity has stopped
+          [x] Confirm systems are secure
+          [x] Test business process continuity
+          [x] Document containment effectiveness
 
   - action: Condition
     condition: incidentPhase == "Investigation & Evidence Collection"
     ifTrue:
       - action: SendMessage
         message: |
-          🔍 **Investigation & Evidence Collection**
+           **Investigation & Evidence Collection**
           
           **Forensic Investigation Protocol:**
           
           **Evidence Preservation (Priority 1):**
-          ✅ Image affected systems and memory
-          ✅ Preserve authentication and access logs
-          ✅ Capture network traffic and communications
-          ✅ Document system configurations and states
-          ✅ Secure email and file artifacts
+          [x] Image affected systems and memory
+          [x] Preserve authentication and access logs
+          [x] Capture network traffic and communications
+          [x] Document system configurations and states
+          [x] Secure email and file artifacts
           
           **Timeline Analysis:**
-          ✅ Map incident timeline from initial compromise
-          ✅ Identify attack vectors and progression
-          ✅ Correlate events across multiple systems
-          ✅ Determine scope of unauthorized access
-          ✅ Assess data or system impact
+          [x] Map incident timeline from initial compromise
+          [x] Identify attack vectors and progression
+          [x] Correlate events across multiple systems
+          [x] Determine scope of unauthorized access
+          [x] Assess data or system impact
           
           **Technical Analysis:**
-          ✅ Analyze malware or attack tools used
-          ✅ Review privilege escalation methods
-          ✅ Examine data access and exfiltration
-          ✅ Investigate lateral movement techniques
-          ✅ Assess persistence mechanisms
+          [x] Analyze malware or attack tools used
+          [x] Review privilege escalation methods
+          [x] Examine data access and exfiltration
+          [x] Investigate lateral movement techniques
+          [x] Assess persistence mechanisms
           
           **Attribution & Intelligence:**
-          ✅ Compare with known threat patterns
-          ✅ Analyze tactics, techniques, and procedures
-          ✅ Correlate with external threat intelligence
-          ✅ Assess threat actor capabilities
-          ✅ Identify indicators of compromise (IOCs)
+          [x] Compare with known threat patterns
+          [x] Analyze tactics, techniques, and procedures
+          [x] Correlate with external threat intelligence
+          [x] Assess threat actor capabilities
+          [x] Identify indicators of compromise (IOCs)
 
       - action: Question
         variable: evidenceStatus
@@ -261,76 +261,76 @@ nodes:
     ifTrue:
       - action: SendMessage
         message: |
-          🔧 **Eradication & Recovery Operations**
+           **Eradication & Recovery Operations**
           
           **Eradication Phase:**
           
           **Remove Threat Presence:**
-          ✅ Remove malware and malicious files
-          ✅ Close unauthorized access points
-          ✅ Patch vulnerabilities that enabled attack
-          ✅ Update security configurations
-          ✅ Remove unauthorized accounts and permissions
+          [x] Remove malware and malicious files
+          [x] Close unauthorized access points
+          [x] Patch vulnerabilities that enabled attack
+          [x] Update security configurations
+          [x] Remove unauthorized accounts and permissions
           
           **System Hardening:**
-          ✅ Apply security patches and updates
-          ✅ Implement additional security controls
-          ✅ Update security policies and procedures
-          ✅ Enhance monitoring and detection capabilities
-          ✅ Strengthen access controls and authentication
+          [x] Apply security patches and updates
+          [x] Implement additional security controls
+          [x] Update security policies and procedures
+          [x] Enhance monitoring and detection capabilities
+          [x] Strengthen access controls and authentication
           
           **Recovery Phase:**
           
           **System Restoration:**
-          ✅ Restore systems from clean backups
-          ✅ Rebuild compromised systems if necessary
-          ✅ Verify system integrity and security
-          ✅ Test business process functionality
-          ✅ Validate security control effectiveness
+          [x] Restore systems from clean backups
+          [x] Rebuild compromised systems if necessary
+          [x] Verify system integrity and security
+          [x] Test business process functionality
+          [x] Validate security control effectiveness
           
           **Business Continuity:**
-          ✅ Coordinate gradual service restoration
-          ✅ Monitor for signs of reinfection
-          ✅ Communicate with affected stakeholders
-          ✅ Document recovery procedures and lessons learned
-          ✅ Prepare for potential threat return
+          [x] Coordinate gradual service restoration
+          [x] Monitor for signs of reinfection
+          [x] Communicate with affected stakeholders
+          [x] Document recovery procedures and lessons learned
+          [x] Prepare for potential threat return
 
   - action: Condition
     condition: incidentPhase == "Post-Incident Activities"
     ifTrue:
       - action: SendMessage
         message: |
-          📝 **Post-Incident Activities**
+           **Post-Incident Activities**
           
           **Documentation & Reporting:**
           
           **Incident Report Preparation:**
-          ✅ Compile comprehensive incident timeline
-          ✅ Document response actions and effectiveness
-          ✅ Analyze root cause and contributing factors
-          ✅ Assess financial and operational impact
-          ✅ Prepare executive summary and detailed report
+          [x] Compile comprehensive incident timeline
+          [x] Document response actions and effectiveness
+          [x] Analyze root cause and contributing factors
+          [x] Assess financial and operational impact
+          [x] Prepare executive summary and detailed report
           
           **Lessons Learned Session:**
-          ✅ Schedule post-incident review meeting
-          ✅ Gather feedback from all response team members
-          ✅ Identify response process improvements
-          ✅ Update incident response procedures
-          ✅ Plan additional training or resources needed
+          [x] Schedule post-incident review meeting
+          [x] Gather feedback from all response team members
+          [x] Identify response process improvements
+          [x] Update incident response procedures
+          [x] Plan additional training or resources needed
           
           **Follow-up Actions:**
-          ✅ Implement identified security improvements
-          ✅ Update threat detection capabilities
-          ✅ Enhance monitoring and alerting rules
-          ✅ Conduct security awareness training updates
-          ✅ Schedule follow-up security assessments
+          [x] Implement identified security improvements
+          [x] Update threat detection capabilities
+          [x] Enhance monitoring and alerting rules
+          [x] Conduct security awareness training updates
+          [x] Schedule follow-up security assessments
           
           **Legal & Compliance:**
-          ✅ Complete regulatory notifications (if required)
-          ✅ Prepare legal documentation if needed
-          ✅ Update compliance and audit records
-          ✅ Coordinate with insurance and legal teams
-          ✅ Archive incident documentation appropriately
+          [x] Complete regulatory notifications (if required)
+          [x] Prepare legal documentation if needed
+          [x] Update compliance and audit records
+          [x] Coordinate with insurance and legal teams
+          [x] Archive incident documentation appropriately
 
   - action: Question
     variable: nextPhase
@@ -347,7 +347,7 @@ nodes:
 
   - action: SendMessage
     message: |
-      ✅ **Incident Response Coordination Complete**
+      [x] **Incident Response Coordination Complete**
       
       **Current Status Summary:**
       - **Phase:** {incidentPhase}

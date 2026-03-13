@@ -13,13 +13,13 @@
 
 ### Portal Access Analysis
 
-#### ✅ Working Portals
+#### [x] Working Portals
 - **Azure Portal**: Full access with directory switching available
 - **Microsoft 365 Admin Center**: Connected to Contoso directory
 - **Teams Admin Center**: Connected to Contoso directory (no switching UI)
 - **Microsoft Entra Admin Center**: Accessible
 
-#### ⚠️ Directory Switching Limitations
+#### Warning Directory Switching Limitations
 - **Azure Portal**: Native directory switching available (Switch button)
 - **Teams Admin Center**: No visible directory switching option in UI
 - **Workaround Required**: May need URL parameters or alternative authentication flows

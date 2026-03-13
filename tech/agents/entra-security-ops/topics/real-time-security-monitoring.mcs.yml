@@ -22,31 +22,31 @@ beginDialog:
     - kind: SendActivity
       id: monitoring_intro
       activity: |
-        📊 **Real-time Security Monitoring Center**
+         **Real-time Security Monitoring Center**
         
         I'll help you establish comprehensive real-time security monitoring with intelligent alerting and automated response.
         
         **Monitoring Capabilities:**
         
-        **⚡ Live Threat Detection**
+        ** Live Threat Detection**
         - Real-time identity risk assessment and scoring
         - Behavioral anomaly detection with ML algorithms
         - Suspicious activity correlation across platforms
         - Advanced persistent threat (APT) detection
         
-        **🚨 Intelligent Alerting**
+        **Alert Intelligent Alerting**
         - Priority-based alert classification and routing
         - False positive reduction with contextual analysis
         - Multi-channel notification and escalation
         - Alert correlation and incident grouping
         
-        **📈 Security Analytics**
+        ** Security Analytics**
         - Real-time security posture dashboards
         - Trend analysis and predictive modeling
         - Executive reporting and KPI tracking
         - Compliance monitoring and attestation
         
-        **🔄 Automated Response**
+        ** Automated Response**
         - Immediate threat containment actions
         - Dynamic policy adjustment and enforcement
         - Workflow orchestration and playbook execution
@@ -60,17 +60,17 @@ beginDialog:
         **Monitoring Configuration Focus:**
         Select the monitoring capability you want to implement:
       choices:
-        - title: "⚡ Real-time Threat Detection"
+        - title: " Real-time Threat Detection"
           value: "threat_detection"
-        - title: "🚨 Alert Management & Correlation"
+        - title: "Alert Alert Management & Correlation"
           value: "alert_management"
-        - title: "📊 Security Analytics Dashboards"
+        - title: " Security Analytics Dashboards"
           value: "analytics_dashboards"
-        - title: "🔄 Automated Response Workflows"
+        - title: " Automated Response Workflows"
           value: "automated_response"
-        - title: "👥 SOC Operations & Procedures"
+        - title: " SOC Operations & Procedures"
           value: "soc_operations"
-        - title: "📈 Performance & Optimization"
+        - title: " Performance & Optimization"
           value: "performance_optimization"
       property: Topic.monitoringFocus
 
@@ -132,11 +132,11 @@ dialogs:
       - kind: SendActivity
         id: threat_detection_setup
         activity: |
-          ⚡ **Real-time Threat Detection Configuration**
+           **Real-time Threat Detection Configuration**
           
           **Phase 1: Detection Rule Development**
           
-          **🎯 High-Fidelity Detection Rules:**
+          ** High-Fidelity Detection Rules:**
           
           **1. Impossible Travel Detection:**
           ```kql
@@ -234,7 +234,7 @@ dialogs:
       - kind: SendActivity
         id: detection_automation
         activity: |
-          🤖 **Automated Detection Deployment**
+           **Automated Detection Deployment**
           
           **Azure Sentinel Analytics Rules:**
           ```json
@@ -315,11 +315,11 @@ dialogs:
       - kind: SendActivity
         id: alert_management_setup
         activity: |
-          🚨 **Intelligent Alert Management & Correlation**
+          Alert **Intelligent Alert Management & Correlation**
           
           **Phase 1: Alert Classification & Prioritization**
           
-          **📊 Alert Scoring Matrix:**
+          ** Alert Scoring Matrix:**
           ```json
           {
             "alert_scoring": {
@@ -347,7 +347,7 @@ dialogs:
           }
           ```
           
-          **🔄 Alert Correlation Engine:**
+          ** Alert Correlation Engine:**
           ```kql
           // Advanced alert correlation and grouping
           SecurityAlert
@@ -384,7 +384,7 @@ dialogs:
           
           **Phase 2: Automated Alert Routing**
           
-          **📨 Dynamic Escalation Matrix:**
+          ** Dynamic Escalation Matrix:**
           ```json
           {
             "escalation_rules": {
@@ -427,7 +427,7 @@ dialogs:
       - kind: SendActivity
         id: alert_optimization
         activity: |
-          📈 **Alert Management Optimization**
+           **Alert Management Optimization**
           
           **Configuration Details:** {alertConfig}
           
@@ -475,7 +475,7 @@ dialogs:
                             "uri": "https://graph.microsoft.com/v1.0/teams/{team-id}/channels/{channel-id}/messages",
                             "body": {
                               "body": {
-                                "content": "🚨 CRITICAL ALERT: @{triggerBody()?['AlertName']} - Immediate response required"
+                                "content": "Alert CRITICAL ALERT: @{triggerBody()?['AlertName']} - Immediate response required"
                               }
                             }
                           }
@@ -504,7 +504,7 @@ dialogs:
           }
           ```
           
-          **🎯 Alert Quality Metrics:**
+          ** Alert Quality Metrics:**
           - **True Positive Rate**: Target >85% for high severity alerts
           - **Mean Time to Acknowledge**: <10 minutes for critical alerts
           - **Alert Correlation Accuracy**: >90% for related incident grouping

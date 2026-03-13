@@ -8,19 +8,19 @@ The Kusto Agent is a comprehensive expert system designed for enterprise-scale A
 
 The Kusto Agent serves as the definitive expert system for Azure Data Explorer operations, combining deep technical expertise in KQL optimization with cutting-edge machine learning capabilities and enterprise-scale data engineering. Our agent excels in three core domains:
 
-### 🤖 Advanced Analytics & Machine Learning
+###  Advanced Analytics & Machine Learning
 - **Time Series Forecasting**: Sophisticated forecasting models with seasonal decomposition, trend analysis, and confidence intervals
 - **Anomaly Detection**: Multi-dimensional anomaly detection using statistical methods and machine learning algorithms
 - **Predictive Analytics**: Comprehensive predictive modeling with feature engineering, model validation, and automated retraining
 - **Real-time ML Integration**: Seamless integration with Azure ML, Python/R execution, and automated ML workflows
 
-### 🏗️ Enterprise Data Engineering
+###  Enterprise Data Engineering
 - **High-Volume Ingestion**: Petabyte-scale data ingestion with Event Hub, IoT Hub, and Kafka integration
 - **Stream Processing**: Real-time analytics with low-latency processing and complex event correlation
 - **Pipeline Automation**: End-to-end data pipeline orchestration with Azure Data Factory and custom connectors
 - **Data Quality Management**: Automated validation, error handling, and data governance frameworks
 
-### ⚡ Performance & Cost Optimization
+###  Performance & Cost Optimization
 - **Intelligent Monitoring**: ML-based performance monitoring with predictive alerts and automated remediation
 - **Query Optimization**: Advanced KQL optimization with execution plan analysis and automated rewriting
 - **Capacity Planning**: Sophisticated capacity modeling with growth forecasting and cost optimization
@@ -28,7 +28,7 @@ The Kusto Agent serves as the definitive expert system for Azure Data Explorer o
 
 ## Capabilities
 
-### 🚀 KQL Query Optimization & Performance
+###  KQL Query Optimization & Performance
 
 - **Advanced Query Tuning**: Execution plan analysis with performance bottleneck identification and optimization
 - **Complex Analytics Patterns**: Time series analysis, machine learning integration, and geospatial analytics
@@ -36,7 +36,7 @@ The Kusto Agent serves as the definitive expert system for Azure Data Explorer o
 - **Enterprise Scale**: Multi-node cluster optimization with federated queries and cross-cluster analytics
 - **Intelligent Caching**: Query result caching strategies with cache-friendly query design
 
-### 📊 Data Ingestion & Pipeline Management
+###  Data Ingestion & Pipeline Management
 
 - **High-Volume Ingestion**: Event Hub, IoT Hub, and Kafka integration with real-time processing
 - **ETL/ELT Workflows**: Azure Data Factory integration with complex data transformation pipelines
@@ -44,7 +44,7 @@ The Kusto Agent serves as the definitive expert system for Azure Data Explorer o
 - **Data Quality**: Automated validation and quality monitoring with error handling and retry logic
 - **Lifecycle Management**: Hot/warm/cold data tier management with intelligent archival policies
 
-### 🚨 Advanced Monitoring & Alerting
+### Alert Advanced Monitoring & Alerting
 
 - **Real-Time Alerting**: KQL-based custom alerts with multi-dimensional monitoring and correlation
 - **Anomaly Detection**: Machine learning-based anomaly alerts with pattern recognition and forecasting
@@ -70,14 +70,14 @@ The Kusto Agent serves as the definitive expert system for Azure Data Explorer o
 
 ## Advanced Use Cases
 
-### 🏢 Enterprise Analytics Scenarios
+###  Enterprise Analytics Scenarios
 - **Financial Services**: Real-time fraud detection, regulatory reporting, risk analytics, and algorithmic trading support
 - **Healthcare**: Patient monitoring analytics, clinical research data processing, and HIPAA-compliant data pipelines
 - **Manufacturing**: Predictive maintenance, quality control analytics, supply chain optimization, and IoT sensor processing
 - **Retail**: Customer behavior analysis, inventory optimization, demand forecasting, and personalization engines
 - **Energy**: Smart grid analytics, renewable energy forecasting, asset monitoring, and regulatory compliance
 
-### 🚀 Technical Innovation Areas
+###  Technical Innovation Areas
 - **Federated Analytics**: Cross-organization data analytics with privacy-preserving techniques
 - **Edge Analytics**: Real-time analytics at the edge with cloud synchronization and hybrid processing
 - **AI-Driven Insights**: Natural language querying, automated insight generation, and intelligent data discovery
@@ -86,7 +86,7 @@ The Kusto Agent serves as the definitive expert system for Azure Data Explorer o
 
 ## Topics
 
-### 🚀 **Query Optimization** (`query-optimization.mcs.yml`)
+###  **Query Optimization** (`query-optimization.mcs.yml`)
 
 Comprehensive KQL query optimization with enterprise performance tuning:
 
@@ -96,7 +96,7 @@ Comprehensive KQL query optimization with enterprise performance tuning:
 - Machine learning integration optimization with ML plugin usage and statistical function performance
 - Real-time query monitoring with automated performance regression detection and optimization
 
-### 🚨 **Alert Configuration** (`alert-configuration.mcs.yml`)
+### Alert **Alert Configuration** (`alert-configuration.mcs.yml`)
 
 Advanced monitoring and alerting framework with intelligent automation:
 
@@ -106,7 +106,7 @@ Advanced monitoring and alerting framework with intelligent automation:
 - Automated response capabilities with self-healing systems and incident management integration
 - Enterprise alert analytics with optimization recommendations and performance benchmarking
 
-### 🤖 **Advanced Analytics Automation** (`advanced-analytics-automation.mcs.yml`)
+###  **Advanced Analytics Automation** (`advanced-analytics-automation.mcs.yml`)
 
 Machine learning integration with comprehensive analytics automation:
 
@@ -116,7 +116,7 @@ Machine learning integration with comprehensive analytics automation:
 - Real-time ML scoring integration with streaming data pipelines and low-latency inference
 - Automated A/B testing frameworks with statistical significance testing and business impact analysis
 
-### 🏗️ **Enterprise Data Pipeline** (`enterprise-data-pipeline.mcs.yml`)
+###  **Enterprise Data Pipeline** (`enterprise-data-pipeline.mcs.yml`)
 
 Large-scale data ingestion and processing with enterprise integration:
 
@@ -126,7 +126,7 @@ Large-scale data ingestion and processing with enterprise integration:
 - Multi-cloud pipeline architecture with hybrid processing and disaster recovery capabilities
 - Enterprise data governance with lineage tracking, quality monitoring, and compliance automation
 
-### ⚡ **Performance Monitoring & Optimization** (`performance-monitoring-optimization.mcs.yml`)
+###  **Performance Monitoring & Optimization** (`performance-monitoring-optimization.mcs.yml`)
 
 Intelligent cluster monitoring with automated optimization and cost management:
 
@@ -138,7 +138,7 @@ Intelligent cluster monitoring with automated optimization and cost management:
 
 ## Advanced Starter Prompts
 
-### 🤖 Machine Learning & Analytics
+###  Machine Learning & Analytics
 
 **Advanced Time Series Analysis:**
 
@@ -156,7 +156,7 @@ Intelligent cluster monitoring with automated optimization and cost management:
 "Create intelligent fraud detection system with adaptive thresholds and false positive reduction"
 ```
 
-### 🏗️ Data Pipeline Operations
+###  Data Pipeline Operations
 
 **High-Volume Pipeline Management:**
 
@@ -174,7 +174,7 @@ Intelligent cluster monitoring with automated optimization and cost management:
 "Design data lake integration with automated cataloging and intelligent data discovery"
 ```
 
-### ⚡ Optimization & Monitoring
+###  Optimization & Monitoring
 
 **Intelligent Monitoring:**
 
@@ -192,7 +192,7 @@ Intelligent cluster monitoring with automated optimization and cost management:
 "Create intelligent workload management with priority-based resource allocation and SLA tracking"
 ```
 
-### 🔬 Specialized & Innovation
+###  Specialized & Innovation
 
 **Industry-Specific Solutions:**
 
@@ -212,21 +212,21 @@ Intelligent cluster monitoring with automated optimization and cost management:
 
 ## Enterprise Integration Capabilities
 
-### 🔗 Azure Analytics Ecosystem
+###  Azure Analytics Ecosystem
 
 - **Azure Synapse Analytics**: Seamless integration for unified analytics with SQL pools and Spark processing
 - **Azure Machine Learning**: End-to-end ML pipeline integration with automated model deployment and monitoring
 - **Power BI**: Advanced visualization with real-time dashboards and executive reporting capabilities
 - **Azure Cognitive Services**: AI-powered insights integration with natural language processing and computer vision
 
-### 🛠️ DevOps & Automation
+###  DevOps & Automation
 
 - **Infrastructure as Code**: Terraform and ARM template integration for automated cluster provisioning
 - **CI/CD Integration**: Azure DevOps and GitHub Actions for continuous deployment and testing
 - **Monitoring Integration**: Comprehensive integration with Azure Monitor, Application Insights, and third-party tools
 - **Security Integration**: Azure Security Center and Microsoft Sentinel for threat detection and compliance
 
-### 📊 Enterprise Platforms
+###  Enterprise Platforms
 
 - **Multi-Cloud Support**: Cross-cloud analytics with AWS, GCP, and hybrid cloud architectures
 - **Legacy System Integration**: Mainframe and on-premises system connectors with data modernization strategies
@@ -235,7 +235,7 @@ Intelligent cluster monitoring with automated optimization and cost management:
 
 ## Best Practices & Documentation
 
-### 🎯 Enterprise Kusto Best Practices
+###  Enterprise Kusto Best Practices
 
 **Performance Optimization:**
 - Implement intelligent partitioning strategies for optimal query performance and cost efficiency
@@ -255,7 +255,7 @@ Intelligent cluster monitoring with automated optimization and cost management:
 - Monitor resource utilization with predictive cost forecasting and budget alerts
 - Utilize reserved capacity and spot instances for cost-effective processing
 
-### 📚 Azure Data Explorer Documentation
+###  Azure Data Explorer Documentation
 
 **Administration & Development:**
 - [Azure Data Explorer Documentation](https://docs.microsoft.com/en-us/azure/data-explorer/) - Comprehensive administration guide

@@ -591,17 +591,17 @@ const PlatformStatusGrid: React.FC<PlatformStatusGridProps> = ({ platforms }) =>
   const platformInfo = {
     microsoft: {
       name: 'Microsoft 365',
-      icon: '🔵',
+      icon: 'Info',
       color: 'blue'
     },
     google: {
       name: 'Google Workspace',
-      icon: '🔴',
+      icon: 'Critical',
       color: 'red'
     },
     zoom: {
       name: 'Zoom',
-      icon: '🟣',
+      icon: '',
       color: 'purple'
     }
   };

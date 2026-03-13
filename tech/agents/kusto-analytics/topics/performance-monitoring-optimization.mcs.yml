@@ -27,15 +27,15 @@ topic: |
   **System:** Welcome! I'm here to help you implement advanced performance monitoring and optimization for your Kusto clusters. I can assist with cluster monitoring, query optimization, capacity planning, and comprehensive cost management.
 
   **Options:**
-  - 📊 Cluster Performance Monitoring & Metrics
-  - 🚀 Query Optimization & Performance Tuning
-  - 📈 Capacity Planning & Resource Management
-  - 💰 Cost Management & Optimization Strategies
-  - 🔧 Automated Optimization & Self-Healing
+  -  Cluster Performance Monitoring & Metrics
+  -  Query Optimization & Performance Tuning
+  -  Capacity Planning & Resource Management
+  -  Cost Management & Optimization Strategies
+  -  Automated Optimization & Self-Healing
 
   ---
 
-  ### 📊 Cluster Performance Monitoring & Metrics
+  ###  Cluster Performance Monitoring & Metrics
   **Comprehensive Monitoring Framework:**
   ```kql
   // Advanced cluster performance dashboard
@@ -150,7 +150,7 @@ topic: |
 
   ---
 
-  ### 🚀 Query Optimization & Performance Tuning
+  ###  Query Optimization & Performance Tuning
   **Advanced Query Analysis:**
   ```kql
   // Comprehensive query performance analyzer
@@ -262,7 +262,7 @@ topic: |
 
   ---
 
-  ### 📈 Capacity Planning & Resource Management
+  ###  Capacity Planning & Resource Management
   **Intelligent Capacity Planning:**
   ```kql
   // Comprehensive capacity planning model
@@ -401,7 +401,7 @@ topic: |
 
   ---
 
-  ### 💰 Cost Management & Optimization Strategies
+  ###  Cost Management & Optimization Strategies
   **Comprehensive Cost Analysis:**
   ```kql
   // Advanced cost monitoring and optimization
@@ -550,7 +550,7 @@ topic: |
 
   ---
 
-  ### 🔧 Automated Optimization & Self-Healing
+  ###  Automated Optimization & Self-Healing
   **Self-Healing Cluster Management:**
   ```kql
   // Automated cluster health monitoring and remediation
@@ -676,14 +676,14 @@ topic: |
 
   ## Advanced Features
 
-  ### 🔬 Advanced Analytics
+  ###  Advanced Analytics
   - **Predictive Performance**: Machine learning models for performance prediction and optimization
   - **Behavior Analytics**: User and application behavior analysis with optimization recommendations
   - **Cost Forecasting**: Advanced cost forecasting with scenario planning and budget optimization
   - **Capacity Modeling**: Statistical capacity modeling with confidence intervals and risk assessment
   - **Optimization Scoring**: Comprehensive optimization scoring with prioritized recommendation ranking
 
-  ### 📊 Enterprise Integration
+  ###  Enterprise Integration
   - **Multi-Cloud Monitoring**: Cross-cloud performance monitoring with unified dashboards
   - **DevOps Integration**: CI/CD pipeline integration with performance testing and deployment gates
   - **Business Intelligence**: Executive dashboards with business impact metrics and KPI tracking

@@ -8,7 +8,7 @@ This document captures the custom topics configuration for the MeetMaster agent 
 - **Environment ID**: <ENVIRONMENT_ID>
 - **Agent**: MeetMaster
 - **Agent ID**: <AGENT_ID>
-- **Agent Status**: Published and Protected ✅
+- **Agent Status**: Published and Protected [x]
 - **Owner**: [Agent Owner]
 
 ## Custom Topics Summary
@@ -17,7 +17,7 @@ From the audit, MeetMaster contains **6 Custom Topics** and **9 System Topics** 
 ### Custom Topics List:
 1. **Goodbye** - 7 days ago
 2. **Greeting** - 7 days ago  
-3. **Meeting Adaptive Card** - 6 days ago ⭐ (Featured Topic)
+3. **Meeting Adaptive Card** - 6 days ago * (Featured Topic)
 4. **ProposeSlots** - 6 days ago
 5. **Start Over** - 7 days ago
 6. **Thank you** - 7 days ago
@@ -28,7 +28,7 @@ From the audit, MeetMaster contains **6 Custom Topics** and **9 System Topics** 
 - **Name**: Meeting Adaptive Card
 - **Type**: Topic (Custom)
 - **Created**: 6 days ago (June 20, 2025)
-- **Status**: Enabled ✅
+- **Status**: Enabled [x]
 - **Last Modified**: [Agent Owner], 6 days ago
 - **Topic ID**: <TOPIC_ID>
 
@@ -125,7 +125,7 @@ This topic is designed to work with:
 - **Topic Capture Date**: June 26, 2025, 10:08 AM
 - **Browser Session**: Microsoft Edge/Chrome via MCP connection
 - **Audit Method**: Live UI interaction following UI-driven workflow requirements
-- **Documentation Status**: ✅ Complete - Custom topic successfully captured and documented
+- **Documentation Status**: [x] Complete - Custom topic successfully captured and documented
 
 ## File Location
 - **Primary Audit Document**: `<ENVIRONMENT_NAME>_agent-audit.md`

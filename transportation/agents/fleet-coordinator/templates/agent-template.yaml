@@ -23,7 +23,7 @@ topics:
       - I need fleet support
     messages:
       - text: >
-          Hi! 🚛 I'm your Fleet Coordinator. I can help with vehicle scheduling,
+          Hi!  I'm your Fleet Coordinator. I can help with vehicle scheduling,
           maintenance, compliance checks, incident reporting, and routing.
           What do you need?
     quick_replies:

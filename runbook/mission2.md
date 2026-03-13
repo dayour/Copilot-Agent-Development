@@ -1,28 +1,28 @@
-### 🎮 MAD Cool Quest — Stages 4 → 7  
+###  MAD Cool Quest — Stages 4 → 7  
 _A prescriptive, test-your-wits challenge for **Claude Sonnet 4 (Agent-Mode in VS Code)**_  
 _All actions **must** be driven via Copilot Studio UI + the sample React WebChat. No scripts._  
 
 ---
 
-#### ✅ Prereqs already cleared  
+#### [x] Prereqs already cleared  
 1. Agents 1-7 published in “MAD Cool” environment  
 2. App registration (`MAD Cool Scheduler`, ID `<APP_CLIENT_ID>`) created  
 3. Power Platform API delegated permission granted  
 
 ---
 
-## 🏁 Level 4 – “Configure & Connect” (400 XP)
+##  Level 4 – “Configure & Connect” (400 XP)
 
 | Step | Action (UI only) | Validation Gate |
 |------|------------------|-----------------|
 |4.1|Open **settings.TEMPLATE.js** → rename to **settings.js** (VS Code). Populate: `appClientId`, `tenantId`, `environmentId`, `agentIdentifier` or `directConnectUrl`.|`settings.js` committed, values ≠ placeholder text.|
-|4.2|In Copilot Studio UI, open **Data** → **Tables** → create `ActionItems` table (columns 🗒️ Task, 👤 Owner, 📅 DueDate, 🔗 MeetingId).|Table visible in Data workspace.|
+|4.2|In Copilot Studio UI, open **Data** → **Tables** → create `ActionItems` table (columns  Task,  Owner,  DueDate,  MeetingId).|Table visible in Data workspace.|
 |4.3|Agent **Meeting Recap** > Tools → add **Dataverse MCP Server** & map CRUD to `ActionItems`.|Test chat: “log test item”; row appears in table.|
 |4.4|Run `npm install` then `npm run start` from VS Code terminal (no script creation; just CLI).|`http://localhost:3000` shows WebChat splash.|
 
 ---
 
-## 🏁 Level 5 – “WebChat Shake-Down” (600 XP)
+##  Level 5 – “WebChat Shake-Down” (600 XP)
 
 | Step | Action | Validation Gate |
 |------|--------|-----------------|
@@ -32,7 +32,7 @@ _All actions **must** be driven via Copilot Studio UI + the sample React WebChat
 
 ---
 
-## 🏁 Level 6 – “Cross-Agent Orchestration Trials” (800 XP)
+##  Level 6 – “Cross-Agent Orchestration Trials” (800 XP)
 
 | Step | Action | Validation Gate |
 |------|--------|-----------------|
@@ -42,7 +42,7 @@ _All actions **must** be driven via Copilot Studio UI + the sample React WebChat
 
 ---
 
-## 🏁 Level 7 – “Performance & Compliance Finals” (1 000 XP)
+##  Level 7 – “Performance & Compliance Finals” (1 000 XP)
 
 | Step | Action | Validation Gate |
 |------|--------|-----------------|
@@ -53,13 +53,13 @@ _All actions **must** be driven via Copilot Studio UI + the sample React WebChat
 
 ---
 
-### 🔄 Validation Rounds
+###  Validation Rounds
 After each level:  
-1. Mark checkboxes ✅ in this markdown.  
+1. Mark checkboxes [x] in this markdown.  
 2. Commit to repo (`progress-Lx.md`).  
 3. Notify reviewer via Teams “Level X complete – logs pushed.”  
 
 ---
 
-### 🏆 Victory Condition
+###  Victory Condition
 All gates pass, markdown logs present, analytics + compliance artefacts committed. Deep-thinking prowess proven.

@@ -1,19 +1,19 @@
 # Copilot Studio Agent Suite - Deployment Checklist
 
-## 🚀 Pre-Deployment Verification
+##  Pre-Deployment Verification
 
-### ✅ Validation Complete
+### [x] Validation Complete
 - [x] Run `.\master-validation.ps1` - All agents validated successfully
 - [x] Verify 10/10 agents are ready for deployment
 - [x] Confirm all required files present in each agent folder
 
-### ✅ Environment Preparation
+### [x] Environment Preparation
 - [ ] Target Copilot Studio environment identified
 - [ ] Appropriate licenses available (Copilot Studio, Premium Power Platform)
 - [ ] User permissions configured (System Administrator or equivalent)
 - [ ] Required connectors available (if needed for agent-specific functionality)
 
-## 📦 Deployment Process
+##  Deployment Process
 
 ### Step 1: Import Agents
 ```powershell
@@ -44,7 +44,7 @@ For each agent, test:
 - [ ] Fallback and error handling work as expected
 - [ ] Authentication and access controls function properly
 
-## 🔧 Troubleshooting Guide
+##  Troubleshooting Guide
 
 ### Common Import Issues
 - **Missing files**: Ensure all required files (.mcs/, topics/, yml files) are present
@@ -56,7 +56,7 @@ For each agent, test:
 - **Authentication errors**: Verify user permissions and authentication settings
 - **Topic not triggering**: Check topic conditions and conversation flow logic
 
-## 📋 Agent-Specific Notes
+##  Agent-Specific Notes
 
 ### Entra Security Manager
 - Requires Entra ID/Azure AD permissions for optimal functionality
@@ -98,7 +98,7 @@ For each agent, test:
 - Needs Azure Data Explorer permissions
 - Configure Kusto cluster connections
 
-## 🔄 Rollback Plan
+##  Rollback Plan
 
 If deployment issues occur:
 1. Export/backup current environment state
@@ -108,7 +108,7 @@ If deployment issues occur:
 5. Re-run validation scripts
 6. Retry deployment
 
-## 📊 Success Criteria
+##  Success Criteria
 
 ### Deployment Success
 - [ ] All 10 agents imported successfully
@@ -126,7 +126,7 @@ If deployment issues occur:
 - [ ] No timeout or connection errors
 - [ ] Conversation flows complete successfully
 
-## 🎯 Next Phase: Orchestration
+##  Next Phase: Orchestration
 
 After successful deployment:
 1. Design cross-agent communication patterns
@@ -135,7 +135,7 @@ After successful deployment:
 4. Develop handoff mechanisms between agents
 5. Implement analytics and monitoring
 
-## 📞 Support Contacts
+##  Support Contacts
 
 - **Technical Issues**: Refer to PowerShell validation scripts
 - **Configuration Questions**: Check agent-specific README files
@@ -143,7 +143,7 @@ After successful deployment:
 
 ---
 
-## 🏁 Final Verification Command
+##  Final Verification Command
 
 Before deployment, run this final check:
 ```powershell
@@ -151,6 +151,6 @@ cd "c:\Users\dayour\OneDrive - Microsoft\CopilotStudioAgents"
 .\master-validation.ps1
 ```
 
-Expected output: "🎉 SUCCESS: All agents are fully validated and ready for deployment!"
+Expected output: " SUCCESS: All agents are fully validated and ready for deployment!"
 
-**Deployment Authorization**: ✅ APPROVED - All validation checks passed
+**Deployment Authorization**: [x] APPROVED - All validation checks passed

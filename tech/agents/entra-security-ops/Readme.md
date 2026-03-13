@@ -6,7 +6,7 @@ A specialized conversational agent built with Microsoft Copilot Studio focused o
 
 The Entra Security Ops agent is designed to empower security operations teams with comprehensive operational capabilities across the entire security and identity governance lifecycle:
 
-### 🎯 **Core Security Operations**
+###  **Core Security Operations**
 
 - **Real-time Operational Command**: Centralized security operations center (SOC) command and control with live dashboards and metrics
 - **Advanced Alert Intelligence**: AI-powered alert triage, correlation, and prioritization with contextual threat intelligence
@@ -15,7 +15,7 @@ The Entra Security Ops agent is designed to empower security operations teams wi
 - **Security Orchestration**: Automated response workflows, SOAR integration, and multi-platform coordination
 - **Operational Intelligence**: Real-time security insights, threat landscape analysis, and predictive analytics
 
-### �️ **Advanced Identity Governance & Zero Trust**
+### � **Advanced Identity Governance & Zero Trust**
 
 - **Zero Trust Architecture Implementation**: Comprehensive conditional access policies, device compliance, and risk-based authentication
 - **Privilege Escalation Detection**: ML-powered anomaly detection for unauthorized privilege elevation attempts
@@ -24,7 +24,7 @@ The Entra Security Ops agent is designed to empower security operations teams wi
 - **Behavioral Analytics**: Advanced identity risk scoring and behavioral baseline establishment
 - **Conditional Access Orchestration**: Risk-based access controls with intelligent policy recommendations
 
-### �🚀 **Advanced Operational Capabilities**
+### � **Advanced Operational Capabilities**
 
 - **Crisis Response Management**: Emergency incident coordination with executive escalation and business continuity integration
 - **Advanced Threat Hunting**: Sophisticated hunting methodologies, APT detection, and insider threat analysis
@@ -36,7 +36,7 @@ The Entra Security Ops agent is designed to empower security operations teams wi
 
 ## Advanced Features & Capabilities
 
-### 🛡️ **Zero Trust Architecture Implementation**
+###  **Zero Trust Architecture Implementation**
 - **Conditional Access Policies**: Risk-based access controls with intelligent threat detection
 - **Device Compliance Framework**: Comprehensive device health and security validation
 - **Risk Assessment Analytics**: ML-powered continuous risk evaluation and scoring
@@ -57,7 +57,7 @@ $riskPolicy = @{
 New-MgIdentityConditionalAccessPolicy -BodyParameter $riskPolicy
 ```
 
-### 🚨 **Advanced Privilege Escalation Detection**
+### Alert **Advanced Privilege Escalation Detection**
 - **Real-time Monitoring**: Continuous privilege usage analysis and anomaly detection
 - **ML-based Anomaly Detection**: Behavioral analysis for unusual elevation patterns
 - **Automated Response**: Immediate containment and investigation workflows
@@ -70,7 +70,7 @@ New-MgIdentityConditionalAccessPolicy -BodyParameter $riskPolicy
 - Service principal privilege escalation analysis
 - Delegation abuse and lateral movement detection
 
-### 🎯 **Enterprise Identity Governance Automation**
+###  **Enterprise Identity Governance Automation**
 - **Lifecycle Management**: Automated user onboarding, changes, and offboarding
 - **Access Reviews**: AI-powered periodic access certification campaigns
 - **Entitlement Management**: Self-service access packages with approval workflows
@@ -82,7 +82,7 @@ New-MgIdentityConditionalAccessPolicy -BodyParameter $riskPolicy
 - **GDPR**: Data subject rights automation and privacy impact assessments
 - **HIPAA**: Minimum necessary access enforcement and audit controls
 
-### 📊 **Advanced Security Analytics**
+###  **Advanced Security Analytics**
 - **Microsoft Sentinel Integration**: Custom KQL queries and automated hunting
 - **Threat Intelligence**: IOC enrichment and attribution analysis
 - **Predictive Analytics**: ML-powered risk forecasting and trend analysis
@@ -91,19 +91,19 @@ New-MgIdentityConditionalAccessPolicy -BodyParameter $riskPolicy
 
 ## Use Cases & Scenarios
 
-### 🎯 **Enterprise Identity Management**
+###  **Enterprise Identity Management**
 - **Scale**: Managing millions of user identities across global organizations
 - **Complexity**: Multi-layered organizational hierarchies and role structures
 - **Compliance**: Strict regulatory requirements (SOX, GDPR, HIPAA, PCI-DSS)
 - **Automation**: Reducing manual processes and human error through intelligent automation
 
-### 🔍 **Advanced Threat Detection & Response**
+###  **Advanced Threat Detection & Response**
 - **Insider Threat Detection**: Behavioral analysis for internal security risks
 - **Advanced Persistent Threats**: Long-term threat actor identification and tracking
 - **Privilege Abuse**: Real-time detection of unauthorized elevation attempts
 - **Data Exfiltration**: Monitoring for sensitive data access and transfer anomalies
 
-### 🏢 **Large Enterprise Security Operations**
+###  **Large Enterprise Security Operations**
 - **24/7 SOC Operations**: Continuous monitoring and rapid incident response
 - **Multi-team Coordination**: Seamless collaboration across security, IT, and business teams
 - **Executive Reporting**: Real-time security metrics and strategic insights
@@ -111,7 +111,7 @@ New-MgIdentityConditionalAccessPolicy -BodyParameter $riskPolicy
 
 ## Integration with Microsoft Security Stack
 
-### 🛡️ **Microsoft Sentinel Integration**
+###  **Microsoft Sentinel Integration**
 ```kql
 // Advanced privilege escalation detection query
 AuditLogs
@@ -122,19 +122,19 @@ AuditLogs
 | order by RoleAssignments desc
 ```
 
-### 🔐 **Microsoft Defender Integration**
+###  **Microsoft Defender Integration**
 - **Defender for Identity**: On-premises security correlation and hybrid threat detection
 - **Defender for Endpoint**: Device-based risk assessment and automated isolation
 - **Defender for Office 365**: Email security and collaboration platform protection
 - **Defender for Cloud Apps**: Cloud application security and data protection
 
-### 📊 **Microsoft Purview Integration**
+###  **Microsoft Purview Integration**
 - **Data Classification**: Automatic sensitivity labeling and protection
 - **Information Protection**: Data loss prevention and rights management
 - **Compliance Manager**: Automated compliance score calculation and improvement
 - **Insider Risk Management**: Advanced insider threat detection and investigation
 
-### 🎯 **Azure AD Privileged Identity Management (PIM)**
+###  **Azure AD Privileged Identity Management (PIM)**
 - **Just-in-time Access**: Time-bound privilege activation with approval workflows
 - **Access Reviews**: Automated periodic review of privileged access
 - **Risk-based Activation**: Conditional access integration for privilege elevation
@@ -142,31 +142,31 @@ AuditLogs
 
 ## Starter Prompts & Examples
 
-### 🛡️ **Zero Trust Implementation**
+###  **Zero Trust Implementation**
 - "Help me implement a comprehensive Zero Trust architecture for our enterprise Entra environment"
 - "Configure conditional access policies for high-risk user scenarios"
 - "Set up device compliance requirements for corporate data access"
 - "Analyze our current Zero Trust maturity and provide improvement recommendations"
 
-### 🚨 **Privilege Escalation Detection**
+### Alert **Privilege Escalation Detection**
 - "Investigate suspicious privilege escalation activity for user account [username]"
 - "Set up ML-based anomaly detection for administrative role assignments"
 - "Configure automated containment for detected privilege abuse scenarios"
 - "Establish behavioral baselines for normal privilege usage patterns"
 
-### 🎯 **Identity Governance Automation**
+###  **Identity Governance Automation**
 - "Design automated onboarding workflows for new finance department employees"
 - "Set up quarterly access reviews for all privileged accounts"
 - "Configure GDPR-compliant data subject rights automation"
 - "Implement SOX segregation of duties monitoring and alerting"
 
-### 📊 **Advanced Analytics & Reporting**
+###  **Advanced Analytics & Reporting**
 - "Generate executive dashboard showing identity governance effectiveness metrics"
 - "Analyze access patterns to identify optimization opportunities"
 - "Create predictive models for future access requests and risk trends"
 - "Establish compliance reporting automation for multiple regulatory frameworks"
 
-### 🔍 **Threat Hunting & Investigation**
+###  **Threat Hunting & Investigation**
 - "Hunt for indicators of privilege escalation across our environment"
 - "Investigate potential insider threats based on unusual access patterns"
 - "Correlate identity risks with network and endpoint security events"
@@ -174,19 +174,19 @@ AuditLogs
 
 ## Security Considerations & Best Practices
 
-### 🔐 **Enterprise Security Framework**
+###  **Enterprise Security Framework**
 - **Defense in Depth**: Multi-layered security controls across identity, device, network, and data
 - **Least Privilege**: Minimal necessary access with regular validation and cleanup
 - **Continuous Monitoring**: Real-time threat detection and automated response capabilities
 - **Risk-based Decisions**: Dynamic access controls based on contextual risk assessment
 
-### 📋 **Compliance & Governance**
+###  **Compliance & Governance**
 - **Regulatory Alignment**: Built-in support for major compliance frameworks
 - **Audit Readiness**: Comprehensive logging and evidence collection for regulatory reviews
 - **Privacy Protection**: GDPR-compliant data handling and subject rights automation
 - **Executive Oversight**: Real-time visibility into security posture for business leadership
 
-### 🎯 **Operational Excellence**
+###  **Operational Excellence**
 - **Automation First**: Minimize manual processes through intelligent automation
 - **Continuous Improvement**: Regular assessment and optimization of security controls
 - **Team Collaboration**: Seamless integration across security, IT, and business teams
@@ -194,20 +194,20 @@ AuditLogs
 
 ## Technical Documentation & Resources
 
-### 📚 **Microsoft Official Documentation**
+###  **Microsoft Official Documentation**
 - [Azure AD Conditional Access](https://docs.microsoft.com/en-us/azure/active-directory/conditional-access/)
 - [Azure AD Privileged Identity Management](https://docs.microsoft.com/en-us/azure/active-directory/privileged-identity-management/)
 - [Azure AD Identity Governance](https://docs.microsoft.com/en-us/azure/active-directory/governance/)
 - [Microsoft Sentinel](https://docs.microsoft.com/en-us/azure/sentinel/)
 - [Zero Trust Security Model](https://docs.microsoft.com/en-us/security/zero-trust/)
 
-### 🔧 **PowerShell Modules & APIs**
+###  **PowerShell Modules & APIs**
 - **Microsoft Graph PowerShell**: Identity and access management automation
 - **Azure AD PowerShell**: Legacy module for specific administrative tasks
 - **Microsoft Graph API**: RESTful API for programmatic access to Entra services
 - **Azure Resource Manager**: Infrastructure and configuration management
 
-### 📊 **Analytics & Reporting**
+###  **Analytics & Reporting**
 - **Microsoft Sentinel Workbooks**: Custom security analytics dashboards
 - **PowerBI Integration**: Executive reporting and business intelligence
 - **Azure Monitor**: Operational metrics and performance monitoring
@@ -215,19 +215,19 @@ AuditLogs
 
 ## Getting Started
 
-### 🚀 **Initial Setup**
+###  **Initial Setup**
 1. **Prerequisites Verification**: Ensure appropriate licensing and permissions
 2. **Integration Configuration**: Connect Microsoft Security stack components
 3. **Baseline Establishment**: Configure behavioral baselines and risk thresholds
 4. **Policy Implementation**: Deploy conditional access and governance policies
 5. **Monitoring Setup**: Enable comprehensive logging and alerting
 
-### 📋 **Implementation Roadmap**
+###  **Implementation Roadmap**
 - **Phase 1 (0-3 months)**: Foundation setup and basic policy deployment
 - **Phase 2 (3-6 months)**: Advanced analytics and automation implementation
 - **Phase 3 (6-12 months)**: Optimization and continuous improvement processes
 
-### 🎯 **Success Metrics**
+###  **Success Metrics**
 - **Security Improvement**: 85% reduction in identity-related security incidents
 - **Operational Efficiency**: 70% reduction in manual identity management tasks
 - **Compliance Posture**: 95% automated compliance monitoring and reporting
@@ -235,7 +235,7 @@ AuditLogs
 
 ## Key Skills
 
-### 🚨 **Advanced Alert & Incident Operations**
+### Alert **Advanced Alert & Incident Operations**
 
 - **Intelligent Alert Triage**: AI-powered alert correlation, risk scoring, and automated prioritization with threat context
 - **Real-time Security Dashboard**: Executive-level operational dashboards with KPI tracking and trend analysis
@@ -243,7 +243,7 @@ AuditLogs
 - **Multi-tier Incident Management**: Sophisticated incident classification, escalation matrices, and response automation
 - **Evidence Intelligence**: Forensic evidence correlation, chain of custody management, and legal compliance
 
-### 🔍 **Sophisticated Threat Operations**
+###  **Sophisticated Threat Operations**
 
 - **Advanced Threat Hunting**: Hypothesis-driven hunting, APT detection, and behavioral analytics with ML-powered anomaly detection
 - **Adversarial Simulation**: Red team coordination, purple team exercises, and defensive measure validation
@@ -251,7 +251,7 @@ AuditLogs
 - **Insider Threat Detection**: User behavior analytics, privilege abuse detection, and psychological profiling indicators
 - **Threat Landscape Analysis**: Strategic threat assessment, campaign tracking, and predictive threat modeling
 
-### 📊 **Security Operations Analytics**
+###  **Security Operations Analytics**
 
 - **Performance Intelligence**: SOC performance metrics, analyst productivity analytics, and operational efficiency optimization
 - **Threat Metrics Dashboard**: Real-time threat exposure metrics, attack surface analysis, and security posture scoring
@@ -259,7 +259,7 @@ AuditLogs
 - **Compliance Operations**: Regulatory compliance monitoring, audit preparation, and governance reporting automation
 - **Business Impact Analysis**: Security incident business impact assessment and cost analysis
 
-### 🤖 **Advanced Automation & Orchestration**
+###  **Advanced Automation & Orchestration**
 
 - **SOAR Workflow Design**: Complex security orchestration playbooks with decision trees and approval workflows
 - **Crisis Automation**: Emergency response automation with stakeholder notification and escalation protocols

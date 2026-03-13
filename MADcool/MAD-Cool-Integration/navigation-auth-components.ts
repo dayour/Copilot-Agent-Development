@@ -288,7 +288,7 @@ const AuthenticationFlow: React.FC = () => {
       await instance.loginPopup(loginRequest);
       
       // Success is handled by the main App component
-      console.log('🎉 Successfully authenticated with Cypherdyne tenant');
+      console.log(' Successfully authenticated with Cypherdyne tenant');
       
     } catch (error: any) {
       console.error('Authentication failed:', error);
@@ -414,7 +414,7 @@ const AuthenticationFlow: React.FC = () => {
         {/* Security Notice */}
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-500">
-            🔒 Secure authentication powered by Microsoft Entra ID
+             Secure authentication powered by Microsoft Entra ID
           </p>
           <p className="text-xs text-gray-400 mt-1">
             Your data is protected with enterprise-grade security

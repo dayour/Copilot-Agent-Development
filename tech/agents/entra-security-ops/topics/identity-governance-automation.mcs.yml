@@ -22,27 +22,27 @@ beginDialog:
     - kind: SendActivity
       id: governance_intro
       activity: |
-        🎯 **Enterprise Identity Governance Automation Center**
+         **Enterprise Identity Governance Automation Center**
         
         **Comprehensive Identity Governance Framework:**
         
-        **🔄 Identity Lifecycle Management**
-        ✅ **Automated Onboarding** - Streamlined new user provisioning with role-based access
-        ✅ **Dynamic Access Management** - Attribute-based access control and entitlements
-        ✅ **Automated Offboarding** - Secure account termination and access revocation
-        ✅ **Lifecycle Orchestration** - End-to-end identity workflow automation
+        ** Identity Lifecycle Management**
+        [x] **Automated Onboarding** - Streamlined new user provisioning with role-based access
+        [x] **Dynamic Access Management** - Attribute-based access control and entitlements
+        [x] **Automated Offboarding** - Secure account termination and access revocation
+        [x] **Lifecycle Orchestration** - End-to-end identity workflow automation
         
-        **📋 Access Reviews & Certification**
-        ✅ **Automated Access Reviews** - Periodic access certification campaigns
-        ✅ **Risk-based Reviews** - Priority-based review scheduling and scope
-        ✅ **Compliance Reporting** - SOX, GDPR, HIPAA compliance automation
-        ✅ **Remediation Workflows** - Automated access cleanup and enforcement
+        ** Access Reviews & Certification**
+        [x] **Automated Access Reviews** - Periodic access certification campaigns
+        [x] **Risk-based Reviews** - Priority-based review scheduling and scope
+        [x] **Compliance Reporting** - SOX, GDPR, HIPAA compliance automation
+        [x] **Remediation Workflows** - Automated access cleanup and enforcement
         
-        **🎨 Entitlement Management**
-        ✅ **Access Packages** - Pre-configured role and resource bundles
-        ✅ **Self-service Access** - Employee-driven access request workflows
-        ✅ **Approval Automation** - AI-assisted approval decision support
-        ✅ **Temporal Access** - Time-bound access grants and automatic expiration
+        ** Entitlement Management**
+        [x] **Access Packages** - Pre-configured role and resource bundles
+        [x] **Self-service Access** - Employee-driven access request workflows
+        [x] **Approval Automation** - AI-assisted approval decision support
+        [x] **Temporal Access** - Time-bound access grants and automatic expiration
         
         What aspect of identity governance requires immediate attention?
 
@@ -56,11 +56,11 @@ beginDialog:
         activity: |
           **Select Governance Automation Focus:**
           
-          🎯 **1. Identity Lifecycle Automation** - Configure automated user provisioning and deprovisioning
-          📋 **2. Access Review Campaigns** - Set up and manage periodic access certifications
-          🎨 **3. Entitlement Management** - Design and deploy access packages and self-service workflows
-          📊 **4. Compliance Automation** - Implement regulatory compliance reporting and controls
-          🔍 **5. Governance Analytics** - Advanced identity analytics and risk assessment
+           **1. Identity Lifecycle Automation** - Configure automated user provisioning and deprovisioning
+           **2. Access Review Campaigns** - Set up and manage periodic access certifications
+           **3. Entitlement Management** - Design and deploy access packages and self-service workflows
+           **4. Compliance Automation** - Implement regulatory compliance reporting and controls
+           **5. Governance Analytics** - Advanced identity analytics and risk assessment
           
           Choose your implementation priority:
 
@@ -111,7 +111,7 @@ beginDialog:
         - kind: SendActivity
           id: invalid_governance_selection
           activity: |
-            ⚠️ Please select a valid governance automation option from the list above.
+            Warning Please select a valid governance automation option from the list above.
 
 dialogs:
   - kind: AdaptiveDialog
@@ -120,22 +120,22 @@ dialogs:
       - kind: SendActivity
         id: lifecycle_automation_intro
         activity: |
-          🔄 **Advanced Identity Lifecycle Automation**
+           **Advanced Identity Lifecycle Automation**
           
           **Enterprise Lifecycle Management Framework:**
           
-          **📥 Automated Onboarding Process:**
+          ** Automated Onboarding Process:**
           1. **HR System Integration** - Workday/SuccessFactors automated provisioning
           2. **Role-based Provisioning** - Attribute-driven access assignment
           3. **Welcome Workflow** - Automated credential delivery and training
           4. **Compliance Verification** - Background check and access approval integration
           
-          **🔄 Dynamic Access Management:**
+          ** Dynamic Access Management:**
           - **Attribute-based Access Control (ABAC)** - Real-time entitlement calculation
           - **Role Mining and Optimization** - AI-driven role definition and cleanup
           - **Access Recertification** - Continuous access validation and adjustment
           
-          **📤 Secure Offboarding Process:**
+          ** Secure Offboarding Process:**
           - **Immediate Access Revocation** - Real-time account disabling
           - **Data Retention Compliance** - Automated data archival and deletion
           - **Equipment Recovery** - Device management integration
@@ -152,7 +152,7 @@ dialogs:
       - kind: SendActivity
         id: lifecycle_implementation
         activity: |
-          🎯 **Enterprise Lifecycle Automation Implementation**
+           **Enterprise Lifecycle Automation Implementation**
           
           **Microsoft Graph PowerShell Automation:**
           ```powershell
@@ -242,7 +242,7 @@ dialogs:
           
           **Integration with Enterprise Systems:**
           
-          **🏢 HR System Integration (Workday/SuccessFactors):**
+          ** HR System Integration (Workday/SuccessFactors):**
           ```powershell
           # Workday API integration for real-time provisioning
           $workdayEndpoint = "https://company.workday.com/api/v1/workers"
@@ -262,15 +262,15 @@ dialogs:
           }
           ```
           
-          **📊 Compliance and Audit Integration:**
+          ** Compliance and Audit Integration:**
           - **SOX Compliance** - Segregation of duties validation
           - **GDPR Compliance** - Data retention and deletion automation
           - **HIPAA Compliance** - Healthcare access controls and audit trails
           
           **Automated Workflows with Microsoft Purview:**
-          ✅ **Data Classification** - Automatic sensitivity labeling for new users
-          ✅ **Retention Policies** - User data lifecycle management
-          ✅ **Access Analytics** - Continuous access pattern analysis
+          [x] **Data Classification** - Automatic sensitivity labeling for new users
+          [x] **Retention Policies** - User data lifecycle management
+          [x] **Access Analytics** - Continuous access pattern analysis
 
   - kind: AdaptiveDialog
     id: AccessReviewsDialog
@@ -278,17 +278,17 @@ dialogs:
       - kind: SendActivity
         id: access_reviews_intro
         activity: |
-          📋 **Enterprise Access Review Campaign Management**
+           **Enterprise Access Review Campaign Management**
           
           **Comprehensive Access Certification Framework:**
           
-          **🎯 Risk-based Review Prioritization:**
+          ** Risk-based Review Prioritization:**
           - **High-privilege Accounts** - Monthly certification for admin roles
           - **Sensitive Data Access** - Quarterly reviews for confidential systems
           - **External User Access** - Bi-annual guest account certification
           - **Application Permissions** - Annual service principal review
           
-          **🤖 AI-powered Review Optimization:**
+          ** AI-powered Review Optimization:**
           - **Intelligent Recommendations** - ML-based access appropriateness scoring
           - **Automated Approvals** - Low-risk access auto-certification
           - **Anomaly Detection** - Unusual access pattern identification
@@ -305,7 +305,7 @@ dialogs:
       - kind: SendActivity
         id: access_review_configuration
         activity: |
-          📋 **Advanced Access Review Implementation**
+           **Advanced Access Review Implementation**
           
           **Microsoft Graph PowerShell Configuration:**
           ```powershell
@@ -423,10 +423,10 @@ dialogs:
           ```
           
           **Automated Remediation Workflows:**
-          🚨 **High-Risk Access Denial** - Immediate access revocation for denied reviews
-          📧 **Stakeholder Notifications** - Automated escalation for overdue reviews
-          📊 **Compliance Reporting** - Real-time compliance dashboard updates
-          🔄 **Continuous Monitoring** - Ongoing access pattern analysis between reviews
+          Alert **High-Risk Access Denial** - Immediate access revocation for denied reviews
+           **Stakeholder Notifications** - Automated escalation for overdue reviews
+           **Compliance Reporting** - Real-time compliance dashboard updates
+           **Continuous Monitoring** - Ongoing access pattern analysis between reviews
 
   - kind: AdaptiveDialog
     id: EntitlementManagementDialog
@@ -434,17 +434,17 @@ dialogs:
       - kind: SendActivity
         id: entitlement_management_intro
         activity: |
-          🎨 **Advanced Entitlement Management Automation**
+           **Advanced Entitlement Management Automation**
           
           **Enterprise Access Package Framework:**
           
-          **📦 Pre-configured Access Packages:**
+          ** Pre-configured Access Packages:**
           - **Department-based Packages** - Role-specific resource bundles
           - **Project-based Packages** - Temporary access for specific initiatives
           - **Contractor Packages** - External user access with automatic expiration
           - **Executive Packages** - High-privilege access with approval workflows
           
-          **🤖 AI-powered Access Recommendations:**
+          ** AI-powered Access Recommendations:**
           - **Role Mining** - Automatic access pattern discovery
           - **Peer Analysis** - Similar user access recommendations
           - **Risk Assessment** - Security impact evaluation for access requests
@@ -461,7 +461,7 @@ dialogs:
       - kind: SendActivity
         id: entitlement_implementation
         activity: |
-          🎨 **Enterprise Entitlement Management Implementation**
+           **Enterprise Entitlement Management Implementation**
           
           **Microsoft Graph PowerShell Configuration:**
           ```powershell
@@ -615,15 +615,15 @@ dialogs:
           ```
           
           **Microsoft Purview Integration:**
-          📊 **Data Access Governance** - Automatic sensitivity label application
-          🔍 **Access Analytics** - Data access pattern analysis and optimization
-          📋 **Compliance Reporting** - Automated entitlement compliance dashboards
+           **Data Access Governance** - Automatic sensitivity label application
+           **Access Analytics** - Data access pattern analysis and optimization
+           **Compliance Reporting** - Automated entitlement compliance dashboards
           
           **Advanced Automation Features:**
-          ✅ **Dynamic Group Membership** - Attribute-based automatic access assignment
-          ✅ **Conditional Access Integration** - Risk-based access package activation
-          ✅ **Lifecycle Management** - Automatic access package updates based on role changes
-          ✅ **Cost Optimization** - Resource usage analytics and optimization recommendations
+          [x] **Dynamic Group Membership** - Attribute-based automatic access assignment
+          [x] **Conditional Access Integration** - Risk-based access package activation
+          [x] **Lifecycle Management** - Automatic access package updates based on role changes
+          [x] **Cost Optimization** - Resource usage analytics and optimization recommendations
 
   - kind: AdaptiveDialog
     id: ComplianceAutomationDialog
@@ -631,23 +631,23 @@ dialogs:
       - kind: SendActivity
         id: compliance_automation_intro
         activity: |
-          📊 **Enterprise Compliance Automation Framework**
+           **Enterprise Compliance Automation Framework**
           
           **Regulatory Compliance Coverage:**
           
-          **⚖️ SOX (Sarbanes-Oxley) Compliance:**
+          ** SOX (Sarbanes-Oxley) Compliance:**
           - **Segregation of Duties** - Automated conflict detection and resolution
           - **Financial System Access** - Quarterly certification and monitoring
           - **Executive Access Controls** - Enhanced monitoring for C-level accounts
           - **Audit Trail Integrity** - Immutable log retention and reporting
           
-          **🛡️ GDPR (General Data Protection Regulation):**
+          ** GDPR (General Data Protection Regulation):**
           - **Data Subject Rights** - Automated data export and deletion
           - **Consent Management** - Digital consent tracking and validation
           - **Breach Notification** - 72-hour automated regulatory reporting
           - **Privacy Impact Assessment** - Automated PIA workflow integration
           
-          **🏥 HIPAA (Health Insurance Portability and Accountability Act):**
+          ** HIPAA (Health Insurance Portability and Accountability Act):**
           - **Minimum Necessary Access** - Automated least-privilege enforcement
           - **Audit Controls** - Comprehensive healthcare access monitoring
           - **Person Authentication** - Enhanced identity verification for PHI access
@@ -664,7 +664,7 @@ dialogs:
       - kind: SendActivity
         id: compliance_implementation
         activity: |
-          📊 **Advanced Compliance Automation Implementation**
+           **Advanced Compliance Automation Implementation**
           
           **SOX Compliance Automation:**
           ```powershell
@@ -832,10 +832,10 @@ dialogs:
           ```
           
           **Automated Compliance Reporting:**
-          📊 **Executive Dashboards** - Real-time compliance posture visualization
-          📋 **Regulatory Reports** - Automated report generation for auditors
-          🚨 **Violation Alerts** - Immediate notification of compliance breaches
-          📈 **Trend Analysis** - Compliance improvement tracking and recommendations
+           **Executive Dashboards** - Real-time compliance posture visualization
+           **Regulatory Reports** - Automated report generation for auditors
+          Alert **Violation Alerts** - Immediate notification of compliance breaches
+           **Trend Analysis** - Compliance improvement tracking and recommendations
 
   - kind: AdaptiveDialog
     id: GovernanceAnalyticsDialog
@@ -843,17 +843,17 @@ dialogs:
       - kind: SendActivity
         id: governance_analytics_intro
         activity: |
-          🔍 **Advanced Identity Governance Analytics**
+           **Advanced Identity Governance Analytics**
           
           **Enterprise Analytics Capabilities:**
           
-          **📊 Identity Risk Analytics:**
+          ** Identity Risk Analytics:**
           - **Risk Scoring Models** - ML-powered identity risk calculation
           - **Behavioral Analysis** - Anomaly detection and pattern recognition
           - **Predictive Analytics** - Proactive risk identification and mitigation
           - **Risk Correlation** - Multi-dimensional risk factor analysis
           
-          **📈 Access Pattern Analytics:**
+          ** Access Pattern Analytics:**
           - **Usage Analytics** - Resource access frequency and patterns
           - **Optimization Insights** - Access efficiency and waste identification
           - **Trend Analysis** - Long-term access pattern evolution
@@ -870,7 +870,7 @@ dialogs:
       - kind: SendActivity
         id: analytics_implementation
         activity: |
-          🔍 **Enterprise Governance Analytics Implementation**
+           **Enterprise Governance Analytics Implementation**
           
           **Microsoft Sentinel Advanced Analytics:**
           ```kql
@@ -1027,16 +1027,16 @@ dialogs:
           ```
           
           **Predictive Analytics Capabilities:**
-          🎯 **Access Request Prediction** - Proactive access provisioning recommendations
-          📊 **Risk Trend Forecasting** - Future identity risk pattern prediction
-          🔍 **Anomaly Prediction** - Early warning for potential security incidents
-          📈 **Compliance Forecasting** - Predictive compliance posture modeling
+           **Access Request Prediction** - Proactive access provisioning recommendations
+           **Risk Trend Forecasting** - Future identity risk pattern prediction
+           **Anomaly Prediction** - Early warning for potential security incidents
+           **Compliance Forecasting** - Predictive compliance posture modeling
           
           **Executive Reporting Automation:**
-          📋 **Monthly Governance Scorecards** - Automated executive summary generation
-          📊 **Quarterly Risk Assessments** - Comprehensive identity risk analysis
-          📈 **Annual Compliance Reports** - Regulatory compliance status and trends
-          🎯 **Strategic Recommendations** - Data-driven governance improvement insights
+           **Monthly Governance Scorecards** - Automated executive summary generation
+           **Quarterly Risk Assessments** - Comprehensive identity risk analysis
+           **Annual Compliance Reports** - Regulatory compliance status and trends
+           **Strategic Recommendations** - Data-driven governance improvement insights
 
 variables:
   - name: governanceFocus

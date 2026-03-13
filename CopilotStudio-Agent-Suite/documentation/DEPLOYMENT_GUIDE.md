@@ -1,6 +1,6 @@
 # Copilot Studio Agent Deployment Guide
 
-## 🚀 Quick Start Deployment
+##  Quick Start Deployment
 
 ### Prerequisites
 - PowerShell 5.0 or higher
@@ -44,29 +44,29 @@ cd "c:\Users\dayour\OneDrive - Microsoft\CopilotStudioAgents"
    - Follow the import wizard
    - Configure environment-specific settings
 
-## 📋 Pre-Deployment Checklist
+##  Pre-Deployment Checklist
 
-### ✅ Environment Preparation
+### [x] Environment Preparation
 - [ ] Copilot Studio environment is available
 - [ ] User has appropriate permissions
 - [ ] Required connectors are available
 - [ ] Network connectivity is confirmed
 
-### ✅ Agent Validation
+### [x] Agent Validation
 ```powershell
 # Run master validation
 .\master-validation.ps1
 
-# Expected output: "🎉 SUCCESS: All agents are fully validated and ready for deployment!"
+# Expected output: " SUCCESS: All agents are fully validated and ready for deployment!"
 ```
 
-### ✅ Configuration Review
+### [x] Configuration Review
 - [ ] Review `deployment-config.template.json`
 - [ ] Customize authentication settings
 - [ ] Set environment-specific URLs
 - [ ] Configure agent priorities
 
-## 🔧 Deployment Parameters
+##  Deployment Parameters
 
 ### Authentication Options
 
@@ -91,7 +91,7 @@ cd "c:\Users\dayour\OneDrive - Microsoft\CopilotStudioAgents"
 | `-AgentsToInclude` | Specific agents to deploy | All agents |
 | `-CreateBackup` | Backup existing agents | `$true` |
 
-## 📊 Post-Deployment Verification
+##  Post-Deployment Verification
 
 ### 1. Test Basic Functionality
 ```powershell
@@ -113,7 +113,7 @@ cd "c:\Users\dayour\OneDrive - Microsoft\CopilotStudioAgents"
 - Check error handling
 - Validate performance
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -148,7 +148,7 @@ cd "c:\Users\dayour\OneDrive - Microsoft\CopilotStudioAgents"
 .\deploy-agents.ps1 -AgentsToInclude @("AgentName") -ValidateOnly
 ```
 
-## 📞 Support Resources
+##  Support Resources
 
 ### Documentation Links
 - [Copilot Studio Documentation](https://docs.microsoft.com/en-us/power-virtual-agents/)
@@ -163,16 +163,16 @@ cd "c:\Users\dayour\OneDrive - Microsoft\CopilotStudioAgents"
 
 ---
 
-## 🎯 Success Criteria
+##  Success Criteria
 
-✅ **Deployment Complete When:**
+[x] **Deployment Complete When:**
 - All agents imported successfully
 - No critical errors in deployment log
 - Basic conversation flows working
 - Authentication configured properly
 - Environment-specific settings updated
 
-✅ **Ready for Production When:**
+[x] **Ready for Production When:**
 - All agents tested individually
 - Integration scenarios validated
 - Performance benchmarks met

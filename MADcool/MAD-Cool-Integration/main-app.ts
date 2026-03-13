@@ -155,10 +155,10 @@ function AppContent() {
 
         setServicesInitialized(true);
 
-        console.log('🚀 Intelligent Booking System initialized successfully!');
-        console.log('📊 Graph Service:', !!graph);
-        console.log('🤖 Agent Orchestrator:', !!agents);
-        console.log('👤 User Profile:', userProfile.displayName);
+        console.log(' Intelligent Booking System initialized successfully!');
+        console.log(' Graph Service:', !!graph);
+        console.log(' Agent Orchestrator:', !!agents);
+        console.log(' User Profile:', userProfile.displayName);
 
       } catch (error) {
         console.error('Failed to initialize app services:', error);

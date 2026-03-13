@@ -27,15 +27,15 @@ topic: |
   **System:** Welcome! I'm here to help you build enterprise-scale data pipelines in Kusto. I can assist with high-volume ingestion, real-time processing, Event Hub integration, and comprehensive data pipeline optimization.
 
   **Options:**
-  - 🚀 High-Volume Data Ingestion & Streaming
-  - 🔄 Azure Data Factory Integration & ETL
-  - 📡 IoT Hub & Event Hub Configuration
-  - ⚡ Real-time Processing & Stream Analytics
-  - 🏗️ Pipeline Architecture & Optimization
+  -  High-Volume Data Ingestion & Streaming
+  -  Azure Data Factory Integration & ETL
+  -  IoT Hub & Event Hub Configuration
+  -  Real-time Processing & Stream Analytics
+  -  Pipeline Architecture & Optimization
 
   ---
 
-  ### 🚀 High-Volume Data Ingestion & Streaming
+  ###  High-Volume Data Ingestion & Streaming
   **Enterprise Ingestion Architecture:**
   ```kql
   // High-Performance Ingestion Policy Configuration
@@ -112,7 +112,7 @@ topic: |
 
   ---
 
-  ### 🔄 Azure Data Factory Integration & ETL
+  ###  Azure Data Factory Integration & ETL
   **Comprehensive ETL Workflows:**
   ```json
   {
@@ -187,7 +187,7 @@ topic: |
 
   ---
 
-  ### 📡 IoT Hub & Event Hub Configuration
+  ###  IoT Hub & Event Hub Configuration
   **Event Hub Optimization:**
   ```csharp
   // High-performance Event Hub producer configuration
@@ -277,7 +277,7 @@ topic: |
 
   ---
 
-  ### ⚡ Real-time Processing & Stream Analytics
+  ###  Real-time Processing & Stream Analytics
   **Stream Analytics Integration:**
   ```sql
   -- Azure Stream Analytics query for real-time processing
@@ -354,7 +354,7 @@ topic: |
 
   ---
 
-  ### 🏗️ Pipeline Architecture & Optimization
+  ###  Pipeline Architecture & Optimization
   **Enterprise Architecture Patterns:**
   ```kql
   // Lambda architecture implementation
@@ -433,14 +433,14 @@ topic: |
 
   ## Advanced Features
 
-  ### 🔬 Pipeline Intelligence
+  ###  Pipeline Intelligence
   - **Adaptive Processing**: Self-tuning pipelines that adapt to changing data patterns and volume
   - **Predictive Scaling**: ML-based capacity prediction with proactive resource allocation
   - **Anomaly Detection**: Pipeline health monitoring with anomaly detection and root cause analysis
   - **Cost Optimization**: Dynamic cost optimization with workload-based resource allocation
   - **Performance Profiling**: Continuous performance profiling with bottleneck identification
 
-  ### 📊 Enterprise Integration
+  ###  Enterprise Integration
   - **Multi-cloud Support**: Hybrid and multi-cloud data pipeline integration
   - **Legacy System Integration**: Mainframe and legacy system connectors with data transformation
   - **API Management**: Comprehensive API gateway integration with authentication and rate limiting
