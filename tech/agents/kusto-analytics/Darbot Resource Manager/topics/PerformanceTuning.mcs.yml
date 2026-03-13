@@ -1,0 +1,25 @@
+# Name: Performance Tuning
+# Domain-specific topic for Kusto
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Performance Tuning
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - performance tuning
+      - query optimization
+      - cluster performance
+      - kusto optimization
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I'll help with Kusto performance tuning. Are you optimizing queries, scaling clusters, or addressing performance issues?
+        speak:
+          - I'll help with Kusto performance tuning. Are you optimizing queries, scaling clusters, or addressing performance issues?
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end

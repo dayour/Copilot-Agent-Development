@@ -1,0 +1,6 @@
+# Name: https://www.microsoft.com/en-us/microsoft-copilot/
+# For Copilot Studio webstie
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://www.microsoft.com/en-us/microsoft-copilot/

@@ -1,0 +1,519 @@
+# Connector Health Dashboard - Power BI Template
+
+# This file defines the Power BI report template for the connector health
+# monitoring dashboard. Import this template into Power BI Desktop and
+# configure the Dataverse environment URL to connect to the cr_ConnectorHealth
+# table populated by the ConnectorHealthCheckScheduled flow and agent flows.
+
+template:
+  name: ConnectorHealthDashboard
+  displayName: "Connector Health Dashboard"
+  description: >
+    Fleet-wide connector health visibility across all Copilot Agent Development
+    verticals. Connects to the Dataverse cr_ConnectorHealth table.
+  version: "1.0.0"
+  targetDataSource: dataverse
+
+dataSource:
+  type: dataverse
+  parameterName: DataverseEnvironmentUrl
+  parameterLabel: "Dataverse Environment URL"
+  parameterDescription: >
+    The base URL of your Power Platform Dataverse environment,
+    e.g. https://yourorg.crm.dynamics.com
+  tables:
+    - logicalName: cr_connectorhealth
+      displayName: Connector Health
+      columns:
+        - cr_connectorhealthid
+        - cr_vertical
+        - cr_agentname
+        - cr_connectorname
+        - cr_connectionreference
+        - cr_invocationtime
+        - cr_connectionstatus
+        - cr_httpstatuscode
+        - cr_issuccess
+        - cr_latencyms
+        - cr_ratelimitremaining
+        - cr_ratelimittotal
+        - cr_istokenrefresh
+        - cr_tokenrefreshsuccess
+        - cr_errorcode
+        - cr_errormessage
+        - cr_correlationid
+
+measures:
+  - name: ErrorRate
+    displayName: "Error Rate"
+    description: "Percentage of failed connector calls."
+    dax: |
+      DIVIDE(
+          CALCULATE(
+              COUNTROWS(cr_connectorhealth),
+              cr_connectorhealth[cr_issuccess] = FALSE()
+          ),
+          COUNTROWS(cr_connectorhealth),
+          0
+      )
+    formatString: "0.00%"
+
+  - name: LatencyP50
+    displayName: "Latency p50 (ms)"
+    description: "50th percentile response latency in milliseconds."
+    dax: |
+      PERCENTILE.INC(cr_connectorhealth[cr_latencyms], 0.50)
+    formatString: "0"
+
+  - name: LatencyP95
+    displayName: "Latency p95 (ms)"
+    description: "95th percentile response latency in milliseconds."
+    dax: |
+      PERCENTILE.INC(cr_connectorhealth[cr_latencyms], 0.95)
+    formatString: "0"
+
+  - name: LatencyP99
+    displayName: "Latency p99 (ms)"
+    description: "99th percentile response latency in milliseconds."
+    dax: |
+      PERCENTILE.INC(cr_connectorhealth[cr_latencyms], 0.99)
+    formatString: "0"
+
+  - name: RateLimitUtilizationPct
+    displayName: "Rate Limit Utilization %"
+    description: "Percentage of quota consumed for connectors reporting rate-limit headers."
+    dax: |
+      DIVIDE(
+          CALCULATE(
+              SUMX(
+                  cr_connectorhealth,
+                  cr_connectorhealth[cr_ratelimittotal] - cr_connectorhealth[cr_ratelimitremaining]
+              ),
+              cr_connectorhealth[cr_ratelimittotal] > 0
+          ),
+          CALCULATE(
+              SUM(cr_connectorhealth[cr_ratelimittotal]),
+              cr_connectorhealth[cr_ratelimittotal] > 0
+          ),
+          0
+      )
+    formatString: "0.0%"
+
+  - name: TokenRefreshSuccessRate
+    displayName: "Token Refresh Success Rate"
+    description: "Percentage of OAuth token refresh attempts that succeeded."
+    dax: |
+      DIVIDE(
+          CALCULATE(
+              COUNTROWS(cr_connectorhealth),
+              cr_connectorhealth[cr_istokenrefresh] = TRUE(),
+              cr_connectorhealth[cr_tokenrefreshsuccess] = TRUE()
+          ),
+          CALCULATE(
+              COUNTROWS(cr_connectorhealth),
+              cr_connectorhealth[cr_istokenrefresh] = TRUE()
+          ),
+          1
+      )
+    formatString: "0.00%"
+
+  - name: TotalInvocations
+    displayName: "Total Invocations"
+    description: "Count of all connector invocations in the selected time range."
+    dax: "COUNTROWS(cr_connectorhealth)"
+    formatString: "#,0"
+
+  - name: HealthyInvocations
+    displayName: "Healthy Invocations"
+    description: "Count of successful connector invocations."
+    dax: |
+      CALCULATE(
+          COUNTROWS(cr_connectorhealth),
+          cr_connectorhealth[cr_issuccess] = TRUE()
+      )
+    formatString: "#,0"
+
+  - name: FailedInvocations
+    displayName: "Failed Invocations"
+    description: "Count of failed connector invocations."
+    dax: |
+      CALCULATE(
+          COUNTROWS(cr_connectorhealth),
+          cr_connectorhealth[cr_issuccess] = FALSE()
+      )
+    formatString: "#,0"
+
+  - name: AuthExpiredCount
+    displayName: "Auth Expired / Revoked Count"
+    description: "Count of invocations with connection status Expired or Revoked."
+    dax: |
+      CALCULATE(
+          COUNTROWS(cr_connectorhealth),
+          cr_connectorhealth[cr_connectionstatus] IN {2, 3}
+      )
+    formatString: "#,0"
+
+pages:
+  - name: FleetOverview
+    displayName: "Fleet Overview"
+    description: >
+      Single-pane health status for all verticals and connectors. Shows current
+      status, error rate, and latency at a glance.
+    visuals:
+      - type: card
+        title: "Total Invocations (Last 24h)"
+        measure: TotalInvocations
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -1
+            unit: days
+
+      - type: card
+        title: "Error Rate (Last 24h)"
+        measure: ErrorRate
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -1
+            unit: days
+        conditionalFormatting:
+          - threshold: 0.10
+            color: "#C00000"
+          - threshold: 0.05
+            color: "#FFC000"
+          - threshold: 0
+            color: "#00B050"
+
+      - type: card
+        title: "Auth Expired / Revoked"
+        measure: AuthExpiredCount
+        conditionalFormatting:
+          - threshold: 1
+            color: "#C00000"
+          - threshold: 0
+            color: "#00B050"
+
+      - type: card
+        title: "Token Refresh Success Rate"
+        measure: TokenRefreshSuccessRate
+        # Values less than 1.00 (i.e., less than 100% success) are formatted
+        # as critical red to surface any token refresh failure immediately.
+        conditionalFormatting:
+          - threshold: 1.00
+            operator: lessThan
+            color: "#C00000"
+
+      - type: matrix
+        title: "Connector Health by Vertical"
+        rows:
+          - cr_vertical
+          - cr_connectorname
+        values:
+          - TotalInvocations
+          - ErrorRate
+          - LatencyP95
+          - RateLimitUtilizationPct
+          - AuthExpiredCount
+        conditionalFormatting:
+          - measure: ErrorRate
+            threshold: 0.10
+            color: "#C00000"
+          - measure: LatencyP95
+            threshold: 5000
+            color: "#FFC000"
+
+      - type: barChart
+        title: "Invocations by Vertical (Last 24h)"
+        axis: cr_vertical
+        values:
+          - HealthyInvocations
+          - FailedInvocations
+        stacked: true
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -1
+            unit: days
+
+  - name: ErrorRateTrends
+    displayName: "Error Rate Trends"
+    description: >
+      Time-series error rate charts per connector over 7 and 30 day windows.
+    visuals:
+      - type: lineChart
+        title: "Error Rate Trend - Last 7 Days"
+        axis: cr_invocationtime
+        axisGranularity: hour
+        series: cr_connectorname
+        values:
+          - ErrorRate
+        referenceLine:
+          value: 0.10
+          label: "10% threshold"
+          color: "#C00000"
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -7
+            unit: days
+
+      - type: lineChart
+        title: "Error Rate Trend - Last 30 Days"
+        axis: cr_invocationtime
+        axisGranularity: day
+        series: cr_connectorname
+        values:
+          - ErrorRate
+        referenceLine:
+          value: 0.10
+          label: "10% threshold"
+          color: "#C00000"
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -30
+            unit: days
+
+      - type: table
+        title: "Top 10 Connectors by Error Count (Last 7 Days)"
+        columns:
+          - cr_vertical
+          - cr_connectorname
+          - FailedInvocations
+          - TotalInvocations
+          - ErrorRate
+        topN: 10
+        sortBy: FailedInvocations
+        sortOrder: descending
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -7
+            unit: days
+
+  - name: LatencyPercentiles
+    displayName: "Latency Percentiles"
+    description: >
+      p50, p95, and p99 latency charts per connector with 5-second threshold reference lines.
+    visuals:
+      - type: lineChart
+        title: "Latency p95 Trend - Last 7 Days"
+        axis: cr_invocationtime
+        axisGranularity: hour
+        series: cr_connectorname
+        values:
+          - LatencyP95
+        referenceLine:
+          value: 5000
+          label: "5s threshold"
+          color: "#C00000"
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -7
+            unit: days
+
+      - type: clusteredBarChart
+        title: "Latency Percentiles by Connector (Last 24h)"
+        axis: cr_connectorname
+        values:
+          - LatencyP50
+          - LatencyP95
+          - LatencyP99
+        referenceLine:
+          value: 5000
+          label: "p95 threshold"
+          color: "#C00000"
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -1
+            unit: days
+
+      - type: scatterChart
+        title: "Latency vs Error Rate by Connector"
+        xAxis: LatencyP95
+        yAxis: ErrorRate
+        details: cr_connectorname
+        size: TotalInvocations
+
+  - name: RateLimitUtilization
+    displayName: "Rate Limit Utilization"
+    description: >
+      Current quota consumption per connector with gauge visuals and trend lines.
+    visuals:
+      - type: gauge
+        title: "Fleet-Wide Rate Limit Utilization"
+        measure: RateLimitUtilizationPct
+        minValue: 0
+        maxValue: 1
+        targetValue: 0.80
+        conditionalFormatting:
+          - threshold: 0.80
+            color: "#C00000"
+          - threshold: 0.60
+            color: "#FFC000"
+          - threshold: 0
+            color: "#00B050"
+
+      - type: barChart
+        title: "Rate Limit Utilization by Connector (Latest)"
+        axis: cr_connectorname
+        values:
+          - RateLimitUtilizationPct
+        referenceLine:
+          value: 0.80
+          label: "80% warning"
+          color: "#C00000"
+
+      - type: lineChart
+        title: "Rate Limit Utilization Trend - Last 24h"
+        axis: cr_invocationtime
+        axisGranularity: hour
+        series: cr_connectorname
+        values:
+          - RateLimitUtilizationPct
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -1
+            unit: days
+
+  - name: AuthAndTokenHealth
+    displayName: "Auth and Token Health"
+    description: >
+      OAuth token refresh success rate and connection status breakdown.
+    visuals:
+      - type: pieChart
+        title: "Connection Status Distribution"
+        legend: cr_connectionstatus
+        values:
+          - TotalInvocations
+
+      - type: card
+        title: "Token Refresh Success Rate (Last 24h)"
+        measure: TokenRefreshSuccessRate
+        filters:
+          - column: cr_istokenrefresh
+            operator: equals
+            value: true
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -1
+            unit: days
+        conditionalFormatting:
+          - threshold: 1.00
+            operator: lessThan
+            color: "#C00000"
+
+      - type: lineChart
+        title: "Auth Expired / Revoked Events - Last 30 Days"
+        axis: cr_invocationtime
+        axisGranularity: day
+        series: cr_connectorname
+        values:
+          - AuthExpiredCount
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -30
+            unit: days
+
+      - type: table
+        title: "Recent Auth Failures"
+        columns:
+          - cr_invocationtime
+          - cr_vertical
+          - cr_agentname
+          - cr_connectorname
+          - cr_connectionstatus
+          - cr_httpstatuscode
+          - cr_errormessage
+        filters:
+          - column: cr_connectionstatus
+            operator: in
+            values: [2, 3]
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -7
+            unit: days
+        sortBy: cr_invocationtime
+        sortOrder: descending
+        topN: 100
+
+  - name: IncidentLog
+    displayName: "Incident Log"
+    description: >
+      Tabular drill-through of all failed invocations with correlation IDs
+      for end-to-end trace in Power Automate run history.
+    visuals:
+      - type: table
+        title: "Failed Invocations"
+        columns:
+          - cr_invocationtime
+          - cr_vertical
+          - cr_agentname
+          - cr_connectorname
+          - cr_httpstatuscode
+          - cr_connectionstatus
+          - cr_latencyms
+          - cr_errorcode
+          - cr_errormessage
+          - cr_correlationid
+        filters:
+          - column: cr_issuccess
+            operator: equals
+            value: false
+        sortBy: cr_invocationtime
+        sortOrder: descending
+        drillThrough: true
+        exportEnabled: true
+
+      - type: lineChart
+        title: "Failure Volume by Hour (Last 7 Days)"
+        axis: cr_invocationtime
+        axisGranularity: hour
+        series: cr_vertical
+        values:
+          - FailedInvocations
+        filters:
+          - column: cr_invocationtime
+            operator: relativeDate
+            value: -7
+            unit: days
+
+slicers:
+  - column: cr_vertical
+    displayName: "Vertical"
+    type: dropdown
+    applyToAllPages: true
+
+  - column: cr_connectorname
+    displayName: "Connector"
+    type: dropdown
+    applyToAllPages: true
+
+  - column: cr_invocationtime
+    displayName: "Date Range"
+    type: relativeDate
+    defaultValue: last7Days
+    applyToAllPages: true
+
+  - column: cr_agentname
+    displayName: "Agent"
+    type: dropdown
+    applyToAllPages: false
+    applyToPages:
+      - IncidentLog
+      - AuthAndTokenHealth
+
+theme:
+  name: ConnectorHealthTheme
+  colors:
+    healthy: "#00B050"
+    degraded: "#FFC000"
+    failed: "#C00000"
+    neutral: "#4472C4"
+  font: Segoe UI
+  fontSize: 11

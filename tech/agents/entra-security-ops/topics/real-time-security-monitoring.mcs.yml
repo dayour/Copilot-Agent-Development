@@ -1,0 +1,520 @@
+# Name: Real-time Security Monitoring
+# Advanced real-time security monitoring and alerting workflows
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Real-time Security Monitoring
+    triggerQueries:
+      - real-time monitoring
+      - security alerts
+      - live monitoring
+      - continuous monitoring
+      - alert correlation
+      - security dashboards
+      - threat detection
+      - anomaly detection
+      - security operations center
+      - SOC monitoring
+
+  actions:
+    - kind: SendActivity
+      id: monitoring_intro
+      activity: |
+        📊 **Real-time Security Monitoring Center**
+        
+        I'll help you establish comprehensive real-time security monitoring with intelligent alerting and automated response.
+        
+        **Monitoring Capabilities:**
+        
+        **⚡ Live Threat Detection**
+        - Real-time identity risk assessment and scoring
+        - Behavioral anomaly detection with ML algorithms
+        - Suspicious activity correlation across platforms
+        - Advanced persistent threat (APT) detection
+        
+        **🚨 Intelligent Alerting**
+        - Priority-based alert classification and routing
+        - False positive reduction with contextual analysis
+        - Multi-channel notification and escalation
+        - Alert correlation and incident grouping
+        
+        **📈 Security Analytics**
+        - Real-time security posture dashboards
+        - Trend analysis and predictive modeling
+        - Executive reporting and KPI tracking
+        - Compliance monitoring and attestation
+        
+        **🔄 Automated Response**
+        - Immediate threat containment actions
+        - Dynamic policy adjustment and enforcement
+        - Workflow orchestration and playbook execution
+        - Integration with SOAR platforms
+        
+        What aspect of security monitoring would you like to configure?
+
+    - kind: ChoiceInput
+      id: get_monitoring_focus
+      prompt: |
+        **Monitoring Configuration Focus:**
+        Select the monitoring capability you want to implement:
+      choices:
+        - title: "⚡ Real-time Threat Detection"
+          value: "threat_detection"
+        - title: "🚨 Alert Management & Correlation"
+          value: "alert_management"
+        - title: "📊 Security Analytics Dashboards"
+          value: "analytics_dashboards"
+        - title: "🔄 Automated Response Workflows"
+          value: "automated_response"
+        - title: "👥 SOC Operations & Procedures"
+          value: "soc_operations"
+        - title: "📈 Performance & Optimization"
+          value: "performance_optimization"
+      property: Topic.monitoringFocus
+
+    - kind: ConditionGroup
+      id: monitoring_routing
+      conditions:
+        - kind: Condition
+          id: threat_detection_focus
+          condition: "Topic.monitoringFocus == 'threat_detection'"
+          actions:
+            - kind: BeginDialog
+              id: call_threat_detection
+              dialog: ThreatDetectionDialog
+
+        - kind: Condition
+          id: alert_management_focus
+          condition: "Topic.monitoringFocus == 'alert_management'"
+          actions:
+            - kind: BeginDialog
+              id: call_alert_management
+              dialog: AlertManagementDialog
+
+        - kind: Condition
+          id: analytics_focus
+          condition: "Topic.monitoringFocus == 'analytics_dashboards'"
+          actions:
+            - kind: BeginDialog
+              id: call_analytics_dashboard
+              dialog: AnalyticsDashboardDialog
+
+        - kind: Condition
+          id: automated_response_focus
+          condition: "Topic.monitoringFocus == 'automated_response'"
+          actions:
+            - kind: BeginDialog
+              id: call_automated_response
+              dialog: AutomatedResponseDialog
+
+        - kind: Condition
+          id: soc_operations_focus
+          condition: "Topic.monitoringFocus == 'soc_operations'"
+          actions:
+            - kind: BeginDialog
+              id: call_soc_operations
+              dialog: SOCOperationsDialog
+
+        - kind: Condition
+          id: performance_focus
+          condition: "Topic.monitoringFocus == 'performance_optimization'"
+          actions:
+            - kind: BeginDialog
+              id: call_performance_optimization
+              dialog: PerformanceOptimizationDialog
+
+dialogs:
+  - kind: AdaptiveDialog
+    id: ThreatDetectionDialog
+    steps:
+      - kind: SendActivity
+        id: threat_detection_setup
+        activity: |
+          ⚡ **Real-time Threat Detection Configuration**
+          
+          **Phase 1: Detection Rule Development**
+          
+          **🎯 High-Fidelity Detection Rules:**
+          
+          **1. Impossible Travel Detection:**
+          ```kql
+          // Enhanced impossible travel with contextual analysis
+          SigninLogs
+          | where TimeGenerated > ago(1h)
+          | where ResultType == 0  // Successful signins
+          | extend LocationDetails = parse_json(LocationDetails)
+          | extend 
+              Country = tostring(LocationDetails.countryOrRegion),
+              City = tostring(LocationDetails.city),
+              Latitude = toreal(LocationDetails.geoCoordinates.latitude),
+              Longitude = toreal(LocationDetails.geoCoordinates.longitude)
+          | where isnotempty(Country) and isnotempty(Latitude)
+          | sort by UserPrincipalName, TimeGenerated asc
+          | extend 
+              PrevCountry = prev(Country, 1),
+              PrevLatitude = prev(Latitude, 1),
+              PrevLongitude = prev(Longitude, 1),
+              PrevTime = prev(TimeGenerated, 1)
+          | where UserPrincipalName == prev(UserPrincipalName, 1)
+          | extend 
+              TimeDiffMinutes = datetime_diff('minute', TimeGenerated, PrevTime),
+              Distance = geo_distance_2points(Longitude, Latitude, PrevLongitude, PrevLatitude)
+          | where Distance > 500000  // 500km threshold
+          | extend 
+              RequiredSpeed = Distance / (TimeDiffMinutes * 60),  // meters per second
+              MaxPossibleSpeed = 250  // ~900 km/h (commercial aviation)
+          | where RequiredSpeed > MaxPossibleSpeed
+          | extend 
+              RiskScore = min(100, RequiredSpeed / MaxPossibleSpeed * 50),
+              ThreatCategory = "Impossible Travel"
+          ```
+          
+          **2. Credential Stuffing Detection:**
+          ```kql
+          // Advanced credential stuffing with behavioral analysis
+          SigninLogs
+          | where TimeGenerated > ago(4h)
+          | where ResultType != 0  // Failed signins
+          | summarize 
+              FailedAttempts = count(),
+              UniqueIPs = dcount(IPAddress),
+              UniqueUserAgents = dcount(UserAgent),
+              UniqueApps = dcount(AppDisplayName),
+              DistinctErrors = make_set(ResultType),
+              IPList = make_set(IPAddress),
+              TimeSpan = max(TimeGenerated) - min(TimeGenerated)
+          by UserPrincipalName, bin(TimeGenerated, 5m)
+          | extend 
+              AttackPattern = case(
+                  FailedAttempts >= 10 and UniqueIPs == 1, "Brute Force",
+                  FailedAttempts >= 5 and UniqueIPs >= 3, "Distributed Attack",
+                  FailedAttempts >= 3 and UniqueUserAgents >= 3, "Tool-based Attack",
+                  "Suspicious Activity"
+              ),
+              RiskScore = min(100, (FailedAttempts * 5) + (UniqueIPs * 10)),
+              ThreatCategory = "Credential Attack"
+          | where RiskScore >= 30
+          ```
+          
+          **3. Privileged Access Anomalies:**
+          ```kql
+          // Privileged role activation anomaly detection
+          AuditLogs
+          | where TimeGenerated > ago(1h)
+          | where OperationName == "Add member to role completed (PIM activation)"
+          | extend 
+              RoleName = tostring(TargetResources[0].displayName),
+              ActivatedBy = tostring(InitiatedBy.user.userPrincipalName),
+              Justification = tostring(AdditionalDetails[0].value)
+          | where RoleName has_any("Global Administrator", "Privileged Role Administrator", "Security Administrator")
+          | join kind=leftouter (
+              AuditLogs
+              | where TimeGenerated > ago(30d)
+              | where OperationName == "Add member to role completed (PIM activation)"
+              | summarize 
+                  HistoricalActivations = count(),
+                  LastActivation = max(TimeGenerated)
+              by ActivatedBy = tostring(InitiatedBy.user.userPrincipalName)
+          ) on ActivatedBy
+          | extend 
+              DaysSinceLastActivation = datetime_diff('day', TimeGenerated, LastActivation),
+              IsFirstTimeActivation = isnull(HistoricalActivations),
+              RiskScore = case(
+                  IsFirstTimeActivation, 90,
+                  DaysSinceLastActivation > 90, 70,
+                  HistoricalActivations < 3, 60,
+                  40
+              ),
+              ThreatCategory = "Privileged Access Anomaly"
+          | where RiskScore >= 60
+          ```
+
+      - kind: SendActivity
+        id: detection_automation
+        activity: |
+          🤖 **Automated Detection Deployment**
+          
+          **Azure Sentinel Analytics Rules:**
+          ```json
+          {
+            "kind": "Scheduled",
+            "properties": {
+              "displayName": "Real-time Identity Threat Detection",
+              "description": "Comprehensive identity-based threat detection with ML-enhanced scoring",
+              "severity": "High",
+              "enabled": true,
+              "query": "union SigninLogs, AuditLogs, RiskyUsers | extend ThreatScore = ...",
+              "queryFrequency": "PT5M",
+              "queryPeriod": "PT1H",
+              "triggerOperator": "GreaterThan",
+              "triggerThreshold": 0,
+              "suppressionDuration": "PT30M",
+              "suppressionEnabled": false,
+              "tactics": ["InitialAccess", "CredentialAccess", "PrivilegeEscalation"],
+              "techniques": ["T1078", "T1110", "T1548"],
+              "alertRuleTemplateName": null,
+              "incidentConfiguration": {
+                "createIncident": true,
+                "groupingConfiguration": {
+                  "enabled": true,
+                  "reopenClosedIncident": false,
+                  "lookbackDuration": "PT1H",
+                  "matchingMethod": "AllEntities",
+                  "groupByEntities": ["Account", "IP"],
+                  "groupByAlertDetails": ["DisplayName"],
+                  "groupByCustomDetails": []
+                }
+              }
+            }
+          }
+          ```
+          
+          **Real-time Response Actions:**
+          ```powershell
+          # PowerShell automation for immediate response
+          function Invoke-ThreatResponse {
+              param(
+                  [string]$UserPrincipalName,
+                  [string]$ThreatType,
+                  [int]$RiskScore
+              )
+              
+              switch ($ThreatType) {
+                  "Impossible Travel" {
+                      if ($RiskScore -ge 80) {
+                          # High risk - immediate account suspension
+                          Set-AzureADUser -ObjectId $UserPrincipalName -AccountEnabled $false
+                          Revoke-AzureADUserAllRefreshToken -ObjectId $UserPrincipalName
+                          Write-Host "User $UserPrincipalName suspended due to high-risk impossible travel"
+                      }
+                      elseif ($RiskScore -ge 60) {
+                          # Medium risk - require re-authentication
+                          Revoke-AzureADUserAllRefreshToken -ObjectId $UserPrincipalName
+                          Write-Host "Sessions revoked for $UserPrincipalName due to suspicious travel"
+                      }
+                  }
+                  "Credential Attack" {
+                      # Enable additional monitoring and require strong auth
+                      Set-AzureADUser -ObjectId $UserPrincipalName -StrongAuthenticationRequirements @(@{State="Enabled"})
+                      Write-Host "Enhanced authentication required for $UserPrincipalName"
+                  }
+                  "Privileged Access Anomaly" {
+                      # Alert security team and require additional approval
+                      Send-TeamsAlert -Message "Anomalous privileged access detected for $UserPrincipalName"
+                      Write-Host "Security team alerted for privileged access anomaly"
+                  }
+              }
+          }
+          ```
+
+  - kind: AdaptiveDialog
+    id: AlertManagementDialog
+    steps:
+      - kind: SendActivity
+        id: alert_management_setup
+        activity: |
+          🚨 **Intelligent Alert Management & Correlation**
+          
+          **Phase 1: Alert Classification & Prioritization**
+          
+          **📊 Alert Scoring Matrix:**
+          ```json
+          {
+            "alert_scoring": {
+              "severity_weights": {
+                "critical": 100,
+                "high": 75,
+                "medium": 50,
+                "low": 25,
+                "informational": 10
+              },
+              "context_multipliers": {
+                "privileged_user": 1.5,
+                "critical_asset": 1.4,
+                "off_hours": 1.3,
+                "external_ip": 1.2,
+                "repeated_pattern": 1.6
+              },
+              "confidence_factors": {
+                "threat_intelligence_match": 1.8,
+                "behavioral_deviation": 1.4,
+                "multiple_detections": 1.3,
+                "historical_accuracy": 1.2
+              }
+            }
+          }
+          ```
+          
+          **🔄 Alert Correlation Engine:**
+          ```kql
+          // Advanced alert correlation and grouping
+          SecurityAlert
+          | where TimeGenerated > ago(1h)
+          | extend 
+              UserEntity = extract(@"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", 0, Entities),
+              IPEntity = extract(@"(\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b)", 0, Entities),
+              HostEntity = extract(@"(ComputerName:\s*)([^,\]]+)", 2, Entities)
+          | summarize 
+              AlertCount = count(),
+              AlertTypes = make_set(AlertName),
+              SeverityLevels = make_set(AlertSeverity),
+              FirstAlert = min(TimeGenerated),
+              LastAlert = max(TimeGenerated),
+              DistinctTactics = dcount(Tactics),
+              TacticsList = make_set(Tactics)
+          by UserEntity, IPEntity, HostEntity, bin(TimeGenerated, 15m)
+          | extend 
+              CorrelationScore = (AlertCount * 10) + (DistinctTactics * 20),
+              AttackProgression = case(
+                  DistinctTactics >= 4, "Advanced Multi-stage Attack",
+                  DistinctTactics >= 2, "Coordinated Attack",
+                  AlertCount >= 5, "Intensive Activity",
+                  "Isolated Alert"
+              ),
+              PriorityLevel = case(
+                  CorrelationScore >= 80, "Critical",
+                  CorrelationScore >= 60, "High",
+                  CorrelationScore >= 40, "Medium",
+                  "Low"
+              )
+          | where CorrelationScore >= 30
+          ```
+          
+          **Phase 2: Automated Alert Routing**
+          
+          **📨 Dynamic Escalation Matrix:**
+          ```json
+          {
+            "escalation_rules": {
+              "tier1_soc": {
+                "conditions": ["severity <= medium", "business_hours = true"],
+                "response_time": "15 minutes",
+                "auto_escalation": "30 minutes"
+              },
+              "tier2_security": {
+                "conditions": ["severity = high", "privileged_user = true"],
+                "response_time": "10 minutes", 
+                "auto_escalation": "20 minutes"
+              },
+              "incident_commander": {
+                "conditions": ["severity = critical", "multiple_systems = true"],
+                "response_time": "5 minutes",
+                "auto_escalation": "15 minutes"
+              },
+              "executive_notification": {
+                "conditions": ["data_exfiltration = true", "regulatory_impact = true"],
+                "response_time": "Immediate",
+                "notification_channels": ["email", "sms", "teams"]
+              }
+            }
+          }
+          ```
+
+      - kind: TextInput
+        id: get_alert_configuration
+        prompt: |
+          **Alert Management Configuration:**
+          Please describe your current alert management challenges:
+          
+          - Alert volume and false positive rates
+          - Response time requirements and SLAs
+          - Escalation procedures and stakeholder notifications
+          - Integration requirements with existing tools
+        property: Topic.alertConfig
+
+      - kind: SendActivity
+        id: alert_optimization
+        activity: |
+          📈 **Alert Management Optimization**
+          
+          **Configuration Details:** {alertConfig}
+          
+          **Logic App Workflow for Alert Processing:**
+          ```json
+          {
+            "definition": {
+              "triggers": {
+                "When_an_alert_is_triggered": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "POST",
+                    "uri": "https://management.azure.com/subscriptions/{subscription}/providers/Microsoft.SecurityInsights/alertRules/webhook"
+                  }
+                }
+              },
+              "actions": {
+                "Enrich_alert_context": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "GET",
+                    "uri": "https://graph.microsoft.com/v1.0/security/alerts/@{triggerBody()?['AlertId']}/context"
+                  }
+                },
+                "Calculate_priority_score": {
+                  "type": "Compose",
+                  "inputs": {
+                    "severity_weight": "@mul(body('Enrich_alert_context')?['severity'], 25)",
+                    "user_risk": "@if(contains(body('Enrich_alert_context')?['entities'], 'privileged'), 50, 0)",
+                    "time_factor": "@if(less(utcnow('HH'), 8), 20, 0)",
+                    "total_score": "@add(add(variables('severity_weight'), variables('user_risk')), variables('time_factor'))"
+                  }
+                },
+                "Route_based_on_priority": {
+                  "type": "Switch",
+                  "expression": "@outputs('Calculate_priority_score')?['total_score']",
+                  "cases": {
+                    "Critical": {
+                      "case": 90,
+                      "actions": {
+                        "Notify_incident_commander": {
+                          "type": "Http",
+                          "inputs": {
+                            "method": "POST",
+                            "uri": "https://graph.microsoft.com/v1.0/teams/{team-id}/channels/{channel-id}/messages",
+                            "body": {
+                              "body": {
+                                "content": "🚨 CRITICAL ALERT: @{triggerBody()?['AlertName']} - Immediate response required"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "default": {
+                    "actions": {
+                      "Create_standard_ticket": {
+                        "type": "Http",
+                        "inputs": {
+                          "method": "POST",
+                          "uri": "https://api.servicenow.com/incidents",
+                          "body": {
+                            "short_description": "@triggerBody()?['AlertName']",
+                            "priority": "@div(outputs('Calculate_priority_score')?['total_score'], 25)"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          ```
+          
+          **🎯 Alert Quality Metrics:**
+          - **True Positive Rate**: Target >85% for high severity alerts
+          - **Mean Time to Acknowledge**: <10 minutes for critical alerts
+          - **Alert Correlation Accuracy**: >90% for related incident grouping
+          - **False Positive Reduction**: >60% decrease through ML tuning
+          - **Escalation Effectiveness**: <5% of alerts require re-escalation
+
+variables:
+  - name: monitoringFocus
+    type: text
+    scope: topic
+  - name: alertConfig
+    type: text
+    scope: topic

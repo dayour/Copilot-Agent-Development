@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.pyo
+# Python
+
+# Node.js
+node_modules/
+dist/
+
+# Environment
+.env
+*.env.local
+
+# Copilot Studio local connection files (contain account credentials)
+.mcs/

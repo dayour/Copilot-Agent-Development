@@ -1,0 +1,194 @@
+name: Copilot Studio UI Regression Tests
+
+on:
+  schedule:
+    # Run every Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      test_file:
+        description: "Single test file to run (e.g. tests/test-login-page.yaml). Leave empty to run all tests."
+        required: false
+        default: ""
+      output_format:
+        description: "Console output format"
+        required: false
+        default: "table"
+        type: choice
+        options:
+          - table
+          - json
+      dry_run:
+        description: "Dry run: parse and validate test files without invoking the CLI"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  ui-regression:
+    name: UI Regression Test Suite
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
+      - name: Install copilotbrowser-cli
+        run: |
+          if ! npm install -g copilotbrowser-cli; then
+            echo "ERROR: copilotbrowser-cli installation failed."
+            echo "Ensure the package is published to npm or update the install command."
+            exit 1
+          fi
+
+      - name: Validate test YAML files
+        run: |
+          echo "Validating test YAML syntax..."
+          find docs/copilotbrowser/tests -name "test-*.yaml" | while read f; do
+            python -c "import yaml; yaml.safe_load(open('$f'))" && echo "OK: $f" || { echo "FAIL: $f"; exit 1; }
+          done
+
+      - name: Run UI regression tests
+        id: run_tests
+        env:
+          COPILOT_STUDIO_URL: ${{ secrets.COPILOT_STUDIO_URL }}
+          COPILOT_ENV_ID: ${{ secrets.COPILOT_ENV_ID }}
+          COPILOT_STUDIO_USER: ${{ secrets.COPILOT_STUDIO_USER }}
+          COPILOT_STUDIO_PASSWORD: ${{ secrets.COPILOT_STUDIO_PASSWORD }}
+          COPILOT_TEST_AGENT_ID: ${{ secrets.COPILOT_TEST_AGENT_ID }}
+        run: |
+          TEST_ARG=""
+          if [ -n "${{ github.event.inputs.test_file }}" ]; then
+            TEST_ARG="--test docs/copilotbrowser/${{ github.event.inputs.test_file }}"
+          fi
+
+          DRY_RUN_ARG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_ARG="--dry-run"
+          fi
+
+          OUTPUT_FORMAT="${{ github.event.inputs.output_format }}"
+          if [ -z "$OUTPUT_FORMAT" ]; then
+            OUTPUT_FORMAT="table"
+          fi
+
+          python docs/copilotbrowser/test-runner.py \
+            --tests-dir docs/copilotbrowser/tests \
+            --output-dir ui-regression-results \
+            --cli-path copilotbrowser-cli \
+            --timeout 90 \
+            --output "$OUTPUT_FORMAT" \
+            $TEST_ARG \
+            $DRY_RUN_ARG
+        continue-on-error: true
+
+      - name: Upload selector health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selector-health-report
+          path: ui-regression-results/selector-health-report.json
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-screenshots
+          path: ui-regression-results/screenshots/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Summarize results
+        if: always()
+        run: |
+          REPORT="ui-regression-results/selector-health-report.json"
+          if [ -f "$REPORT" ]; then
+            echo "### Selector Health Report" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            python - <<'PYEOF'
+          import json, os, sys
+
+          report_path = "ui-regression-results/selector-health-report.json"
+          if not os.path.exists(report_path):
+              print("No report file found.", file=sys.stderr)
+              sys.exit(0)
+
+          with open(report_path) as f:
+              report = json.load(f)
+
+          summary = report.get("summary", {})
+          env_url = report.get("environment", "N/A")
+          run_id = report.get("runId", "N/A")
+
+          summary_md = f"""
+          **Run ID:** {run_id}
+          **Environment:** {env_url}
+
+          | Total | Passed | Failed | Errors | Warnings |
+          |---|---|---|---|---|
+          | {summary.get('total',0)} | {summary.get('passed',0)} | {summary.get('failed',0)} | {summary.get('errors',0)} | {summary.get('warnings',0)} |
+
+          #### Per-Test Results
+
+          | Test | Page | Status | Assertions |
+          |---|---|---|---|
+          """
+
+          lines = [summary_md.strip()]
+          for test in report.get("tests", []):
+              assertions = test.get("assertions", [])
+              passed_count = sum(1 for a in assertions if a.get("status") == "passed")
+              total_count = len(assertions)
+              lines.append(f"| {test['testName']} | {test['page']} | {test['status'].upper()} | {passed_count}/{total_count} pass |")
+
+          failed_tests = [t for t in report.get("tests", []) if t.get("status") == "failed"]
+          if failed_tests:
+              lines.append("")
+              lines.append("#### Failed Assertions")
+              lines.append("")
+              for t in failed_tests:
+                  lines.append(f"**{t['testName']}**")
+                  for a in t.get("assertions", []):
+                      if a.get("status") == "failed":
+                          lines.append(f"- FAILED: `{a['ref']}` -- {a['description']}")
+                  if t.get("recommendedUpdates"):
+                      lines.append("  Recommended updates:")
+                      for upd in t["recommendedUpdates"]:
+                          lines.append(f"  - Broken: `{upd['broken_ref']}`")
+                          for cand in upd.get("candidate_replacements", [])[:3]:
+                              lines.append(f"    Candidate: `{cand}`")
+                  lines.append("")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as sf:
+              sf.write("\n".join(lines) + "\n")
+
+          PYEOF
+          else
+            echo "No report file found. The test runner may have failed before producing output." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Fail job if tests failed
+        if: steps.run_tests.outcome == 'failure'
+        run: |
+          echo "One or more UI regression tests failed. Review selector-health-report.json and screenshots artifacts."
+          exit 1

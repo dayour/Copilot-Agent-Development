@@ -1,0 +1,35 @@
+# Action: Calculate Fraud Score Flow
+# Invokes Power Automate flow to compute intake fraud signals.
+# This action is used internally during FNOL processing.
+# The fraud score and risk indicators are NOT exposed to the policyholder.
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/advanced-flow-create
+
+kind: TaskDialog
+displayName: Calculate Fraud Score
+
+outputs:
+  - propertyName: fraudScore
+    displayName: Fraud Score
+    description: Composite fraud risk score (0-100).
+  - propertyName: riskTier
+    displayName: Risk Tier
+    description: Risk classification (low, medium, high).
+
+inputs:
+  - propertyName: policyNumber
+    displayName: Policy Number
+  - propertyName: incidentDate
+    displayName: Incident Date
+  - propertyName: incidentDescription
+    displayName: Incident Description
+  - propertyName: lineOfBusiness
+    displayName: Line of Business
+  - propertyName: incidentLocation
+    displayName: Incident Location
+
+action:
+  kind: InvokeFlowTaskAction
+  # Replace with actual Power Automate flow GUID after deployment
+  flowId: 00000000-0000-0000-0000-000000000004
+
+outputMode: All

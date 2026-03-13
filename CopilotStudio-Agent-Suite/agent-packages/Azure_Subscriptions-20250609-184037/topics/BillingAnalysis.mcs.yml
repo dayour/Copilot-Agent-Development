@@ -1,0 +1,25 @@
+# Name: Billing Analysis
+# Domain-specific topic for Azure_Subscriptions
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Billing Analysis
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - billing analysis
+      - cost analysis
+      - usage analysis
+      - spending report
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I'll help analyze your Azure billing and usage. What specific billing information would you like me to review?
+        speak:
+          - I'll help analyze your Azure billing and usage. What specific billing information would you like me to review?
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end

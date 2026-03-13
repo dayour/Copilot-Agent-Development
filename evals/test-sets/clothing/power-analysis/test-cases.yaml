@@ -1,0 +1,167 @@
+# Test cases for clothing/power-analysis agent
+# Covers sales analysis, inventory management, and store performance queries.
+#
+# Tiers:
+#   critical   -- sales analysis facts (revenue, units sold, top SKUs)
+#   functional -- inventory and store performance queries graded by LLM judge
+
+- id: clothing-pa-crit-001
+  tier: critical
+  query: "What were total revenue figures for last quarter?"
+  expected_keywords:
+    - revenue
+    - quarter
+    - total
+    - sales
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent provides sales analytics for a clothing retail chain.
+    It queries ERP and POS data to surface revenue summaries, unit sales,
+    and top-performing SKUs by period.
+  description: >
+    Verifies that a revenue query returns a response referencing revenue,
+    quarter context, and sales terminology.
+
+- id: clothing-pa-crit-002
+  tier: critical
+  query: "How many units of the Classic Denim Jacket were sold this month?"
+  expected_keywords:
+    - units
+    - sold
+    - denim
+    - jacket
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent tracks unit sales by SKU. The Classic Denim Jacket
+    is a flagship product. The agent should confirm the SKU name and return
+    a unit count or explain how to retrieve it.
+  description: >
+    Verifies that the agent correctly handles a units-sold query for a specific SKU.
+
+- id: clothing-pa-crit-003
+  tier: critical
+  query: "What are the top 5 best-selling SKUs this week?"
+  expected_keywords:
+    - SKU
+    - best-selling
+    - top
+    - week
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent surfaces top-performing SKUs. Weekly reports show
+    the five highest unit-sales items with their SKU codes and unit counts.
+  description: >
+    Verifies that the agent returns a response framed around top SKUs and
+    weekly performance context.
+
+- id: clothing-pa-crit-004
+  tier: critical
+  query: "Show me a comparison of online versus in-store sales for this month."
+  expected_keywords:
+    - online
+    - in-store
+    - comparison
+    - sales
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The power analysis agent can break down sales by channel: online (e-commerce)
+    and in-store (physical retail). The response should reference both channels
+    and provide or explain how to access the comparison data.
+  description: >
+    Verifies that the agent handles a channel-split sales query.
+
+- id: clothing-pa-func-001
+  tier: functional
+  query: "Which products are running low on inventory and need reordering?"
+  expected_keywords:
+    - inventory
+    - reorder
+    - stock
+    - low
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent integrates with the ERP system to track inventory
+    levels. It can identify SKUs below the reorder threshold and suggest
+    purchase order quantities based on historical velocity.
+  description: >
+    Tests that the agent provides a useful, grounded answer about inventory
+    reorder recommendations.
+
+- id: clothing-pa-func-002
+  tier: functional
+  query: "What is the current stock level for size Medium in the Summer Floral Dress?"
+  expected_keywords:
+    - stock
+    - size
+    - medium
+    - dress
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent can query inventory by product name, variant, and
+    size. Summer Floral Dress is a seasonal SKU. The agent should return the
+    current stock count or explain how to look it up.
+  description: >
+    Tests inventory lookup by product name and size variant.
+
+- id: clothing-pa-func-003
+  tier: functional
+  query: "Which store location had the highest sales performance last month?"
+  expected_keywords:
+    - store
+    - performance
+    - sales
+    - location
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent aggregates store-level sales data across all retail
+    locations. Monthly performance reports rank stores by revenue and unit sales.
+  description: >
+    Tests that the agent provides a grounded answer about store performance
+    ranking including relevant context on how to access or interpret the data.
+
+- id: clothing-pa-func-004
+  tier: functional
+  query: "What is the return rate for the Wool Blend Coat and how does it compare to the category average?"
+  expected_keywords:
+    - return
+    - rate
+    - coat
+    - average
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The power analysis agent can compute return rates by SKU and compare against
+    category benchmarks. The Wool Blend Coat is a high-value outerwear SKU.
+    Return rates above the category average may indicate a quality or sizing issue.
+  description: >
+    Tests that the agent handles a return rate comparison query with appropriate
+    context about what a high return rate means.

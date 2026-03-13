@@ -1,0 +1,25 @@
+# Name: Data Ingestion
+# Domain-specific topic for Kusto
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Data Ingestion
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - data ingestion
+      - ingest data
+      - data pipeline
+      - data import
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I can assist with data ingestion into Kusto. Are you setting up new ingestion pipelines or troubleshooting existing data flows?
+        speak:
+          - I can assist with data ingestion into Kusto. Are you setting up new ingestion pipelines or troubleshooting existing data flows?
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end

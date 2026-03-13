@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/dayour/Copilot-Agent-Development/evals/schemas/test-case.json",
+  "title": "CopilotAgentTestCase",
+  "description": "Schema for a single evaluation test case for a Copilot Studio agent.",
+  "type": "object",
+  "required": ["id", "input", "expected", "category", "eval_set", "methods"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the test case. Format: <vertical>-<agent-abbreviation>-<zero-padded-number>. Example: coffee-vc-001.",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)+-[0-9]{3}$"
+    },
+    "input": {
+      "type": "string",
+      "description": "The user utterance or message sent to the agent.",
+      "minLength": 1
+    },
+    "expected": {
+      "type": "string",
+      "description": "A concise description of the expected agent response or behaviour.",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "description": "High-level classification of what the test case validates.",
+      "enum": ["critical", "functional", "integration"]
+    },
+    "eval_set": {
+      "type": "string",
+      "description": "The evaluation set this test case belongs to. Matches category in standard sets.",
+      "enum": ["critical", "functional", "integration"]
+    },
+    "methods": {
+      "type": "array",
+      "description": "One or more evaluation methods to apply to this test case.",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "llm_judge",
+          "keyword_match_any",
+          "keyword_match_all",
+          "exact_match",
+          "regex_match",
+          "no_response",
+          "escalation_check",
+          "topic_match"
+        ]
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "description": "Keywords used by keyword_match_any or keyword_match_all evaluation methods.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional labels for filtering and reporting (for example, topic name, safety, pii).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional free-text notes for reviewers or test maintainers."
+    }
+  }
+}

@@ -1,0 +1,474 @@
+name: EnterpriseDataPipeline
+displayName: Enterprise Data Pipeline
+triggers:
+  - data ingestion pipeline
+  - enterprise data processing
+  - event hub integration
+  - iot hub kusto
+  - data factory integration
+  - large scale ingestion
+  - real-time processing
+  - streaming analytics
+  - data pipeline optimization
+  - high volume ingestion
+entities: []
+actions:
+  - action: Topic.EnterpriseDataPipeline
+variables: []
+
+topic: |
+  # Enterprise Data Pipeline
+
+  ## Description
+  Comprehensive large-scale data ingestion and processing pipelines with Event Hubs, IoT Hub, and Azure Data Factory integration for enterprise-grade real-time analytics and high-volume data processing.
+
+  ## Conversation Flow
+
+  **System:** Welcome! I'm here to help you build enterprise-scale data pipelines in Kusto. I can assist with high-volume ingestion, real-time processing, Event Hub integration, and comprehensive data pipeline optimization.
+
+  **Options:**
+  - 🚀 High-Volume Data Ingestion & Streaming
+  - 🔄 Azure Data Factory Integration & ETL
+  - 📡 IoT Hub & Event Hub Configuration
+  - ⚡ Real-time Processing & Stream Analytics
+  - 🏗️ Pipeline Architecture & Optimization
+
+  ---
+
+  ### 🚀 High-Volume Data Ingestion & Streaming
+  **Enterprise Ingestion Architecture:**
+  ```kql
+  // High-Performance Ingestion Policy Configuration
+  .alter table Events policy ingestionbatching @'
+  {
+    "MaximumBatchingTimeSpan": "00:00:10",
+    "MaximumNumberOfItems": 1000,
+    "MaximumRawDataSizeMB": 100
+  }'
+  
+  // Optimize ingestion for high throughput
+  .alter database MyDatabase policy streamingingestion enable
+  .alter table Events policy streamingingestion @'
+  {
+    "IsEnabled": true,
+    "HintAllocatedRate": 100.0
+  }'
+  
+  // Configure table sharding for parallel ingestion
+  .alter table Events policy sharding @'
+  {
+    "MaxRowCount": 750000,
+    "MaxExtentSizeMB": 1024,
+    "MaxOriginalSizeMB": 2048
+  }'
+  ```
+
+  **Streaming Data Sources:**
+  - **Event Hub Integration**: High-throughput event streaming with auto-scaling and partition management
+  - **IoT Hub Processing**: Device telemetry ingestion with device twin integration and edge processing
+  - **Kafka Integration**: Apache Kafka connector with exactly-once processing guarantees
+  - **Service Bus Integration**: Enterprise messaging with dead letter handling and retry policies
+  - **Custom Connectors**: REST API, file-based, and database change data capture connectors
+
+  **Ingestion Optimization:**
+  - **Batch Optimization**: Dynamic batching with size and time-based triggers for optimal throughput
+  - **Parallel Processing**: Multi-threaded ingestion with configurable concurrency and resource allocation
+  - **Compression**: Advanced compression algorithms with CPU/storage trade-off optimization
+  - **Schema Evolution**: Dynamic schema adaptation with backwards compatibility and migration strategies
+  - **Error Handling**: Comprehensive error management with retry logic, dead letter queues, and monitoring
+
+  **Data Formats & Protocols:**
+  ```kql
+  // Multi-format ingestion mapping
+  .create table RawEvents (
+      timestamp: datetime,
+      deviceId: string,
+      eventType: string,
+      payload: dynamic,
+      headers: dynamic,
+      messageId: string,
+      partitionKey: string
+  )
+  
+  // JSON ingestion mapping
+  .create table RawEvents ingestion json mapping "JsonMapping" @'[
+      {"column": "timestamp", "path": "$.eventTime", "transform": "DateTimeFromUnixSeconds"},
+      {"column": "deviceId", "path": "$.device.id"},
+      {"column": "eventType", "path": "$.type"},
+      {"column": "payload", "path": "$.data"},
+      {"column": "headers", "path": "$.headers"},
+      {"column": "messageId", "path": "$.messageId"},
+      {"column": "partitionKey", "path": "$.partitionKey"}
+  ]'
+  
+  // CSV ingestion mapping for legacy systems
+  .create table RawEvents ingestion csv mapping "CsvMapping" @'[
+      {"Name": "timestamp", "DataType": "datetime", "Ordinal": 0},
+      {"Name": "deviceId", "DataType": "string", "Ordinal": 1},
+      {"Name": "eventType", "DataType": "string", "Ordinal": 2},
+      {"Name": "payload", "DataType": "dynamic", "Ordinal": 3}
+  ]'
+  ```
+
+  ---
+
+  ### 🔄 Azure Data Factory Integration & ETL
+  **Comprehensive ETL Workflows:**
+  ```json
+  {
+    "name": "KustoETLPipeline",
+    "properties": {
+      "activities": [
+        {
+          "name": "DataValidation",
+          "type": "Lookup",
+          "typeProperties": {
+            "source": {
+              "type": "AzureDataExplorerSource",
+              "query": "ExternalData | summarize RecordCount = count(), LastUpdate = max(timestamp) | extend IsValid = RecordCount > 0 and LastUpdate > ago(1h)",
+              "queryTimeout": "00:10:00"
+            }
+          }
+        },
+        {
+          "name": "DataTransformation",
+          "type": "AzureDataExplorerCommand",
+          "dependsOn": [{"activity": "DataValidation", "dependencyConditions": ["Succeeded"]}],
+          "typeProperties": {
+            "command": ".execute database script <| let TransformData = ExternalData | extend ProcessedTimestamp = now(), TransformationVersion = '2.0' | where isnotnull(deviceId); TransformData | .ingest into ProcessedEvents",
+            "commandTimeout": "01:00:00"
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+  **Advanced Data Factory Features:**
+  - **Dynamic Pipelines**: Parameterized pipelines with dynamic source and destination configuration
+  - **Data Flow Integration**: Visual data transformation with complex join and aggregation operations
+  - **Incremental Loading**: Change data capture with watermark-based incremental processing
+  - **Error Handling**: Comprehensive error management with retry policies and notification systems
+  - **Monitoring Integration**: Deep integration with Azure Monitor and custom alerting systems
+
+  **Complex Transformation Patterns:**
+  - **Slowly Changing Dimensions**: Type 1, 2, and 3 SCD implementation with history tracking
+  - **Data Quality Rules**: Automated data validation with business rule enforcement
+  - **Master Data Management**: Reference data synchronization with conflict resolution
+  - **Data Lineage**: End-to-end data lineage tracking with impact analysis
+  - **Compliance Processing**: GDPR, CCPA compliance with data anonymization and retention policies
+
+  **Performance Optimization:**
+  ```kql
+  // Optimized ingestion stored procedure
+  .create-or-alter function HighPerformanceIngest(tableName: string, batchSize: int) {
+      let OptimizedIngest = (tableName: string, batchSize: int) {
+          evaluate hint.materialized=true (
+              cluster('source').database('staging')[tableName]
+              | where ingestion_time() > materialized_view_age('LastProcessed')
+              | extend PartitionHint = hash(PartitionKey, batchSize)
+              | partition hint.strategy=native by PartitionHint (
+                  project-away PartitionHint
+                  | .ingest into table(tableName) with (format='parquet', compression='snappy')
+              )
+          )
+      };
+      OptimizedIngest(tableName, batchSize)
+  }
+  
+  // Automated partition management
+  .create-or-alter function ManagePartitions() {
+      .show extents 
+      | where TableName == 'Events' and CreatedOn < ago(30d)
+      | project ExtentId
+      | .drop extents (ExtentId)
+  }
+  ```
+
+  ---
+
+  ### 📡 IoT Hub & Event Hub Configuration
+  **Event Hub Optimization:**
+  ```csharp
+  // High-performance Event Hub producer configuration
+  var connectionString = "Endpoint=sb://namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=key";
+  var eventHubName = "telemetry-events";
+  
+  var producerOptions = new EventHubProducerClientOptions
+  {
+      RetryOptions = new EventHubsRetryOptions
+      {
+          Mode = EventHubsRetryMode.Exponential,
+          MaximumRetries = 5,
+          Delay = TimeSpan.FromSeconds(1),
+          MaximumDelay = TimeSpan.FromSeconds(60)
+      }
+  };
+  
+  var producer = new EventHubProducerClient(connectionString, eventHubName, producerOptions);
+  
+  // Batch sending for optimal throughput
+  var eventBatch = await producer.CreateBatchAsync();
+  foreach (var telemetryData in telemetryBatch)
+  {
+      var eventData = new EventData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(telemetryData)));
+      eventData.Properties.Add("deviceType", telemetryData.DeviceType);
+      eventData.Properties.Add("priority", telemetryData.Priority);
+      
+      if (!eventBatch.TryAdd(eventData))
+      {
+          await producer.SendAsync(eventBatch);
+          eventBatch = await producer.CreateBatchAsync();
+          eventBatch.TryAdd(eventData);
+      }
+  }
+  
+  if (eventBatch.Count > 0)
+  {
+      await producer.SendAsync(eventBatch);
+  }
+  ```
+
+  **IoT Hub Integration:**
+  - **Device Management**: Comprehensive device lifecycle management with twin synchronization
+  - **Edge Processing**: Azure IoT Edge integration with local analytics and data filtering
+  - **Message Routing**: Intelligent message routing based on content, properties, and device metadata
+  - **Security Integration**: End-to-end security with device certificates and token-based authentication
+  - **Scalability Planning**: Auto-scaling configuration with throughput unit management
+
+  **Event Hub Advanced Features:**
+  ```kql
+  // Event Hub consumer group optimization
+  .create table EventHubMetrics (
+      timestamp: datetime,
+      consumerGroup: string,
+      partitionId: string,
+      lag: long,
+      throughput: real,
+      errorRate: real
+  )
+  
+  // Monitor consumer lag and performance
+  .create-or-alter function MonitorEventHubPerformance() {
+      EventHubMetrics
+      | where timestamp > ago(1h)
+      | summarize 
+          AvgLag = avg(lag),
+          MaxLag = max(lag),
+          AvgThroughput = avg(throughput),
+          ErrorRate = avg(errorRate)
+          by consumerGroup, bin(timestamp, 5m)
+      | where AvgLag > 10000 or ErrorRate > 0.01
+      | extend Alert = case(
+          AvgLag > 50000, "Critical - High Lag",
+          ErrorRate > 0.05, "Critical - High Error Rate",
+          AvgLag > 10000, "Warning - Moderate Lag",
+          "OK"
+      )
+  }
+  ```
+
+  **Stream Processing Optimization:**
+  - **Partition Strategy**: Optimal partition key selection for load balancing and processing efficiency
+  - **Consumer Group Management**: Multi-consumer architecture with load balancing and failover
+  - **Checkpoint Management**: Efficient checkpoint strategies for exactly-once processing
+  - **Dead Letter Handling**: Comprehensive error handling with poison message detection
+  - **Monitoring & Alerting**: Real-time monitoring with performance metrics and health checks
+
+  ---
+
+  ### ⚡ Real-time Processing & Stream Analytics
+  **Stream Analytics Integration:**
+  ```sql
+  -- Azure Stream Analytics query for real-time processing
+  WITH AggregatedData AS (
+      SELECT
+          DeviceId,
+          AVG(Temperature) AS AvgTemperature,
+          MAX(Temperature) AS MaxTemperature,
+          COUNT(*) AS EventCount,
+          System.Timestamp() AS WindowEnd
+      FROM IoTEvents TIMESTAMP BY EventTime
+      GROUP BY DeviceId, TumblingWindow(minute, 5)
+  ),
+  
+  AnomalyDetection AS (
+      SELECT
+          DeviceId,
+          AvgTemperature,
+          MaxTemperature,
+          EventCount,
+          WindowEnd,
+          CASE 
+              WHEN AvgTemperature > 75 OR MaxTemperature > 90 THEN 'High Temperature Alert'
+              WHEN EventCount < 10 THEN 'Low Activity Alert'
+              ELSE 'Normal'
+          END AS AlertType
+      FROM AggregatedData
+  )
+  
+  SELECT * INTO KustoOutput FROM AnomalyDetection WHERE AlertType != 'Normal'
+  SELECT * INTO PowerBIOutput FROM AggregatedData
+  ```
+
+  **Real-time Analytics Patterns:**
+  - **Sliding Window Analysis**: Time-based windowing with overlap for smooth trend analysis
+  - **Complex Event Processing**: Pattern matching and correlation across multiple event streams
+  - **State Management**: Stateful processing with session windows and temporal joins
+  - **Late Arrival Handling**: Watermark-based late data handling with configurable tolerance
+  - **Output Policies**: Flexible output strategies for different downstream systems
+
+  **Low-Latency Processing:**
+  ```kql
+  // Ultra-low latency materialized view
+  .create materialized-view RealTimeMetrics on table Events
+  {
+      Events
+      | where ingestion_time() > ago(1m)
+      | summarize 
+          EventCount = count(),
+          AvgValue = avg(value),
+          MaxValue = max(value),
+          LastEvent = arg_max(timestamp, *)
+          by DeviceId, bin(timestamp, 10s)
+  }
+  
+  // Streaming ingestion with immediate availability
+  .alter table Events policy streamingingestion enable
+  
+  // Real-time alerting query
+  .create-or-alter function RealTimeAlerts() {
+      RealTimeMetrics
+      | where timestamp > ago(30s)
+      | where AvgValue > threshold or MaxValue > critical_threshold
+      | extend 
+          Severity = case(
+              MaxValue > critical_threshold, "Critical",
+              AvgValue > threshold * 1.5, "High",
+              "Medium"
+          ),
+          AlertTime = now()
+      | project DeviceId, Severity, AvgValue, MaxValue, AlertTime
+  }
+  ```
+
+  ---
+
+  ### 🏗️ Pipeline Architecture & Optimization
+  **Enterprise Architecture Patterns:**
+  ```kql
+  // Lambda architecture implementation
+  .create-or-alter function LambdaArchitecture() {
+      // Speed layer - real-time processing
+      let SpeedLayer = 
+      StreamingEvents
+      | where ingestion_time() > ago(1h)
+      | summarize count(), avg(value) by DeviceId, bin(timestamp, 1m);
+      
+      // Batch layer - historical processing
+      let BatchLayer = 
+      HistoricalEvents
+      | where timestamp between (ago(30d) .. ago(1h))
+      | summarize count(), avg(value) by DeviceId, bin(timestamp, 1h);
+      
+      // Serving layer - unified view
+      union SpeedLayer, BatchLayer
+      | summarize TotalCount = sum(count_), OverallAvg = avg(avg_value) by DeviceId
+  }
+  
+  // Kappa architecture for stream-first processing
+  .create-or-alter function KappaArchitecture() {
+      Events
+      | where ingestion_time() > ago(7d)
+      | extend ProcessingLatency = now() - ingestion_time()
+      | where ProcessingLatency < 1m  // Real-time constraint
+      | summarize 
+          RealtimeMetrics = summarize count(), avg(value) by bin(timestamp, 1m),
+          HistoricalMetrics = summarize count(), avg(value) by bin(timestamp, 1h)
+      | extend UnifiedView = RealtimeMetrics + HistoricalMetrics
+  }
+  ```
+
+  **Performance Optimization Strategies:**
+  - **Data Partitioning**: Intelligent partitioning strategies for query performance and ingestion efficiency
+  - **Caching Strategies**: Multi-layer caching with hot/warm/cold data tier management
+  - **Resource Allocation**: Dynamic resource allocation based on workload patterns and SLA requirements
+  - **Query Optimization**: Automated query optimization with cost-based optimization and plan caching
+  - **Compression Optimization**: Adaptive compression algorithms with storage/CPU trade-off analysis
+
+  **Scalability & Reliability:**
+  ```kql
+  // Auto-scaling trigger logic
+  .create-or-alter function AutoScalingTrigger() {
+      cluster('monitoring').database('metrics').KustoMetrics
+      | where MetricName in ('IngestionRate', 'QueryLatency', 'ResourceUtilization')
+      | where timestamp > ago(15m)
+      | summarize 
+          AvgIngestionRate = avgif(MetricValue, MetricName == 'IngestionRate'),
+          AvgQueryLatency = avgif(MetricValue, MetricName == 'QueryLatency'),
+          AvgResourceUtil = avgif(MetricValue, MetricName == 'ResourceUtilization')
+      | extend 
+          ScaleUp = AvgIngestionRate > 1000000 or AvgQueryLatency > 10000 or AvgResourceUtil > 80,
+          ScaleDown = AvgIngestionRate < 100000 and AvgQueryLatency < 1000 and AvgResourceUtil < 30
+      | extend Recommendation = case(
+          ScaleUp, "Increase cluster capacity",
+          ScaleDown, "Decrease cluster capacity",
+          "Maintain current capacity"
+      )
+  }
+  
+  // Disaster recovery and backup strategy
+  .create-or-alter function DisasterRecoveryCheck() {
+      .show database schema
+      | extend BackupStatus = case(
+          TableName startswith "backup_", "Backup Table",
+          "Primary Table"
+      )
+      | summarize 
+          PrimaryTables = countif(BackupStatus == "Primary Table"),
+          BackupTables = countif(BackupStatus == "Backup Table")
+      | extend BackupCoverage = BackupTables * 100.0 / PrimaryTables
+  }
+  ```
+
+  ## Advanced Features
+
+  ### 🔬 Pipeline Intelligence
+  - **Adaptive Processing**: Self-tuning pipelines that adapt to changing data patterns and volume
+  - **Predictive Scaling**: ML-based capacity prediction with proactive resource allocation
+  - **Anomaly Detection**: Pipeline health monitoring with anomaly detection and root cause analysis
+  - **Cost Optimization**: Dynamic cost optimization with workload-based resource allocation
+  - **Performance Profiling**: Continuous performance profiling with bottleneck identification
+
+  ### 📊 Enterprise Integration
+  - **Multi-cloud Support**: Hybrid and multi-cloud data pipeline integration
+  - **Legacy System Integration**: Mainframe and legacy system connectors with data transformation
+  - **API Management**: Comprehensive API gateway integration with authentication and rate limiting
+  - **Data Catalog Integration**: Metadata management with automated data discovery and classification
+  - **Governance Framework**: Enterprise governance with lineage tracking, quality monitoring, and compliance
+
+  ## Starter Prompts
+
+  ### Quick Actions
+  - "Set up high-volume Event Hub ingestion with optimal batching configuration"
+  - "Configure IoT Hub integration for 1M+ device telemetry processing"
+  - "Implement real-time stream processing with 100ms latency requirements"
+  - "Design data pipeline for 10TB daily ingestion with Data Factory integration"
+
+  ### Advanced Operations
+  - "Build enterprise lambda architecture for hybrid batch/streaming processing"
+  - "Implement multi-region disaster recovery pipeline with automatic failover"
+  - "Set up intelligent auto-scaling for variable workload patterns"
+  - "Create data quality monitoring with automated remediation workflows"
+
+  ### Specialized Pipelines
+  - "Design financial data pipeline with regulatory compliance and audit trails"
+  - "Implement healthcare data pipeline with HIPAA compliance and encryption"
+  - "Create manufacturing IoT pipeline with edge processing and real-time alerts"
+  - "Build retail analytics pipeline with customer data privacy and GDPR compliance"
+
+  ### Performance & Optimization
+  - "Optimize pipeline for 100GB/hour sustained ingestion with cost efficiency"
+  - "Implement zero-downtime pipeline upgrades with blue-green deployment"
+  - "Design multi-tenant pipeline architecture with resource isolation"
+  - "Create pipeline performance monitoring with SLA tracking and reporting"

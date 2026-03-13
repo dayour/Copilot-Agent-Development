@@ -1,0 +1,418 @@
+# Name: Security Operations Dashboard
+# Real-time security operations center dashboard and monitoring workflows
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Security Operations Dashboard
+    triggerQueries:
+      - SOC dashboard
+      - security operations center
+      - security monitoring
+      - security metrics
+      - threat monitoring
+      - security KPIs
+      - operations dashboard
+      - security visibility
+
+  actions:
+    - kind: SendActivity
+      id: dashboard_intro
+      activity: |
+        📊 **Security Operations Center Dashboard**
+        
+        Welcome to your real-time security operations command center. I'll provide comprehensive visibility into your security posture and ongoing threats.
+        
+        **Dashboard Capabilities:**
+        
+        **📈 Real-time Monitoring**
+        - Live threat detection and alert feeds
+        - Security event correlation and analysis
+        - Critical infrastructure health monitoring
+        - Incident status and escalation tracking
+        
+        **🎯 Threat Intelligence**
+        - Active threat campaign tracking
+        - IOC monitoring and enrichment
+        - Threat actor activity analysis
+        - Attack surface visibility
+        
+        **⚡ Operational Metrics**
+        - Mean time to detection (MTTD)
+        - Mean time to response (MTTR)
+        - Alert volume and false positive rates
+        - Team performance and workload distribution
+        
+        **🚨 Critical Alerts**
+        - High-priority security incidents
+        - System health and availability alerts
+        - Compliance violation notifications
+        - Emergency escalation requirements
+        
+        What security operations information do you need?
+
+    - kind: Question
+      id: dashboard_view
+      interruptionPolicy:
+        allowInterruption: true
+      variable: Topic.dashboardView
+      prompt:
+        kind: Activity
+        activity: |
+          Select your dashboard view:
+          
+          **1.** 📊 Executive Security Summary
+          **2.** 🚨 Critical Alerts & Incidents
+          **3.** 📈 Real-time Threat Intelligence
+          **4.** ⚡ SOC Performance Metrics
+          **5.** 🎯 Threat Hunting Dashboard
+          **6.** 🛡️ Infrastructure Health Status
+          **7.** 📋 Compliance & Risk Overview
+          
+          Type the number or describe your specific dashboard need.
+
+    - kind: ConditionGroup
+      id: dashboard_routing
+      conditions:
+        - kind: Condition
+          id: executive_summary
+          condition: "Topic.dashboardView contains \"1\" || contains(toLower(Topic.dashboardView), \"executive\")"
+          actions:
+            - kind: BeginDialog
+              id: call_executive_dialog
+              dialog: ExecutiveDashboardDialog
+
+        - kind: Condition
+          id: critical_alerts
+          condition: "Topic.dashboardView contains \"2\" || contains(toLower(Topic.dashboardView), \"critical\") || contains(toLower(Topic.dashboardView), \"alerts\")"
+          actions:
+            - kind: BeginDialog
+              id: call_alerts_dialog
+              dialog: CriticalAlertsDialog
+
+        - kind: Condition
+          id: threat_intelligence
+          condition: "Topic.dashboardView contains \"3\" || contains(toLower(Topic.dashboardView), \"threat\") || contains(toLower(Topic.dashboardView), \"intelligence\")"
+          actions:
+            - kind: BeginDialog
+              id: call_intelligence_dialog
+              dialog: ThreatIntelligenceDialog
+
+        - kind: Condition
+          id: performance_metrics
+          condition: "Topic.dashboardView contains \"4\" || contains(toLower(Topic.dashboardView), \"performance\") || contains(toLower(Topic.dashboardView), \"metrics\")"
+          actions:
+            - kind: BeginDialog
+              id: call_metrics_dialog
+              dialog: PerformanceMetricsDialog
+
+        - kind: Condition
+          id: hunting_dashboard
+          condition: "Topic.dashboardView contains \"5\" || contains(toLower(Topic.dashboardView), \"hunting\")"
+          actions:
+            - kind: BeginDialog
+              id: call_hunting_dialog
+              dialog: HuntingDashboardDialog
+
+        - kind: Condition
+          id: infrastructure_health
+          condition: "Topic.dashboardView contains \"6\" || contains(toLower(Topic.dashboardView), \"infrastructure\") || contains(toLower(Topic.dashboardView), \"health\")"
+          actions:
+            - kind: BeginDialog
+              id: call_infrastructure_dialog
+              dialog: InfrastructureHealthDialog
+
+        - kind: Condition
+          id: compliance_overview
+          condition: "Topic.dashboardView contains \"7\" || contains(toLower(Topic.dashboardView), \"compliance\") || contains(toLower(Topic.dashboardView), \"risk\")"
+          actions:
+            - kind: BeginDialog
+              id: call_compliance_dialog
+              dialog: ComplianceOverviewDialog
+
+      elseActions:
+        - kind: SendActivity
+          id: dashboard_help
+          activity: |
+            I can show you various security operations dashboards:
+            - Executive security summaries
+            - Critical alerts and incidents
+            - Real-time threat intelligence
+            - SOC performance metrics
+            - Infrastructure health status
+
+dialogs:
+  - kind: AdaptiveDialog
+    id: ExecutiveDashboardDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          📊 **Executive Security Dashboard - Last 24 Hours**
+          
+          ## 🎯 **Security Posture Summary**
+          
+          **Overall Security Health: 🟡 MODERATE**
+          
+          ### 📈 **Key Metrics**
+          ```
+          🚨 Critical Incidents:           3 (↑ from yesterday)
+          ⚠️  High Priority Alerts:        47 (↓ 15% from avg)
+          🔍 Active Investigations:        12 (within normal range)
+          🎯 Threat Campaigns Tracked:     8 (↑ 2 new campaigns)
+          ⏱️  Mean Time to Response:        18 minutes (target: 15 min)
+          ✅ SLA Compliance:               94.2% (target: 95%)
+          ```
+          
+          ### 🚨 **Top Security Concerns**
+          
+          **1. Credential Theft Campaign (CRITICAL)**
+          - 3 confirmed compromised accounts
+          - Phishing emails targeting finance team
+          - Immediate response: MFA enforcement implemented
+          
+          **2. Suspicious PowerShell Activity (HIGH)**
+          - 47 detections across 12 endpoints
+          - Potential lateral movement indicators
+          - Investigation: In progress with endpoint team
+          
+          **3. Unusual Data Access Patterns (MEDIUM)**
+          - 8 anomalous file access events
+          - Pattern suggests potential insider threat
+          - Action: Enhanced monitoring activated
+          
+          ### 📊 **Threat Intelligence Highlights**
+          
+          **Active Threat Actors:**
+          - APT29 (Cozy Bear): Infrastructure changes detected
+          - FIN7: New phishing campaign targeting retail
+          - Conti Ransomware: Updated encryption techniques
+          
+          **Industry Threat Landscape:**
+          - Finance sector: 23% increase in BEC attacks
+          - Healthcare: New ransomware variant targeting EMR
+          - Manufacturing: Supply chain attack attempts rising
+          
+          ### 🛡️ **Defense Effectiveness**
+          
+          ```
+          Email Security:      99.2% block rate (↑0.1%)
+          Endpoint Protection: 97.8% detection rate (stable)
+          Network Security:    96.5% threat blocking (↓0.3%)
+          Identity Protection: 99.7% anomaly detection (↑0.2%)
+          ```
+          
+          ### 📋 **Immediate Actions Required**
+          
+          **🔴 URGENT (Next 4 hours)**
+          - Complete investigation of compromised accounts
+          - Implement additional controls for PowerShell execution
+          - Review and approve emergency access requests (2 pending)
+          
+          **🟡 THIS WEEK**
+          - Conduct tabletop exercise for supply chain attacks
+          - Update incident response playbooks
+          - Complete quarterly access reviews (87% complete)
+
+  - kind: AdaptiveDialog
+    id: CriticalAlertsDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          🚨 **Critical Security Alerts - Real-time Feed**
+          
+          **⚡ BREAKING ALERTS (Last 10 minutes)**
+          
+          ### 🔴 **CRITICAL - Immediate Action Required**
+          
+          **🚨 [ALERT-2024-1247] Potential Data Exfiltration**
+          ```
+          Time: 09:47 UTC (3 minutes ago)
+          Source: DLP System
+          Impact: HIGH - 2.3GB sensitive data movement detected
+          Target: External cloud storage service
+          User: john.smith@company.com
+          Status: INVESTIGATING - Containment initiated
+          Assigned: SOC Analyst Team Alpha
+          ```
+          
+          **🚨 [ALERT-2024-1246] Privilege Escalation Detected**
+          ```
+          Time: 09:44 UTC (6 minutes ago)
+          Source: Microsoft Defender XDR
+          Impact: CRITICAL - Unauthorized admin rights granted
+          Target: Domain Controller DC01
+          User: service_account_web
+          Status: CONTAINED - Account disabled
+          Assigned: Incident Response Team
+          ```
+          
+          ### 🟡 **HIGH PRIORITY - Monitor Closely**
+          
+          **⚠️ [ALERT-2024-1245] Suspicious Authentication Pattern**
+          ```
+          Time: 09:41 UTC (9 minutes ago)
+          Source: Azure AD Identity Protection
+          Impact: HIGH - Impossible travel detected
+          Details: Login from Tokyo (user normally in NYC)
+          User: maria.garcia@company.com
+          Status: USER NOTIFIED - MFA challenge issued
+          ```
+          
+          **⚠️ [ALERT-2024-1244] Malware Detection**
+          ```
+          Time: 09:38 UTC (12 minutes ago)
+          Source: Endpoint Detection
+          Impact: MEDIUM - Trojan detected and quarantined
+          File: suspicious_document.docx
+          Machine: LAPTOP-SALES-07
+          Status: ISOLATED - Full scan in progress
+          ```
+          
+          ### 📊 **Alert Volume Trends**
+          
+          **Current Hour:** 47 alerts (↑15% from previous hour)
+          **Peak Hour Today:** 89 alerts (11:00-12:00 UTC)
+          **False Positive Rate:** 12.3% (within acceptable range)
+          
+          ### 🎯 **Alert Categories (Last 24 hours)**
+          
+          ```
+          🔒 Identity & Access:      156 alerts (32%)
+          📧 Email Security:         134 alerts (28%)
+          💻 Endpoint Protection:    98 alerts (20%)
+          🌐 Network Security:       67 alerts (14%)
+          📊 Data Protection:        29 alerts (6%)
+          ```
+          
+          ### ⚡ **Automated Response Actions**
+          
+          **Active Containment:**
+          - 3 user accounts temporarily suspended
+          - 2 devices isolated from network
+          - 1 email thread quarantined
+          - 4 suspicious files quarantined
+          
+          **Pending Manual Review:**
+          - 8 high-priority alerts awaiting analyst review
+          - 3 escalation requests from automated systems
+          - 2 requests for emergency access approval
+
+  - kind: AdaptiveDialog
+    id: PerformanceMetricsDialog
+    steps:
+      - kind: SendActivity
+        activity: |
+          📈 **SOC Performance Metrics Dashboard**
+          
+          ## ⚡ **Response Time Metrics**
+          
+          ### 🎯 **Current Performance (24 hours)**
+          
+          **Mean Time to Detection (MTTD)**
+          ```
+          Critical Incidents:    4.2 minutes (Target: 5 min) ✅
+          High Priority:         8.7 minutes (Target: 10 min) ✅
+          Medium Priority:       23 minutes (Target: 30 min) ✅
+          Low Priority:          2.3 hours (Target: 4 hours) ✅
+          ```
+          
+          **Mean Time to Response (MTTR)**
+          ```
+          Critical Incidents:    18 minutes (Target: 15 min) ⚠️
+          High Priority:         45 minutes (Target: 60 min) ✅
+          Medium Priority:       4.2 hours (Target: 8 hours) ✅
+          Low Priority:          1.8 days (Target: 2 days) ✅
+          ```
+          
+          **Mean Time to Resolution (MTTR)**
+          ```
+          Critical Incidents:    2.3 hours (Target: 4 hours) ✅
+          High Priority:         8.7 hours (Target: 24 hours) ✅
+          Medium Priority:       2.1 days (Target: 3 days) ✅
+          Low Priority:          4.8 days (Target: 7 days) ✅
+          ```
+          
+          ## 👥 **Team Performance Analytics**
+          
+          ### 📊 **Analyst Productivity**
+          
+          **Shift Performance (Current 24 hours)**
+          ```
+          Day Shift (07:00-19:00):
+          - Alerts Processed: 234 (↑12% from average)
+          - Incidents Resolved: 18 (within target)
+          - False Positive Rate: 11.2% (↓2.1%)
+          - Analyst Utilization: 87% (optimal range)
+          
+          Night Shift (19:00-07:00):
+          - Alerts Processed: 156 (↓8% from average)
+          - Incidents Resolved: 12 (within target)
+          - False Positive Rate: 14.7% (↑1.3%)
+          - Analyst Utilization: 78% (optimal range)
+          ```
+          
+          **Individual Performance Highlights**
+          ```
+          🏆 Top Performer: Sarah Chen
+          - 47 alerts processed (team avg: 32)
+          - 0% false positive escalations
+          - 14 minutes avg response time
+          
+          📈 Most Improved: Mike Rodriguez
+          - 31% improvement in detection accuracy
+          - 22% faster incident resolution
+          - 3 proactive threat discoveries
+          ```
+          
+          ## 🎯 **Quality Metrics**
+          
+          ### ✅ **Detection Accuracy**
+          
+          **Alert Quality Scores**
+          ```
+          True Positive Rate:     87.7% (Target: 85%) ✅
+          False Positive Rate:    12.3% (Target: <15%) ✅
+          Alert Precision:        91.2% (↑3.1% this month)
+          Detection Coverage:     94.8% (based on red team exercises)
+          ```
+          
+          **Investigation Quality**
+          ```
+          Complete Investigations: 96.2% (Target: 95%) ✅
+          Documentation Quality:   92.7% (peer review score)
+          Evidence Preservation:   99.1% (legal compliance)
+          Knowledge Transfer:      89.3% (between shifts)
+          ```
+          
+          ## 📊 **Workload Distribution**
+          
+          ### 🔄 **Current Queue Status**
+          
+          **Active Work Items**
+          ```
+          🔴 Critical Queue:       2 items (SLA: 94%)
+          🟡 High Priority:        8 items (SLA: 97%)
+          🟢 Medium Priority:      23 items (SLA: 99%)
+          ⚪ Low Priority:         67 items (SLA: 98%)
+          
+          Total Backlog:          100 items (↓15 from yesterday)
+          Aging Items (>3 days):   4 items (requires attention)
+          ```
+          
+          **Resource Utilization**
+          ```
+          Analyst Capacity:       78% (healthy level)
+          Escalation Rate:        8.2% (within target)
+          Overtime Hours:         12 hours (↓4 from last week)
+          Training Time:          6% (target: 5-10%)
+          ```
+          
+          ## 🏆 **Achievement Highlights**
+          
+          **This Month's Successes**
+          - 99.2% uptime for critical security tools
+          - Zero missed critical incident SLAs
+          - 15% reduction in false positive rate
+          - 3 proactive threat discoveries prevented major incidents
+          - 94% employee satisfaction score (internal survey)

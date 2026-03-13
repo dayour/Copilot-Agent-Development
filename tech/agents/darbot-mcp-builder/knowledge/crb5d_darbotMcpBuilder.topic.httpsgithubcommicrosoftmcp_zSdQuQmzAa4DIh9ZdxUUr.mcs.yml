@@ -1,0 +1,6 @@
+# Name: https://github.com/microsoft/mcp
+# This knowledge source searches information on the web found in https://github.com/microsoft/mcp website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://github.com/microsoft/mcp

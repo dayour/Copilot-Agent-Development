@@ -1,0 +1,154 @@
+name: QueryOptimization
+displayName: Query Optimization
+triggers:
+  - kql query optimization
+  - query performance
+  - kusto optimization
+  - query tuning
+  - performance analysis
+  - kql performance
+  - query execution plan
+  - query efficiency
+  - slow queries
+entities: []
+actions:
+  - action: Topic.QueryOptimization
+variables: []
+
+topic: |
+  # Query Optimization
+
+  ## Description
+  Comprehensive KQL query optimization including performance analysis, execution plan interpretation, advanced operators usage, and enterprise-scale query efficiency improvements.
+
+  ## Conversation Flow
+
+  **System:** Hello! I'm here to help you with Kusto query optimization and performance tuning. I can assist with KQL optimization, execution plan analysis, performance monitoring, and advanced query techniques.
+
+  **Options:**
+  - 🚀 Query Performance Analysis & Tuning
+  - 📊 Execution Plan Interpretation
+  - 🔧 Advanced KQL Operators & Techniques
+  - 📈 Time Series & Analytics Optimization
+  - 🛠️ Query Monitoring & Best Practices
+
+  ---
+
+  ### 🚀 Query Performance Analysis & Tuning
+  **Performance Assessment Framework:**
+  - **Query Metrics Analysis**: Execution time, CPU usage, memory consumption, and data scanned analysis
+  - **Resource Utilization**: Cluster resource impact assessment with bottleneck identification
+  - **Parallelization Analysis**: Query parallelization effectiveness and optimization opportunities
+  - **Cache Utilization**: Query result cache effectiveness and cache-friendly query design
+  - **Data Skew Detection**: Partition and shard distribution analysis with rebalancing recommendations
+
+  **Optimization Strategies:**
+  - **Predicate Pushdown**: Filter optimization to minimize data scanning and processing
+  - **Projection Optimization**: Column selection optimization to reduce memory usage and transfer costs
+  - **Join Optimization**: Join strategy selection (broadcast vs. shuffle) based on data characteristics
+  - **Aggregation Optimization**: Summary table creation and materialized view usage for recurring aggregations
+  - **Partition Elimination**: Partition pruning strategies for time-series and categorized data
+
+  ---
+
+  ### 📊 Execution Plan Interpretation
+  **Execution Plan Analysis:**
+  - **Query Tree Structure**: Operator hierarchy analysis with bottleneck identification
+  - **Cost Analysis**: Resource cost breakdown with optimization priority recommendations
+  - **Data Flow Visualization**: Data movement patterns with network and storage optimization
+  - **Operator Statistics**: Row count estimates vs. actual with cardinality optimization
+  - **Resource Allocation**: Memory and CPU allocation analysis with scaling recommendations
+
+  **Advanced Diagnostics:**
+  - **Query Compilation**: Parse and compilation time analysis with query simplification techniques
+  - **Statistics Usage**: Table statistics utilization and update recommendations
+  - **Index Utilization**: Index effectiveness analysis with recommendation for additional indexes
+  - **Memory Pressure**: Memory usage patterns with spill detection and optimization
+  - **Cross-Cluster Impact**: Federated query performance analysis with data locality optimization
+
+  ---
+
+  ### 🔧 Advanced KQL Operators & Techniques
+  **Advanced Operator Optimization:**
+  - **mv-expand and mv-apply**: Multi-value expansion optimization with memory-efficient processing
+  - **Join Variations**: Optimal join strategy selection (inner, left, right, full outer, cross) with hints
+  - **Window Functions**: Row_number, rank, and percentile optimization for large datasets
+  - **Subquery Optimization**: Correlated and non-correlated subquery performance tuning
+  - **Union and Union All**: Multiple table querying optimization with partition alignment
+
+  **Complex Query Patterns:**
+  - **Recursive Queries**: Graph traversal and hierarchical data processing optimization
+  - **Pivot and Unpivot**: Data transformation optimization with memory-efficient techniques
+  - **Dynamic Schema**: Schema-on-read optimization for semi-structured data processing
+  - **String Operations**: Text processing optimization with regex and parsing functions
+  - **Geospatial Queries**: Geographic data processing with spatial indexing and clustering
+
+  ---
+
+  ### 📈 Time Series & Analytics Optimization
+  **Time Series Optimization:**
+  - **make-series Function**: Time series generation optimization with sparse data handling
+  - **series_decompose**: Trend, seasonal, and residual analysis optimization for large datasets
+  - **series_fft and series_ifft**: Frequency domain analysis optimization with memory management
+  - **series_outliers**: Anomaly detection optimization with statistical accuracy and performance
+  - **Time Windowing**: Sliding window calculations with efficient aggregation strategies
+
+  **Advanced Analytics Patterns:**
+  - **Machine Learning Integration**: ML plugin usage optimization with model selection and tuning
+  - **Statistical Functions**: Percentile, correlation, and regression analysis optimization
+  - **Cohort Analysis**: User behavior analysis optimization with efficient funnel calculations
+  - **A/B Testing**: Statistical significance testing with confidence interval calculations
+  - **Forecasting**: Time series prediction optimization with accuracy and performance balancing
+
+  ---
+
+  ### 🛠️ Query Monitoring & Best Practices
+  **Performance Monitoring Framework:**
+  - **Real-Time Monitoring**: Live query performance tracking with alerting and intervention
+  - **Historical Analysis**: Query performance trend analysis with regression detection
+  - **Resource Impact**: Cluster impact assessment with noisy neighbor detection
+  - **User Activity**: Query pattern analysis with user education and optimization recommendations
+  - **Cost Analysis**: Query cost attribution with optimization ROI calculations
+
+  **Best Practices Implementation:**
+  - **Query Templates**: Reusable query patterns with parameterization and optimization
+  - **Stored Functions**: Function optimization with caching and performance tuning
+  - **Data Types**: Optimal data type selection for storage and processing efficiency
+  - **Compression**: Data compression strategies for storage and query performance optimization
+  - **Retention Policies**: Data lifecycle management with performance and cost optimization
+
+  ## Advanced Features
+
+  ### 🔬 Query Intelligence
+  - **Automatic Optimization**: AI-powered query rewriting with performance improvement suggestions
+  - **Pattern Recognition**: Common anti-pattern detection with automated fixing recommendations
+  - **Resource Prediction**: Query resource requirement prediction with capacity planning
+  - **Performance Forecasting**: Query performance trend prediction with proactive optimization
+  - **Benchmark Comparison**: Query performance benchmarking with industry standard comparison
+
+  ### 📊 Visualization & Reporting
+  - **Performance Dashboards**: Real-time query performance monitoring with drill-down capabilities
+  - **Optimization Reports**: Comprehensive optimization analysis with implementation roadmaps
+  - **Resource Utilization**: Visual resource usage analysis with optimization opportunities
+  - **Cost Analysis**: Query cost visualization with optimization impact assessment
+  - **Trend Analysis**: Long-term performance trend analysis with predictive insights
+
+  ## Starter Prompts
+
+  ### Quick Actions
+  - "Analyze slow query performance and provide optimization recommendations"
+  - "Optimize time series aggregation query for 1TB dataset with hourly rollups"
+  - "Review join query execution plan and suggest performance improvements"
+  - "Configure query monitoring alerts for resource-intensive operations"
+
+  ### Advanced Operations
+  - "Design comprehensive query optimization framework for enterprise analytics"
+  - "Implement machine learning-based query performance prediction system"
+  - "Set up automated query optimization with performance regression detection"
+  - "Configure enterprise query governance with performance SLA monitoring"
+
+  ### Specialized Queries
+  - "Optimize geospatial clustering query for real-time location analytics"
+  - "Design efficient cohort analysis for 100M user behavioral dataset"
+  - "Implement high-performance anomaly detection for IoT time series data"
+  - "Create optimized funnel analysis for e-commerce conversion tracking"

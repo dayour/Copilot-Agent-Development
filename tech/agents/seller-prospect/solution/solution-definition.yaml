@@ -1,0 +1,280 @@
+schemaVersion: 1.0
+solution:
+  name: SellerProspectSolution
+  displayName: Seller Prospect
+  publisher: TechSalesPlatform
+  version: "1.1.0"
+  managed: false
+  description: >
+    Copilot Studio solution for internal seller enablement and external prospect engagement with Salesforce CRM integration.
+
+environmentVariables:
+  - name: SalesforceClientId
+    type: string
+    required: true
+    isSecret: false
+    description: Salesforce Connected App client ID.
+  - name: SalesforceClientSecret
+    type: secret
+    required: true
+    isSecret: true
+    description: Salesforce Connected App client secret.
+  - name: SalesforceInstanceUrl
+    type: string
+    required: true
+    isSecret: false
+    description: Salesforce instance base URL.
+  - name: AzureAdB2cTenantId
+    type: string
+    required: true
+    isSecret: false
+    description: Azure AD B2C tenant identifier.
+  - name: ProspectWebsiteDomain
+    type: string
+    required: true
+    isSecret: false
+    description: Allowed external domain for website channel.
+  - name: PublicProductLibrarySiteUrl
+    type: string
+    required: true
+    isSecret: false
+    description: SharePoint site URL for the Public Product Library (product overviews, feature comparisons, pricing tiers, technical specs).
+  - name: InternalCompetitiveIntelLibraryUrl
+    type: string
+    required: true
+    isSecret: false
+    description: SharePoint site URL for the internal-only Competitive Intelligence Library. Restricted to internal Teams channel only.
+
+dataverse:
+  tables:
+    - logicalName: crf_ProspectInteractions
+      displayName: ProspectInteractions
+      description: Stores inbound prospect chat interactions and qualification context.
+      columns:
+        - name: crf_interactionid
+          type: guid
+          required: true
+        - name: crf_prospectemail
+          type: string
+          maxLength: 320
+        - name: crf_channel
+          type: string
+          maxLength: 100
+        - name: crf_interactionsummary
+          type: multiline
+        - name: crf_createdon
+          type: datetime
+    - logicalName: crf_LeadQualificationScores
+      displayName: LeadQualificationScores
+      description: Stores BANT scoring outcomes and recommendation status.
+      columns:
+        - name: crf_scoreid
+          type: guid
+          required: true
+        - name: crf_salesforceleadid
+          type: string
+          maxLength: 100
+        - name: crf_budgetscore
+          type: wholeNumber
+        - name: crf_authorityscore
+          type: wholeNumber
+        - name: crf_needscore
+          type: wholeNumber
+        - name: crf_timelinescore
+          type: wholeNumber
+        - name: crf_totalbantscore
+          type: wholeNumber
+        - name: crf_recommendation
+          type: string
+          maxLength: 100
+
+integrations:
+  salesforce:
+    connector: power-automate-salesforce
+    authType: oauth2
+    connectedApp:
+      clientIdRef: SalesforceClientId
+      clientSecretRef: SalesforceClientSecret
+      instanceUrlRef: SalesforceInstanceUrl
+      scopes:
+        - api
+        - refresh_token
+    latencyProfile:
+      expectedSecondsMin: 2
+      expectedSecondsMax: 6
+    objects:
+      - Lead
+      - Opportunity
+      - Account
+      - Contact
+      - Task
+
+powerAutomateFlows:
+  - name: GetSalesforceLead
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Salesforce
+    inputs:
+      - leadIdentifier
+    outputs:
+      - leadRecord
+      - statusCode
+    timeoutSeconds: 100
+  - name: CreateSalesforceLead
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Salesforce
+      - Dataverse
+    inputs:
+      - firstName
+      - lastName
+      - email
+      - company
+      - budget
+      - authority
+      - need
+      - timeline
+      - bantScore
+    outputs:
+      - salesforceLeadId
+      - qualificationStatus
+    timeoutSeconds: 100
+  - name: GetOpportunityDetails
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Salesforce
+    inputs:
+      - opportunityName
+    outputs:
+      - stage
+      - amount
+      - closeDate
+      - owner
+      - nextStep
+      - activityRecencyDays
+      - stakeholderCount
+    timeoutSeconds: 100
+  - name: GetPipelineSummary
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - Salesforce
+    inputs:
+      - sellerId
+    outputs:
+      - stageBreakdown
+      - weightedPipeline
+      - atRiskDeals
+    timeoutSeconds: 100
+  - name: ScheduleMeeting
+    trigger: When an agent calls the flow
+    connectorDependencies:
+      - MicrosoftGraph
+      - Outlook
+    inputs:
+      - repUserId
+      - prospectEmail
+      - preferredWindow
+    outputs:
+      - proposedSlots
+      - meetingDraftStatus
+    timeoutSeconds: 100
+
+knowledgeSources:
+  - key: public-product-library
+    name: Public Product Library
+    visibility: external-and-internal
+    sourceType: sharepoint-document-library
+    contentPolicy: public-safe-only
+    siteUrlRef: PublicProductLibrarySiteUrl
+    definition: knowledge-base/product-library.yaml
+    description: >
+      SharePoint document library with public-safe product overviews, feature comparisons,
+      pricing tiers, and technical specifications. Separate from internal knowledge.
+  - key: faq-collection
+    name: FAQ Collection
+    visibility: external-and-internal
+    sourceType: structured-faq
+    contentPolicy: public-safe-only
+    definition: knowledge-base/faq-collection.yaml
+    description: >
+      Structured FAQ covering prospect questions on pricing, implementation timeline,
+      integration capabilities, and support tiers.
+  - key: case-studies
+    name: Case Studies and Social Proof
+    visibility: external-and-internal
+    sourceType: structured-content
+    contentPolicy: public-safe-only
+    definition: knowledge-base/case-studies.yaml
+    description: >
+      Curated customer success stories referenced when prospects ask who else uses
+      the platform. All stories carry written customer reference approval.
+  - key: competitive-intel-library
+    name: Competitive Intelligence Library
+    visibility: internal-only
+    sourceType: sharepoint-document-library
+    contentPolicy: restricted-confidential
+    siteUrlRef: InternalCompetitiveIntelLibraryUrl
+    definition: knowledge-base/competitive-positioning.yaml
+    channelRestriction:
+      allowedChannels:
+        - msteams
+      blockedChannels:
+        - webchat
+    description: >
+      Internal-only battlecards, objection handling, and win/loss insights.
+      Never surfaced to external prospects. Channel guard enforced at topic level.
+
+authentication:
+  internal:
+    channel: teams
+    provider: entra-id
+    ssoEnabled: true
+    audience: internal-sales-users
+  external:
+    channel: webchat
+    provider: azure-ad-b2c
+    tenantIdRef: AzureAdB2cTenantId
+    progressiveAuth: true
+    anonymousEntryAllowed: true
+
+channels:
+  - name: teams
+    mode: internal
+    enabled: true
+    capabilities:
+      - full-crm-actions
+      - internal-knowledge
+      - rep-coaching
+  - name: custom-website
+    mode: external
+    enabled: true
+    domainRef: ProspectWebsiteDomain
+    embed:
+      scriptType: webchat
+      originRestriction: strict
+    capabilities:
+      - prospect-chat
+      - lead-qualification
+      - escalation
+    restrictions:
+      - no-internal-competitive-content
+      - no-rep-only-workflows
+
+agentDefinition:
+  templatePath: ../templates/agent-template.yaml
+  knowledgeBaseDefinitions:
+    - knowledge-base/product-library.yaml
+    - knowledge-base/faq-collection.yaml
+    - knowledge-base/case-studies.yaml
+    - knowledge-base/competitive-positioning.yaml
+    - knowledge-base/content-governance.yaml
+  topicCoverage:
+    - Greeting
+    - Lead Qualification
+    - Opportunity Lookup
+    - Pipeline Summary
+    - Deal Health Check
+    - Meeting Scheduler
+    - Prospect Chat
+    - Competitive Intelligence
+    - Escalation

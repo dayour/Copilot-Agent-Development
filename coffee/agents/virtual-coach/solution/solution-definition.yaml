@@ -1,0 +1,150 @@
+# Copilot Studio Solution Definition - Virtual Coach (Coffee)
+
+solution:
+  name: CoffeeVirtualCoach
+  display_name: "Coffee - Virtual Coach"
+  version: "1.1.0"
+  publisher: Copilot Agent Development
+  description: >
+    Production-ready SharePoint-centric solution for the Virtual Coach agent.
+    Includes agent template, SharePoint knowledge sources, environment variables,
+    and Power Automate flow references for list operations and approval notifications.
+
+environment_variables:
+  - name: HubSiteUrl
+    display_name: Hub Site URL
+    type: string
+    description: Corporate root hub URL for the coffee chain intranet architecture.
+    default_value: ""
+
+  - name: RecipeLibraryUrl
+    display_name: Recipe Library URL
+    type: string
+    description: SharePoint document library URL for approved drink recipes.
+    default_value: ""
+
+  - name: HrPolicyLibraryUrl
+    display_name: HR Policy Library URL
+    type: string
+    description: SharePoint document library URL for HR and policy documents.
+    default_value: ""
+
+  - name: TrainingLibraryUrl
+    display_name: Training Library URL
+    type: string
+    description: SharePoint document library URL for onboarding and training guides.
+    default_value: ""
+
+  - name: OperationsLibraryUrl
+    display_name: Operations Library URL
+    type: string
+    description: SharePoint document library URL for SOPs and store operations guidance.
+    default_value: ""
+
+  - name: ShiftHandoverListUrl
+    display_name: Shift Handover List URL
+    type: string
+    description: SharePoint list URL used for shift handover writeback.
+    default_value: ""
+
+  - name: StoreDirectoryListUrl
+    display_name: Store Directory List URL
+    type: string
+    description: SharePoint list URL used for store lookup queries.
+    default_value: ""
+
+  - name: SeasonalMenuLibraryUrl
+    display_name: Seasonal Menu Library URL
+    type: string
+    description: SharePoint document library URL for seasonal menu updates.
+    default_value: ""
+
+  - name: ManagerTeamsChannelId
+    display_name: Manager Teams Channel ID
+    type: string
+    description: Teams channel ID for escalation notifications.
+    default_value: ""
+
+components:
+  agents:
+    - name: VirtualCoach
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: recipes-library
+          type: sharepoint_library
+          url: "${RecipeLibraryUrl}"
+          metadata_filters:
+            - DrinkCategory
+            - StoreRegion
+            - JobRole
+        - id: hr-policy-library
+          type: sharepoint_library
+          url: "${HrPolicyLibraryUrl}"
+          metadata_filters:
+            - PolicyType
+            - StoreRegion
+            - JobRole
+        - id: training-library
+          type: sharepoint_library
+          url: "${TrainingLibraryUrl}"
+          metadata_filters:
+            - JobRole
+            - StoreRegion
+        - id: operations-library
+          type: sharepoint_library
+          url: "${OperationsLibraryUrl}"
+          metadata_filters:
+            - StoreRegion
+            - JobRole
+        - id: seasonal-menu-library
+          type: sharepoint_library
+          url: "${SeasonalMenuLibraryUrl}"
+          metadata_filters:
+            - DrinkCategory
+            - StoreRegion
+      data_sources:
+        - id: shift-handover-list
+          type: sharepoint_list
+          url: "${ShiftHandoverListUrl}"
+        - id: store-directory-list
+          type: sharepoint_list
+          url: "${StoreDirectoryListUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: SaveShiftHandoverToSharePoint
+      description: Creates a new item in the SharePoint shift handover list from topic submission.
+      trigger: copilot_studio_topic_action
+      connector: sharepoint_online
+
+    - name: QueryStoreDirectory
+      description: Retrieves store metadata from SharePoint store directory list.
+      trigger: copilot_studio_topic_action
+      connector: sharepoint_online
+
+    - name: NotifyContentApprovalPending
+      description: Sends notifications when SharePoint recipe or policy content enters approval.
+      trigger: sharepoint_when_file_created_or_modified
+      connector: sharepoint_online
+      notifications:
+        - connector: microsoft_teams
+        - connector: office365_outlook
+
+connections:
+  - connector: sharepoint_online
+    display_name: SharePoint Online
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+  - connector: office365_outlook
+    display_name: Office 365 Outlook
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+  - type: custom_website
+    enabled: true
+    configuration:
+      mobile_optimized: true

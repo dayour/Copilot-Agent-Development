@@ -1,0 +1,96 @@
+# Copilot Studio Solution Definition — SupportBot (Tech)
+# This file defines the exportable solution components for the SupportBot agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: TechSupportBot
+  display_name: "Tech — SupportBot"
+  version: "1.0.0"
+  publisher: Copilot Agent Development
+  description: >
+    Showcase solution for the SupportBot multi-agent orchestration agent in the
+    Tech vertical. Includes the agent definition, topics, connected agent bindings,
+    knowledge source configuration, environment variable declarations, and
+    Power Automate flow references.
+
+environment_variables:
+  - name: WarrantyGuardAgentId
+    display_name: WarrantyGuard Agent ID
+    type: string
+    description: Agent ID of the deployed WarrantyGuard agent for multi-agent handoff.
+    default_value: ""
+
+  - name: EscalationTeamsChannelId
+    display_name: Escalation Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for complex case escalations to human agents.
+    default_value: ""
+
+  - name: KnowledgeBaseUrl
+    display_name: Support Knowledge Base URL
+    type: string
+    description: URL for the support knowledge base content (SharePoint or Dataverse).
+    default_value: ""
+
+  - name: ApplicationInsightsConnectionString
+    display_name: Application Insights Connection String
+    type: secret
+    description: Connection string for Azure Application Insights telemetry and tracing.
+    default_value: ""
+
+  - name: WarrantyGuardSkillManifestUrl
+    display_name: WarrantyGuard Skill Manifest URL
+    type: string
+    description: Skill manifest URL for the WarrantyGuard agent registration.
+    default_value: ""
+
+components:
+  agents:
+    - name: SupportBot
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: support-knowledge-base
+          type: sharepoint
+          url: "${KnowledgeBaseUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+      connected_agents:
+        - name: WarrantyGuard
+          agent_id: "${WarrantyGuardAgentId}"
+          skill_manifest_url: "${WarrantyGuardSkillManifestUrl}"
+          description: Handles warranty claims, warranty status checks, and warranty policy inquiries.
+
+  power_automate_flows:
+    - name: EscalateToHumanAgent
+      description: Posts an escalation adaptive card to the designated Teams channel for human agent pickup.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: microsoft_teams
+
+    - name: CreateSupportCase
+      description: Creates a support case record in Dataverse for tracking and follow-up.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: RecordCustomerFeedback
+      description: Records customer satisfaction feedback to Dataverse for reporting and analysis.
+      trigger: copilot_studio_adaptive_card_submit
+      connector: dataverse
+
+connections:
+  - connector: azure_ad
+    display_name: Microsoft Entra ID
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+  - connector: dataverse
+    display_name: Dataverse
+  - connector: application_insights
+    display_name: Azure Application Insights
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false
+  - type: web_chat
+    enabled: true
+    security: token_based

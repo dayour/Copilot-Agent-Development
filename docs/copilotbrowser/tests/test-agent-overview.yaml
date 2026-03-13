@@ -1,0 +1,52 @@
+testName: Agent Overview Page
+description: >
+  Verify that the agent overview page exposes all expected navigation tabs:
+  Overview, Topics, Knowledge, Tools, Settings, Channels, and Analytics.
+page: agent-overview
+agentScoped: true
+
+navigation:
+  - action: navigate
+    target: "${COPILOT_STUDIO_URL}/environments/${COPILOT_ENV_ID}/bots/${COPILOT_TEST_AGENT_ID}/canvas"
+  - action: wait
+    waitMs: 4000
+
+snapshot:
+  filter: interactive
+
+assertions:
+  - ref: "[role='tab'][aria-label*='Overview'], a[href*='/canvas'][aria-label*='Overview'], [data-testid='tab-overview']"
+    description: Overview tab
+    required: true
+
+  - ref: "[role='tab'][aria-label*='Topics'], a[href*='/topics'], [data-testid='tab-topics']"
+    description: Topics tab
+    required: true
+
+  - ref: "[role='tab'][aria-label*='Knowledge'], a[href*='/knowledge'], [data-testid='tab-knowledge']"
+    description: Knowledge tab
+    required: true
+
+  - ref: "[role='tab'][aria-label*='Tools'], a[href*='/tools'], [data-testid='tab-tools'], [role='tab'][aria-label*='Actions']"
+    description: Tools or Actions tab
+    required: true
+
+  - ref: "[role='tab'][aria-label*='Settings'], a[href*='/settings'], [data-testid='tab-settings']"
+    description: Settings tab
+    required: true
+
+  - ref: "[role='tab'][aria-label*='Channels'], a[href*='/channels'], [data-testid='tab-channels']"
+    description: Channels tab
+    required: true
+
+  - ref: "[role='tab'][aria-label*='Analytics'], a[href*='/analytics'], [data-testid='tab-analytics']"
+    description: Analytics tab
+    required: true
+
+  - ref: "button[aria-label*='Publish'], button[data-testid*='publish']"
+    description: Publish button in the agent header
+    required: false
+
+  - ref: "button[aria-label*='Test'], button[data-testid*='test-bot'], [aria-label*='Test your agent']"
+    description: Test agent button to open test chat panel
+    required: true

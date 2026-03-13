@@ -1,0 +1,6 @@
+# Name: https://learn.microsoft.com/en-us/power-platform/
+# This knowledge source searches information on the web found in https://learn.microsoft.com/en-us/power-platform/ website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://learn.microsoft.com/en-us/power-platform/

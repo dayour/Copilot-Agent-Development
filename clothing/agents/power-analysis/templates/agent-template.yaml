@@ -1,0 +1,1158 @@
+# Copilot Studio Agent Template — Power Analysis (Clothing Retail)
+# Analytical-reasoning-focused topic design with decomposition and context passing.
+
+agent:
+  name: Power Analysis
+  description: >
+    A deep reasoning analytics agent for global clothing retail operations.
+    It decomposes complex business questions into sequenced sub-queries across
+    sales, inventory, staffing, and external factors using Dataverse and Power BI.
+  language: en-US
+  orchestration_mode: generative
+  fallback_message: >
+    I could not complete the analysis with the available context. Please provide
+    store, period, and metric scope, or ask for a guided root cause workflow.
+
+global_variables:
+  - name: Analysis.Store
+    type: string
+  - name: Analysis.Period
+    type: string
+  - name: Analysis.Category
+    type: string
+  - name: Analysis.Brand
+    type: string
+  - name: Analysis.Channel
+    type: string
+  - name: Analysis.Question
+    type: string
+  - name: Analysis.ContextSummary
+    type: string
+  - name: AIBuilder.ForecastSKU
+    type: string
+  - name: AIBuilder.ForecastStore
+    type: string
+  - name: AIBuilder.DocumentType
+    type: string
+  - name: AIBuilder.SentimentCategory
+    type: string
+  - name: Alert.RuleId
+    type: string
+  - name: Alert.HistoryId
+    type: string
+  - name: SavedAnalysis.Id
+    type: string
+  - name: ScheduledReport.Id
+    type: string
+  - name: User.EntraId
+    type: string
+  - name: User.IsAdmin
+    type: boolean
+
+topics:
+
+  - name: Greeting
+    description: Introduces analytical capabilities and offers guided reasoning paths.
+    trigger_phrases:
+      - hello
+      - hi
+      - start analysis
+      - analyze store performance
+      - show retail insights
+    messages:
+      - text: >
+          You are connected to Power Analysis. I can run decomposition analysis,
+          comparative benchmarking, trend detection, what-if simulation, anomaly review,
+          alert management, saved analyses, and scheduled reports.
+          Which analytical task should we run?
+    quick_replies:
+      - Sales performance analysis
+      - Root cause analysis
+      - Inventory intelligence
+      - Trend detection
+      - What-if analysis
+      - Anomaly alerts
+      - Demand forecasting
+      - Classify new arrivals
+      - Customer sentiment
+      - Process supplier document
+      - Manage alert rules
+      - Active alerts
+      - Save this analysis
+      - Schedule a report
+
+  - name: Sales Performance
+    description: >
+      Returns core retail KPIs by store, category, brand, and channel with explicit formulas.
+    trigger_phrases:
+      - analyze sales performance
+      - sales kpis for {store}
+      - compare sales by {channel}
+      - show sell through and gmroi
+    entities:
+      - name: store
+        type: string
+        prompt: Specify store or region. Use All Stores for enterprise view.
+      - name: category
+        type: string
+        prompt: Specify category or use All Categories.
+      - name: brand
+        type: string
+        prompt: Specify brand or use All Brands.
+      - name: channel
+        type: choice
+        options: [all, store, ecommerce, outlet, marketplace]
+        default: all
+        prompt: Select selling channel.
+      - name: period
+        type: choice
+        options: [this week, last week, this month, last month, quarter to date, year to date]
+        default: this month
+        prompt: Select analysis period.
+    actions:
+      - type: set_variable
+        variable: Analysis.Store
+        value: "{store}"
+      - type: set_variable
+        variable: Analysis.Period
+        value: "{period}"
+      - type: set_variable
+        variable: Analysis.Category
+        value: "{category}"
+      - type: set_variable
+        variable: Analysis.Brand
+        value: "{brand}"
+      - type: set_variable
+        variable: Analysis.Channel
+        value: "{channel}"
+      - type: power_automate_flow
+        flow_name: MultiMeasureQuery
+        input:
+          dataset_id: "${PowerBiDatasetId}"
+          query_template: SalesPerformance
+          filters:
+            store: "{store}"
+            category: "{category}"
+            brand: "{brand}"
+            channel: "{channel}"
+            period: "{period}"
+          measures:
+            - "SellThroughRate = (Units Sold / Units Received) * 100"
+            - "GMROI = Gross Margin / Average Inventory Cost"
+            - "WeeksOfCover = Ending Inventory / Average Weekly Sales"
+            - "StockTurn = COGS / Average Inventory Cost"
+            - "OpenToBuy = Planned Inventory - (On Order + Current Inventory)"
+        output_message: >
+          Sales Performance Summary
+          Scope: Store={store}; Category={category}; Brand={brand}; Channel={channel}; Period={period}
+          - Sell-Through Rate (Units Sold / Units Received x 100): {sell_through_rate_pct}
+          - GMROI (Gross Margin / Average Inventory Cost): {gmroi}
+          - Weeks of Cover (Ending Inventory / Average Weekly Sales): {weeks_of_cover}
+          - Stock Turn (COGS / Average Inventory Cost): {stock_turn}
+          - Open-to-Buy (Planned - On Order - Current Inventory): {open_to_buy}
+
+  - name: Root Cause Analysis
+    description: >
+      Decomposes underperformance questions into sequenced diagnostics and synthesizes drivers.
+    trigger_phrases:
+      - why did {store} underperform
+      - root cause for low performance
+      - explain underperformance for {store}
+      - investigate performance drop
+    entities:
+      - name: store
+        type: string
+        prompt: Which store or store cluster is under review?
+      - name: period
+        type: choice
+        options: [this week, last week, this month, last month, quarter to date]
+        default: this month
+        prompt: Which period should be diagnosed?
+    actions:
+      - type: set_variable
+        variable: Analysis.Store
+        value: "{store}"
+      - type: set_variable
+        variable: Analysis.Period
+        value: "{period}"
+      - type: set_variable
+        variable: Analysis.Question
+        value: "Root cause analysis"
+      - type: redirect_to_topic
+        target_topic: RCA - Sales Diagnostics
+
+  - name: RCA - Sales Diagnostics
+    description: Step 1 for root cause analysis. Validates demand and conversion movement.
+    actions:
+      - type: power_automate_flow
+        flow_name: MultiMeasureQuery
+        input:
+          dataset_id: "${PowerBiDatasetId}"
+          query_template: RCASalesDiagnostics
+          filters:
+            store: "{Analysis.Store}"
+            period: "{Analysis.Period}"
+      - type: set_variable
+        variable: Analysis.ContextSummary
+        value: "{sales_diagnostic_summary}"
+      - type: redirect_to_topic
+        target_topic: RCA - Inventory Diagnostics
+
+  - name: RCA - Inventory Diagnostics
+    description: Step 2 for root cause analysis. Tests stock availability and assortment health.
+    actions:
+      - type: power_automate_flow
+        flow_name: MultiMeasureQuery
+        input:
+          dataset_id: "${PowerBiDatasetId}"
+          query_template: RCAInventoryDiagnostics
+          filters:
+            store: "{Analysis.Store}"
+            period: "{Analysis.Period}"
+      - type: set_variable
+        variable: Analysis.ContextSummary
+        value: "{Analysis.ContextSummary}; {inventory_diagnostic_summary}"
+      - type: redirect_to_topic
+        target_topic: RCA - Staffing and External Factors
+
+  - name: RCA - Staffing and External Factors
+    description: Step 3 for root cause analysis. Assesses labor coverage and external disruptions.
+    actions:
+      - type: power_automate_flow
+        flow_name: MultiMeasureQuery
+        input:
+          dataset_id: "${PowerBiDatasetId}"
+          query_template: RCAStaffingExternal
+          filters:
+            store: "{Analysis.Store}"
+            period: "{Analysis.Period}"
+      - type: redirect_to_topic
+        target_topic: RCA - Synthesis and Recommendations
+
+  - name: RCA - Synthesis and Recommendations
+    description: Step 4 for root cause analysis. Produces ranked drivers and corrective actions.
+    actions:
+      - type: prompt
+        prompt_name: RootCauseSynthesisPrompt
+        input:
+          store: "{Analysis.Store}"
+          period: "{Analysis.Period}"
+          sales_summary: "{sales_diagnostic_summary}"
+          inventory_summary: "{inventory_diagnostic_summary}"
+          staffing_external_summary: "{staffing_external_summary}"
+      - type: message
+        text: >
+          Root Cause Analysis for {Analysis.Store} ({Analysis.Period})
+          Primary Drivers:
+          {root_cause_ranked_drivers}
+          Recommended Actions:
+          {root_cause_recommended_actions}
+
+  - name: Inventory Intelligence
+    description: >
+      Detects stock risk and proposes reorder actions using weeks of cover thresholds.
+    trigger_phrases:
+      - inventory intelligence for {store}
+      - stock risk by category
+      - reorder recommendation
+      - where is weeks cover low
+    entities:
+      - name: store
+        type: string
+        prompt: Specify store or use All Stores.
+      - name: category
+        type: string
+        prompt: Specify category or use All Categories.
+      - name: weeks_cover_threshold
+        type: number
+        prompt: Enter minimum acceptable weeks of cover.
+        default: 4
+    actions:
+      - type: power_automate_flow
+        flow_name: MultiMeasureQuery
+        input:
+          dataset_id: "${PowerBiDatasetId}"
+          query_template: InventoryIntelligence
+          filters:
+            store: "{store}"
+            category: "{category}"
+            weeks_cover_threshold: "{weeks_cover_threshold}"
+      - type: message
+        text: >
+          Inventory Intelligence
+          Scope: Store={store}; Category={category}
+          - Low Cover SKUs: {low_cover_sku_count}
+          - Overstock SKUs: {overstock_sku_count}
+          - Recommended Reorder Units: {recommended_reorder_units}
+          - Priority Actions: {inventory_actions}
+
+  - name: Trend Detection
+    description: >
+      Performs period-over-period comparisons and generates narrative insights.
+    trigger_phrases:
+      - detect sales trends
+      - compare this period vs prior period
+      - trend analysis by brand
+      - show growth and decline drivers
+    entities:
+      - name: current_period
+        type: string
+        prompt: Enter current period (for example 2025-W14 or 2025-03).
+      - name: comparison_period
+        type: string
+        prompt: Enter comparison period.
+      - name: dimension
+        type: choice
+        options: [store, category, brand, channel]
+        default: category
+        prompt: Select comparison dimension.
+    actions:
+      - type: power_automate_flow
+        flow_name: TrendAnalysis
+        input:
+          current_period: "{current_period}"
+          comparison_period: "{comparison_period}"
+          dimension: "{dimension}"
+      - type: prompt
+        prompt_name: TrendInsightNarrativePrompt
+        input:
+          trend_data: "{trend_result_payload}"
+      - type: message
+        text: >
+          Trend Detection Result
+          - Largest Positive Contributor: {top_positive_driver}
+          - Largest Negative Contributor: {top_negative_driver}
+          - Net Change: {net_change_pct}
+          - Insight Narrative: {trend_insight_narrative}
+
+  - name: What-If Analysis
+    description: Projects KPI impact from scenario parameter changes.
+    trigger_phrases:
+      - run what if analysis
+      - project impact of markdown change
+      - simulate demand uplift
+      - forecast gmroi under scenario
+    entities:
+      - name: markdown_change_pct
+        type: number
+        prompt: Enter markdown percentage change (for example -5 or +3).
+      - name: demand_uplift_pct
+        type: number
+        prompt: Enter expected demand uplift percentage.
+      - name: cost_inflation_pct
+        type: number
+        prompt: Enter expected cost inflation percentage.
+      - name: scope
+        type: string
+        prompt: Specify scope (store, category, brand, or enterprise).
+    actions:
+      - type: power_automate_flow
+        flow_name: WhatIfScenario
+        input:
+          markdown_change_pct: "{markdown_change_pct}"
+          demand_uplift_pct: "{demand_uplift_pct}"
+          cost_inflation_pct: "{cost_inflation_pct}"
+          scope: "{scope}"
+      - type: message
+        text: >
+          What-If Scenario Output
+          Scope: {scope}
+          - Projected Revenue: {projected_revenue}
+          - Projected Gross Margin: {projected_gross_margin}
+          - Projected STR: {projected_sell_through}
+          - Projected GMROI: {projected_gmroi}
+          - Recommendation: {scenario_recommendation}
+
+  - name: Anomaly Alerts
+    description: Detects metric deviations and optionally triggers proactive notifications.
+    trigger_phrases:
+      - show anomaly alerts
+      - detect unusual performance
+      - where are kpis out of range
+      - run anomaly detection
+    entities:
+      - name: period
+        type: choice
+        options: [today, yesterday, this week, last week, this month]
+        default: today
+        prompt: Select anomaly detection period.
+      - name: zscore_threshold
+        type: number
+        default: 2
+        prompt: Enter anomaly sensitivity threshold in standard deviations.
+    actions:
+      - type: power_automate_flow
+        flow_name: AnomalyDetection
+        input:
+          period: "{period}"
+          zscore_threshold: "{zscore_threshold}"
+      - type: condition
+        expression: "{anomaly_count} > 0"
+        true_actions:
+          - type: power_automate_flow
+            flow_name: SendAnomalyAlertNotification
+            input:
+              teams_channel_id: "${AnalyticsTeamsChannelId}"
+              anomaly_summary: "{anomaly_summary}"
+          - type: message
+            text: >
+              Anomalies detected: {anomaly_count}
+              Summary: {anomaly_summary}
+              Notification has been posted to the analytics channel.
+        false_actions:
+          - type: message
+            text: >
+              No statistically significant anomalies were detected for {period}
+              at threshold {zscore_threshold}.
+
+  - name: Pipeline Health Check
+    description: >
+      Reports on the health of all data sync pipelines. Queries the PipelineHealth
+      table to surface the status of recent POS, ERP, Allocation, and KPI cache
+      refresh runs. Answers questions such as "Are all data feeds healthy?" and
+      "Which pipelines failed recently?"
+    trigger_phrases:
+      - are all data feeds healthy
+      - pipeline health status
+      - which pipelines failed
+      - data sync status
+      - check data feed health
+      - show pipeline errors
+    entities:
+      - name: pipeline_name
+        type: choice
+        options: [all, PosDataSync, ErpDataSync, AllocationDataSync, KpiCacheRefresh]
+        default: all
+        prompt: Which pipeline would you like to check? Select All for a full summary.
+      - name: lookback_hours
+        type: number
+        default: 24
+        prompt: How many hours back should the health check cover?
+    actions:
+      - type: dataverse_query
+        table: PipelineHealth
+        filter: >
+          RunStartTimestamp ge @{subtractFromTime(utcNow(), int(variables('lookback_hours')), 'Hour')}
+          and (pipeline_name eq 'all' or PipelineName eq '{pipeline_name}')
+        order_by: RunStartTimestamp desc
+        select:
+          - PipelineName
+          - RunStatus
+          - RunStartTimestamp
+          - RunEndTimestamp
+          - RecordsProcessed
+          - RecordsFailed
+          - ErrorCode
+          - ErrorMessage
+          - RetryAttempt
+          - DataQualityChecksPassed
+          - DataQualityFailureDetails
+        output_variable: pipeline_health_results
+      - type: condition
+        expression: "{pipeline_health_results.any_failed}"
+        true_actions:
+          - type: message
+            text: >
+              Data Feed Health Report (last {lookback_hours} hours)
+              Status: One or more pipelines require attention.
+
+              {pipeline_health_summary_table}
+
+              Failed Pipelines: {failed_pipeline_names}
+              Recommendation: Review error details and retry if the issue is transient.
+              For persistent failures, check source system connectivity and data quality alerts.
+        false_actions:
+          - type: message
+            text: >
+              Data Feed Health Report (last {lookback_hours} hours)
+              Status: All data feeds are healthy.
+
+              {pipeline_health_summary_table}
+  - name: Demand Forecasting
+    description: >
+      Uses an AI Builder prediction model trained on historical sales data to forecast
+      next-period demand by SKU and store, incorporating seasonality, promotions, and trend signals.
+      Surfaces predicted units, confidence interval, and key demand drivers.
+    trigger_phrases:
+      - what should I expect to sell next week
+      - forecast demand for {sku}
+      - predict sales for next period
+      - how much stock should I order for {store}
+      - demand forecast by sku
+    entities:
+      - name: sku
+        type: string
+        prompt: Specify SKU or product group (leave blank for all active SKUs).
+      - name: store
+        type: string
+        prompt: Specify store or region. Use All Stores for enterprise view.
+      - name: forecast_period
+        type: choice
+        options: [next week, next month, next quarter]
+        default: next week
+        prompt: Select the forecast horizon.
+    actions:
+      - type: set_variable
+        variable: AIBuilder.ForecastSKU
+        value: "{sku}"
+      - type: set_variable
+        variable: AIBuilder.ForecastStore
+        value: "{store}"
+      - type: power_automate_flow
+        flow_name: InvokeDemandForecastModel
+        input:
+          model_id: "${DemandForecastingModelId}"
+          sku: "{sku}"
+          store: "{store}"
+          forecast_period: "{forecast_period}"
+        output_message: >
+          Demand Forecast
+          Scope: SKU={sku}; Store={store}; Horizon={forecast_period}
+          - Predicted Units: {forecast_predicted_units}
+          - Confidence Interval: {forecast_confidence_low} to {forecast_confidence_high}
+          - Key Demand Drivers: {forecast_key_drivers}
+          - Seasonality Index: {forecast_seasonality_index}
+          - Promotion Impact: {forecast_promotion_impact}
+
+  - name: Category Classification
+    description: >
+      Uses an AI Builder classification model to automatically assign new products to
+      merchandising categories based on product attributes such as name, description,
+      material, and target demographic. Supports new product onboarding and catalog cleanup.
+    trigger_phrases:
+      - classify these new arrivals
+      - auto-classify product catalog
+      - what category does this product belong to
+      - classify product by attributes
+      - run category classification on new items
+    entities:
+      - name: product_ids
+        type: string
+        prompt: >
+          Enter comma-separated product IDs or describe the products to classify.
+          You can also say "all unclassified" to process pending items.
+      - name: confidence_threshold
+        type: number
+        default: 0.8
+        prompt: >
+          Enter minimum confidence score to accept classification (0 to 1).
+          Results below this threshold will be flagged for human review.
+    actions:
+      - type: power_automate_flow
+        flow_name: InvokeCategoryClassificationModel
+        input:
+          model_id: "${CategoryClassificationModelId}"
+          product_ids: "{product_ids}"
+          confidence_threshold: "{confidence_threshold}"
+      - type: message
+        text: >
+          Category Classification Results
+          Products Submitted: {classification_submitted_count}
+          - Auto-Classified: {classification_accepted_count}
+          - Flagged for Review: {classification_flagged_count}
+          - Category Assignments: {classification_assignments_summary}
+          Items flagged for review have been queued in the catalog management workspace.
+
+  - name: Sentiment Analysis
+    description: >
+      Uses an AI Builder sentiment model to analyze customer feedback from surveys,
+      reviews, and social media. Tracks sentiment trends over time by product category
+      and brand, and alerts on significant negative sentiment spikes.
+    trigger_phrases:
+      - what are customers saying about our new denim line
+      - analyze customer sentiment for {category}
+      - show sentiment trends for {brand}
+      - customer feedback sentiment report
+      - are there negative sentiment spikes
+    entities:
+      - name: category
+        type: string
+        prompt: Specify product category or brand to analyze sentiment for.
+      - name: period
+        type: choice
+        options: [last 7 days, last 30 days, last 90 days, year to date]
+        default: last 30 days
+        prompt: Select the analysis window.
+      - name: feedback_source
+        type: choice
+        options: [all, surveys, reviews, social media]
+        default: all
+        prompt: Select feedback source.
+    actions:
+      - type: set_variable
+        variable: AIBuilder.SentimentCategory
+        value: "{category}"
+      - type: power_automate_flow
+        flow_name: InvokeSentimentAnalysisModel
+        input:
+          model_id: "${SentimentAnalysisModelId}"
+          category: "{category}"
+          period: "{period}"
+          feedback_source: "{feedback_source}"
+          alert_threshold: "${SentimentAlertThreshold}"
+      - type: condition
+        expression: "{sentiment_negative_spike_detected} == true"
+        true_actions:
+          - type: power_automate_flow
+            flow_name: SendAnomalyAlertNotification
+            input:
+              teams_channel_id: "${AnalyticsTeamsChannelId}"
+              anomaly_summary: "{sentiment_spike_summary}"
+          - type: message
+            text: >
+              Customer Sentiment Analysis — {category} ({period})
+              Overall Sentiment Score: {sentiment_overall_score}
+              - Positive: {sentiment_positive_pct}
+              - Neutral: {sentiment_neutral_pct}
+              - Negative: {sentiment_negative_pct}
+              Top Positive Themes: {sentiment_top_positive_themes}
+              Top Negative Themes: {sentiment_top_negative_themes}
+              Alert: Significant negative sentiment spike detected. Notification posted to analytics channel.
+        false_actions:
+          - type: message
+            text: >
+              Customer Sentiment Analysis — {category} ({period})
+              Overall Sentiment Score: {sentiment_overall_score}
+              - Positive: {sentiment_positive_pct}
+              - Neutral: {sentiment_neutral_pct}
+              - Negative: {sentiment_negative_pct}
+              Top Positive Themes: {sentiment_top_positive_themes}
+              Top Negative Themes: {sentiment_top_negative_themes}
+              No significant negative sentiment spikes detected in this period.
+
+  - name: Document Processing
+    description: >
+      Uses an AI Builder document processing model to extract structured data from uploaded
+      supplier invoices, delivery notes, and competitor price sheets. Returns extracted
+      line items, costs, quantities, and discrepancies for downstream action.
+    trigger_phrases:
+      - process supplier invoice
+      - extract data from delivery note
+      - parse competitor price sheet
+      - upload document for processing
+      - extract invoice line items
+    entities:
+      - name: document_type
+        type: choice
+        options: [supplier invoice, delivery note, competitor price sheet]
+        prompt: Select the type of document you are uploading.
+      - name: document_file
+        type: file
+        prompt: >
+          Upload the document file (PDF or image). Supported formats: PDF, PNG, JPEG, TIFF.
+    actions:
+      - type: set_variable
+        variable: AIBuilder.DocumentType
+        value: "{document_type}"
+      - type: power_automate_flow
+        flow_name: InvokeDocumentProcessingModel
+        input:
+          model_id: "${DocumentProcessingModelId}"
+          document_type: "{document_type}"
+          document_content: "{document_file}"
+      - type: condition
+        expression: "{document_extraction_status} == 'success'"
+        true_actions:
+          - type: message
+            text: >
+              Document Processing Complete — {document_type}
+              Extracted Fields: {document_extracted_field_count}
+              - Supplier: {document_supplier_name}
+              - Document Date: {document_date}
+              - Line Items: {document_line_item_count}
+              - Total Value: {document_total_value}
+              - Discrepancies Detected: {document_discrepancy_count}
+              Extracted data has been written to Dataverse for review and approval.
+        false_actions:
+          - type: message
+            text: >
+              Document processing could not complete for the uploaded file.
+              Reason: {document_extraction_error}
+              Please verify the document format and try again, or contact your system administrator.
+  - name: Create Alert Rule
+    description: >
+      Creates a new configurable alert rule so the agent notifies the user when
+      a metric breaches a defined threshold for a store, region, or category.
+      Supports compound AND/OR conditions.
+    trigger_phrases:
+      - create an alert rule
+      - notify me when sales drop below target
+      - set up an alert for {metric}
+      - add alert threshold for {store}
+      - alert me when {metric} falls below {threshold}
+    entities:
+      - name: rule_name
+        type: string
+        prompt: Provide a name for this alert rule.
+      - name: metric
+        type: string
+        prompt: >
+          Which metric should be monitored? Examples: daily sales, sell-through rate,
+          GMROI, weeks of cover, gross margin percentage.
+      - name: operator
+        type: choice
+        options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        prompt: Should the alert fire when the metric is less than, greater than, or equal to the threshold?
+      - name: threshold
+        type: number
+        prompt: Enter the threshold value.
+      - name: threshold_unit
+        type: string
+        prompt: Enter the unit for the threshold (for example %, currency, units). Leave blank if not applicable.
+      - name: scope
+        type: choice
+        options: [store, region, category, enterprise]
+        default: store
+        prompt: Should this alert apply to a specific store, region, category, or the whole enterprise?
+      - name: scope_value
+        type: string
+        prompt: Enter the specific store name, region, or category. Leave blank for enterprise scope.
+      - name: evaluation_frequency
+        type: choice
+        options: [real_time, hourly, daily, weekly]
+        default: daily
+        prompt: How frequently should the alert be evaluated?
+      - name: compound_logic
+        type: choice
+        options: [none, AND, OR]
+        default: none
+        prompt: >
+          Add a secondary condition? Select AND to require both conditions,
+          OR to fire on either, or none for a single condition.
+      - name: secondary_metric
+        type: string
+        prompt: Enter the secondary metric name, or leave blank if no compound condition.
+      - name: secondary_operator
+        type: choice
+        options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        prompt: Operator for the secondary condition.
+      - name: secondary_threshold
+        type: number
+        prompt: Threshold value for the secondary condition.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleCreate
+        input:
+          rule_name: "{rule_name}"
+          metric: "{metric}"
+          operator: "{operator}"
+          threshold: "{threshold}"
+          threshold_unit: "{threshold_unit}"
+          scope: "{scope}"
+          scope_value: "{scope_value}"
+          evaluation_frequency: "{evaluation_frequency}"
+          compound_logic: "{compound_logic}"
+          secondary_metric: "{secondary_metric}"
+          secondary_operator: "{secondary_operator}"
+          secondary_threshold: "{secondary_threshold}"
+          owner_entra_id: "{User.EntraId}"
+      - type: set_variable
+        variable: Alert.RuleId
+        value: "{created_rule_id}"
+      - type: message
+        text: >
+          Alert rule "{rule_name}" has been created.
+          It will evaluate {metric} {operator} {threshold}{threshold_unit}
+          at {evaluation_frequency} frequency for scope: {scope_value}.
+          Rule ID: {created_rule_id}
+
+  - name: List Alert Rules
+    description: >
+      Lists the user's active alert rules, showing metric, threshold, scope,
+      and evaluation frequency for each.
+    trigger_phrases:
+      - list my alert rules
+      - show my alerts
+      - what alerts do I have set up
+      - view alert rules
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleList
+        input:
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Your active alert rules:
+          {alert_rules_list}
+
+  - name: Modify Alert Rule
+    description: >
+      Updates an existing alert rule threshold, operator, scope, or evaluation
+      frequency. Only the rule owner or an admin can modify a rule.
+    trigger_phrases:
+      - update alert rule
+      - change alert threshold
+      - modify my alert for {metric}
+      - edit alert rule {rule_name}
+    entities:
+      - name: rule_name
+        type: string
+        prompt: Enter the name or ID of the alert rule you want to modify.
+      - name: field_to_update
+        type: choice
+        options: [threshold, operator, scope, scope_value, evaluation_frequency, is_active]
+        prompt: Which field do you want to update?
+      - name: new_value
+        type: string
+        prompt: Enter the new value.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleUpdate
+        input:
+          rule_name: "{rule_name}"
+          field_to_update: "{field_to_update}"
+          new_value: "{new_value}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Alert rule "{rule_name}" has been updated: {field_to_update} set to {new_value}.
+
+  - name: Delete Alert Rule
+    description: >
+      Deactivates an alert rule. The rule record is retained in Dataverse for
+      audit purposes but will no longer trigger alerts.
+    trigger_phrases:
+      - delete alert rule
+      - remove my alert for {metric}
+      - turn off alert rule {rule_name}
+      - deactivate alert {rule_name}
+    entities:
+      - name: rule_name
+        type: string
+        prompt: Enter the name or ID of the alert rule to deactivate.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertRuleDelete
+        input:
+          rule_name: "{rule_name}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Alert rule "{rule_name}" has been deactivated. It will no longer trigger alerts.
+
+  - name: Active Alerts
+    description: >
+      Retrieves currently firing alerts with status new or acknowledged.
+      Answers questions such as "What alerts are firing right now?" or
+      "Show me unresolved alerts for the North region."
+    trigger_phrases:
+      - what alerts are firing right now
+      - show active alerts
+      - what alerts are unresolved
+      - list current alerts for {scope_value}
+      - are there any open alerts
+    entities:
+      - name: status_filter
+        type: choice
+        options: [new, acknowledged, all_open]
+        default: all_open
+        prompt: Show new alerts, acknowledged alerts, or all open alerts?
+      - name: scope_value
+        type: string
+        prompt: Filter by store, region, or category. Leave blank to see all.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertHistoryQuery
+        input:
+          status_filter: "{status_filter}"
+          scope_value: "{scope_value}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: condition
+        expression: "{alert_count} > 0"
+        true_actions:
+          - type: message
+            text: >
+              Active alerts ({alert_count} total):
+              {alert_history_list}
+        false_actions:
+          - type: message
+            text: >
+              No open alerts found for the specified criteria.
+
+  - name: Acknowledge Alert
+    description: >
+      Marks an alert as acknowledged to indicate the team is aware of the issue.
+      Records the acknowledging user and timestamp.
+    trigger_phrases:
+      - acknowledge the {scope_value} alert
+      - acknowledge alert {alert_id}
+      - mark alert as acknowledged
+      - we are aware of the {metric} alert
+    entities:
+      - name: alert_id
+        type: string
+        prompt: Enter the alert ID or describe the alert (for example "Store 42 sales alert").
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertAcknowledge
+        input:
+          alert_id: "{alert_id}"
+          owner_entra_id: "{User.EntraId}"
+      - type: set_variable
+        variable: Alert.HistoryId
+        value: "{alert_id}"
+      - type: message
+        text: >
+          Alert {alert_id} has been acknowledged. The team is aware of this issue.
+
+  - name: Resolve Alert
+    description: >
+      Marks an alert as resolved and optionally records resolution notes.
+      Closes the alert lifecycle.
+    trigger_phrases:
+      - resolve alert {alert_id}
+      - mark alert as resolved
+      - close the {scope_value} alert
+      - the {metric} issue has been fixed
+    entities:
+      - name: alert_id
+        type: string
+        prompt: Enter the alert ID or describe the alert to resolve.
+      - name: resolution_notes
+        type: string
+        prompt: Optional - add resolution notes to explain how the issue was addressed.
+    actions:
+      - type: power_automate_flow
+        flow_name: AlertResolve
+        input:
+          alert_id: "{alert_id}"
+          resolution_notes: "{resolution_notes}"
+          owner_entra_id: "{User.EntraId}"
+      - type: message
+        text: >
+          Alert {alert_id} has been resolved.
+          Notes: {resolution_notes}
+
+  - name: Save Analysis
+    description: >
+      Saves the current analysis context including query parameters, result snapshot,
+      and generated insights to Dataverse so it can be recalled or shared later.
+    trigger_phrases:
+      - save this analysis
+      - save the current analysis
+      - store this result for later
+      - bookmark this analysis
+    entities:
+      - name: analysis_name
+        type: string
+        prompt: Give this analysis a name so you can find it later.
+    actions:
+      - type: power_automate_flow
+        flow_name: SavedAnalysisCreate
+        input:
+          analysis_name: "{analysis_name}"
+          analysis_type: "{Analysis.Question}"
+          query_parameters: >
+            store={Analysis.Store};period={Analysis.Period};
+            category={Analysis.Category};brand={Analysis.Brand};
+            channel={Analysis.Channel}
+          result_snapshot: "{Analysis.ContextSummary}"
+          generated_insights: "{Analysis.ContextSummary}"
+          owner_entra_id: "{User.EntraId}"
+      - type: set_variable
+        variable: SavedAnalysis.Id
+        value: "{saved_analysis_id}"
+      - type: message
+        text: >
+          Analysis "{analysis_name}" has been saved.
+          Saved Analysis ID: {saved_analysis_id}
+          You can recall it with "Show me my saved analysis {analysis_name}".
+
+  - name: Recall Saved Analysis
+    description: >
+      Retrieves a previously saved analysis by name, date, or analysis type.
+      Answers requests such as "Show me the analysis I saved last Tuesday."
+    trigger_phrases:
+      - show me my saved analysis
+      - recall saved analysis {analysis_name}
+      - load the analysis I saved on {date}
+      - retrieve saved analysis {analysis_name}
+    entities:
+      - name: analysis_name
+        type: string
+        prompt: Enter the name of the saved analysis, or describe when it was saved.
+      - name: date_filter
+        type: string
+        prompt: Optional - enter a date or relative period such as last Tuesday or this week.
+    actions:
+      - type: power_automate_flow
+        flow_name: SavedAnalysisQuery
+        input:
+          analysis_name: "{analysis_name}"
+          date_filter: "{date_filter}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: condition
+        expression: "{saved_analysis_found}"
+        true_actions:
+          - type: message
+            text: >
+              Saved Analysis: {analysis_name}
+              Saved at: {saved_at}
+              Type: {analysis_type}
+              Query Parameters: {query_parameters}
+              Generated Insights: {generated_insights}
+        false_actions:
+          - type: message
+            text: >
+              No saved analysis found matching "{analysis_name}". Try listing your saved
+              analyses or check the name and date.
+
+  - name: Share Saved Analysis
+    description: >
+      Shares a saved analysis with specified users or teams by updating the
+      SharedWith field in Dataverse.
+    trigger_phrases:
+      - share my saved analysis with {recipient}
+      - share analysis {analysis_name} with the regional team
+      - give {recipient} access to my analysis
+      - share this analysis
+    entities:
+      - name: analysis_name
+        type: string
+        prompt: Enter the name of the saved analysis to share.
+      - name: recipient
+        type: string
+        prompt: Enter the name, email, or team to share the analysis with.
+    actions:
+      - type: power_automate_flow
+        flow_name: SavedAnalysisShare
+        input:
+          analysis_name: "{analysis_name}"
+          recipient: "{recipient}"
+          owner_entra_id: "{User.EntraId}"
+      - type: message
+        text: >
+          Analysis "{analysis_name}" has been shared with {recipient}.
+
+  - name: Schedule Report
+    description: >
+      Creates a scheduled report that runs the current query on a recurring basis
+      and delivers results to specified recipients via Teams, email, or PDF.
+    trigger_phrases:
+      - send me this report every Monday at 8am
+      - schedule a weekly report
+      - set up a recurring report for {scope}
+      - schedule this report for {recipient}
+    entities:
+      - name: report_name
+        type: string
+        prompt: Give this scheduled report a name.
+      - name: human_readable_schedule
+        type: string
+        prompt: >
+          How often should this report run? Examples: every Monday at 8am,
+          daily at 7am, every first of the month.
+      - name: recipients
+        type: string
+        prompt: Who should receive this report? Enter email addresses or Teams handles.
+      - name: output_format
+        type: choice
+        options: [teams, email, pdf]
+        default: email
+        prompt: How should the report be delivered - Teams message, email, or PDF attachment?
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportCreate
+        input:
+          report_name: "{report_name}"
+          human_readable_schedule: "{human_readable_schedule}"
+          query_definition: >
+            store={Analysis.Store};period={Analysis.Period};
+            category={Analysis.Category};brand={Analysis.Brand};
+            channel={Analysis.Channel}
+          recipients: "{recipients}"
+          output_format: "{output_format}"
+          owner_entra_id: "{User.EntraId}"
+          teams_channel_id: "${ScheduledReportsTeamsChannelId}"
+      - type: set_variable
+        variable: ScheduledReport.Id
+        value: "{scheduled_report_id}"
+      - type: message
+        text: >
+          Scheduled report "{report_name}" has been created.
+          Schedule: {human_readable_schedule}
+          Recipients: {recipients}
+          Format: {output_format}
+          Report ID: {scheduled_report_id}
+
+  - name: List Scheduled Reports
+    description: >
+      Lists the user's scheduled reports including schedule, recipients, output
+      format, and next run time.
+    trigger_phrases:
+      - list my scheduled reports
+      - show my recurring reports
+      - what reports do I have scheduled
+      - view scheduled reports
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportList
+        input:
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Your scheduled reports:
+          {scheduled_reports_list}
+
+  - name: Modify Scheduled Report
+    description: >
+      Updates the schedule, recipients, or output format of an existing scheduled
+      report. Modifies the backing Power Automate recurrence flow accordingly.
+    trigger_phrases:
+      - update scheduled report {report_name}
+      - change report schedule for {report_name}
+      - modify recipients for report {report_name}
+      - edit my scheduled report
+    entities:
+      - name: report_name
+        type: string
+        prompt: Enter the name or ID of the scheduled report to modify.
+      - name: field_to_update
+        type: choice
+        options: [schedule, recipients, output_format, is_active]
+        prompt: Which field do you want to update?
+      - name: new_value
+        type: string
+        prompt: Enter the new value.
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportUpdate
+        input:
+          report_name: "{report_name}"
+          field_to_update: "{field_to_update}"
+          new_value: "{new_value}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Scheduled report "{report_name}" has been updated: {field_to_update} set to {new_value}.
+
+  - name: Cancel Scheduled Report
+    description: >
+      Deactivates a scheduled report and disables its backing Power Automate
+      recurrence flow so it no longer runs or delivers output.
+    trigger_phrases:
+      - cancel scheduled report {report_name}
+      - stop sending report {report_name}
+      - delete scheduled report {report_name}
+      - turn off report {report_name}
+    entities:
+      - name: report_name
+        type: string
+        prompt: Enter the name or ID of the scheduled report to cancel.
+    actions:
+      - type: power_automate_flow
+        flow_name: ScheduledReportCancel
+        input:
+          report_name: "{report_name}"
+          owner_entra_id: "{User.EntraId}"
+          is_admin: "{User.IsAdmin}"
+      - type: message
+        text: >
+          Scheduled report "{report_name}" has been cancelled and will no longer run.

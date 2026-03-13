@@ -1,0 +1,6 @@
+# Name: Azure AD Conditional Access
+# This knowledge source searches information on the web found in https://docs.microsoft.com/en-us/azure/active-directory/conditional-access/ website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://docs.microsoft.com/en-us/azure/active-directory/conditional-access/

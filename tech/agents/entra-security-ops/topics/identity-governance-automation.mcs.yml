@@ -1,0 +1,1059 @@
+# Name: Identity Governance Automation
+# Automated identity lifecycle management, access reviews, and entitlement management workflows
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Identity Governance Automation
+    triggerQueries:
+      - identity governance
+      - access reviews
+      - entitlement management
+      - identity lifecycle
+      - automated provisioning
+      - access certification
+      - identity automation
+      - governance workflows
+      - access governance
+      - compliance automation
+
+  actions:
+    - kind: SendActivity
+      id: governance_intro
+      activity: |
+        🎯 **Enterprise Identity Governance Automation Center**
+        
+        **Comprehensive Identity Governance Framework:**
+        
+        **🔄 Identity Lifecycle Management**
+        ✅ **Automated Onboarding** - Streamlined new user provisioning with role-based access
+        ✅ **Dynamic Access Management** - Attribute-based access control and entitlements
+        ✅ **Automated Offboarding** - Secure account termination and access revocation
+        ✅ **Lifecycle Orchestration** - End-to-end identity workflow automation
+        
+        **📋 Access Reviews & Certification**
+        ✅ **Automated Access Reviews** - Periodic access certification campaigns
+        ✅ **Risk-based Reviews** - Priority-based review scheduling and scope
+        ✅ **Compliance Reporting** - SOX, GDPR, HIPAA compliance automation
+        ✅ **Remediation Workflows** - Automated access cleanup and enforcement
+        
+        **🎨 Entitlement Management**
+        ✅ **Access Packages** - Pre-configured role and resource bundles
+        ✅ **Self-service Access** - Employee-driven access request workflows
+        ✅ **Approval Automation** - AI-assisted approval decision support
+        ✅ **Temporal Access** - Time-bound access grants and automatic expiration
+        
+        What aspect of identity governance requires immediate attention?
+
+    - kind: Question
+      id: governance_focus
+      interruptionPolicy:
+        allowInterruption: true
+      variable: Topic.governanceFocus
+      prompt:
+        kind: Activity
+        activity: |
+          **Select Governance Automation Focus:**
+          
+          🎯 **1. Identity Lifecycle Automation** - Configure automated user provisioning and deprovisioning
+          📋 **2. Access Review Campaigns** - Set up and manage periodic access certifications
+          🎨 **3. Entitlement Management** - Design and deploy access packages and self-service workflows
+          📊 **4. Compliance Automation** - Implement regulatory compliance reporting and controls
+          🔍 **5. Governance Analytics** - Advanced identity analytics and risk assessment
+          
+          Choose your implementation priority:
+
+    - kind: ConditionGroup
+      id: governance_routing
+      conditions:
+        - kind: Condition
+          id: lifecycle_automation_condition
+          condition: =Topic.governanceFocus = "Identity Lifecycle Automation"
+          actions:
+            - kind: BeginDialog
+              id: start_lifecycle_automation
+              dialog: LifecycleAutomationDialog
+
+        - kind: Condition
+          id: access_reviews_condition
+          condition: =Topic.governanceFocus = "Access Review Campaigns"
+          actions:
+            - kind: BeginDialog
+              id: start_access_reviews
+              dialog: AccessReviewsDialog
+
+        - kind: Condition
+          id: entitlement_management_condition
+          condition: =Topic.governanceFocus = "Entitlement Management"
+          actions:
+            - kind: BeginDialog
+              id: start_entitlement_management
+              dialog: EntitlementManagementDialog
+
+        - kind: Condition
+          id: compliance_automation_condition
+          condition: =Topic.governanceFocus = "Compliance Automation"
+          actions:
+            - kind: BeginDialog
+              id: start_compliance_automation
+              dialog: ComplianceAutomationDialog
+
+        - kind: Condition
+          id: governance_analytics_condition
+          condition: =Topic.governanceFocus = "Governance Analytics"
+          actions:
+            - kind: BeginDialog
+              id: start_governance_analytics
+              dialog: GovernanceAnalyticsDialog
+
+      elseActions:
+        - kind: SendActivity
+          id: invalid_governance_selection
+          activity: |
+            ⚠️ Please select a valid governance automation option from the list above.
+
+dialogs:
+  - kind: AdaptiveDialog
+    id: LifecycleAutomationDialog
+    steps:
+      - kind: SendActivity
+        id: lifecycle_automation_intro
+        activity: |
+          🔄 **Advanced Identity Lifecycle Automation**
+          
+          **Enterprise Lifecycle Management Framework:**
+          
+          **📥 Automated Onboarding Process:**
+          1. **HR System Integration** - Workday/SuccessFactors automated provisioning
+          2. **Role-based Provisioning** - Attribute-driven access assignment
+          3. **Welcome Workflow** - Automated credential delivery and training
+          4. **Compliance Verification** - Background check and access approval integration
+          
+          **🔄 Dynamic Access Management:**
+          - **Attribute-based Access Control (ABAC)** - Real-time entitlement calculation
+          - **Role Mining and Optimization** - AI-driven role definition and cleanup
+          - **Access Recertification** - Continuous access validation and adjustment
+          
+          **📤 Secure Offboarding Process:**
+          - **Immediate Access Revocation** - Real-time account disabling
+          - **Data Retention Compliance** - Automated data archival and deletion
+          - **Equipment Recovery** - Device management integration
+          - **Knowledge Transfer** - Automated handover documentation
+
+      - kind: Question
+        id: lifecycle_component
+        variable: Dialog.lifecycleComponent
+        prompt: |
+          **Lifecycle Automation Component:**
+          
+          Which lifecycle automation component do you want to configure?
+
+      - kind: SendActivity
+        id: lifecycle_implementation
+        activity: |
+          🎯 **Enterprise Lifecycle Automation Implementation**
+          
+          **Microsoft Graph PowerShell Automation:**
+          ```powershell
+          # Advanced automated user provisioning script
+          # HR System Integration Example
+          
+          # Connect to Microsoft Graph
+          Connect-MgGraph -Scopes "User.ReadWrite.All", "Group.ReadWrite.All", "Directory.ReadWrite.All"
+          
+          # Function for automated user onboarding
+          function New-EnterpriseUser {
+              param(
+                  [Parameter(Mandatory=$true)]
+                  [hashtable]$HRData
+              )
+              
+              # Create user account
+              $userParams = @{
+                  DisplayName = "$($HRData.FirstName) $($HRData.LastName)"
+                  UserPrincipalName = "$($HRData.EmployeeId)@company.com"
+                  MailNickname = $HRData.EmployeeId
+                  AccountEnabled = $true
+                  PasswordProfile = @{
+                      ForceChangePasswordNextSignIn = $true
+                      Password = "TempP@ssw0rd123!"
+                  }
+                  Department = $HRData.Department
+                  JobTitle = $HRData.JobTitle
+                  EmployeeId = $HRData.EmployeeId
+                  Manager = $HRData.ManagerUPN
+                  OfficeLocation = $HRData.Office
+                  EmployeeHireDate = $HRData.StartDate
+              }
+              
+              $newUser = New-MgUser @userParams
+              
+              # Role-based group assignment
+              $roleMapping = @{
+                  "Finance" = @("Finance-Users", "Office365-E3")
+                  "HR" = @("HR-Users", "Office365-E3", "HR-Confidential")
+                  "IT" = @("IT-Users", "Office365-E5", "IT-Privileged")
+                  "Sales" = @("Sales-Users", "Office365-E3", "CRM-Access")
+              }
+              
+              $groups = $roleMapping[$HRData.Department]
+              foreach ($group in $groups) {
+                  $groupId = (Get-MgGroup -Filter "displayName eq '$group'").Id
+                  New-MgGroupMember -GroupId $groupId -DirectoryObjectId $newUser.Id
+              }
+              
+              # Send welcome email with credentials
+              Send-WelcomeEmail -User $newUser -Department $HRData.Department
+              
+              return $newUser
+          }
+          
+          # Automated offboarding function
+          function Remove-EnterpriseUser {
+              param(
+                  [Parameter(Mandatory=$true)]
+                  [string]$UserPrincipalName,
+                  [Parameter(Mandatory=$true)]
+                  [datetime]$TerminationDate
+              )
+              
+              $user = Get-MgUser -UserPrincipalName $UserPrincipalName
+              
+              # Immediate access revocation
+              Update-MgUser -UserId $user.Id -AccountEnabled:$false
+              
+              # Revoke all active sessions
+              Revoke-MgUserSignInSession -UserId $user.Id
+              
+              # Remove from all groups except archive groups
+              $userGroups = Get-MgUserMemberOf -UserId $user.Id
+              foreach ($group in $userGroups) {
+                  if ($group.DisplayName -notlike "*Archive*") {
+                      Remove-MgGroupMemberByRef -GroupId $group.Id -DirectoryObjectId $user.Id
+                  }
+              }
+              
+              # Schedule account deletion after retention period
+              $deletionDate = $TerminationDate.AddDays(90)
+              New-ScheduledTask -TaskName "DeleteUser-$($user.Id)" -TaskDate $deletionDate
+          }
+          ```
+          
+          **Integration with Enterprise Systems:**
+          
+          **🏢 HR System Integration (Workday/SuccessFactors):**
+          ```powershell
+          # Workday API integration for real-time provisioning
+          $workdayEndpoint = "https://company.workday.com/api/v1/workers"
+          $headers = @{
+              "Authorization" = "Bearer $WorkdayAccessToken"
+              "Content-Type" = "application/json"
+          }
+          
+          # Monitor for new hires and terminations
+          $hrChanges = Invoke-RestMethod -Uri $workdayEndpoint -Headers $headers -Method Get
+          foreach ($change in $hrChanges) {
+              switch ($change.EventType) {
+                  "NEW_HIRE" { New-EnterpriseUser -HRData $change.EmployeeData }
+                  "TERMINATION" { Remove-EnterpriseUser -UserPrincipalName $change.UserPrincipalName -TerminationDate $change.TerminationDate }
+                  "ROLE_CHANGE" { Update-UserAccess -UserPrincipalName $change.UserPrincipalName -NewRole $change.NewRole }
+              }
+          }
+          ```
+          
+          **📊 Compliance and Audit Integration:**
+          - **SOX Compliance** - Segregation of duties validation
+          - **GDPR Compliance** - Data retention and deletion automation
+          - **HIPAA Compliance** - Healthcare access controls and audit trails
+          
+          **Automated Workflows with Microsoft Purview:**
+          ✅ **Data Classification** - Automatic sensitivity labeling for new users
+          ✅ **Retention Policies** - User data lifecycle management
+          ✅ **Access Analytics** - Continuous access pattern analysis
+
+  - kind: AdaptiveDialog
+    id: AccessReviewsDialog
+    steps:
+      - kind: SendActivity
+        id: access_reviews_intro
+        activity: |
+          📋 **Enterprise Access Review Campaign Management**
+          
+          **Comprehensive Access Certification Framework:**
+          
+          **🎯 Risk-based Review Prioritization:**
+          - **High-privilege Accounts** - Monthly certification for admin roles
+          - **Sensitive Data Access** - Quarterly reviews for confidential systems
+          - **External User Access** - Bi-annual guest account certification
+          - **Application Permissions** - Annual service principal review
+          
+          **🤖 AI-powered Review Optimization:**
+          - **Intelligent Recommendations** - ML-based access appropriateness scoring
+          - **Automated Approvals** - Low-risk access auto-certification
+          - **Anomaly Detection** - Unusual access pattern identification
+          - **Bulk Operations** - Efficient large-scale review processing
+
+      - kind: Question
+        id: review_type
+        variable: Dialog.reviewType
+        prompt: |
+          **Access Review Campaign Type:**
+          
+          What type of access review campaign do you want to configure?
+
+      - kind: SendActivity
+        id: access_review_configuration
+        activity: |
+          📋 **Advanced Access Review Implementation**
+          
+          **Microsoft Graph PowerShell Configuration:**
+          ```powershell
+          # Connect with required permissions
+          Connect-MgGraph -Scopes "AccessReview.ReadWrite.All", "Directory.Read.All"
+          
+          # Create high-privilege account review
+          $privilegedReview = @{
+              displayName = "Quarterly Privileged Account Review"
+              descriptionForAdmins = "Review of all accounts with administrative privileges"
+              descriptionForReviewers = "Please review and certify administrative access"
+              query = @{
+                  type = "MicrosoftGraph"
+                  query = "/groups/filter=displayName eq 'Global Administrators'/members"
+                  queryRoot = "users"
+              }
+              scope = @{
+                  "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
+                  query = "/users?`$filter=userType eq 'Member'"
+                  queryType = "MicrosoftGraph"
+              }
+              reviewers = @(
+                  @{
+                      query = "/users?`$filter=userType eq 'Member' and userPrincipalName eq 'security-admin@company.com'"
+                      queryType = "MicrosoftGraph"
+                  }
+              )
+              settings = @{
+                  mailNotificationsEnabled = $true
+                  reminderNotificationsEnabled = $true
+                  justificationRequiredOnApproval = $true
+                  defaultDecisionEnabled = $true
+                  defaultDecision = "Deny"
+                  instanceDurationInDays = 14
+                  autoApplyDecisionsEnabled = $true
+                  recommendationsEnabled = $true
+                  recurrence = @{
+                      pattern = @{
+                          type = "quarterly"
+                          interval = 3
+                      }
+                      range = @{
+                          type = "noEnd"
+                          startDate = (Get-Date).ToString("yyyy-MM-dd")
+                      }
+                  }
+              }
+          }
+          
+          New-MgIdentityGovernanceAccessReview -BodyParameter $privilegedReview
+          
+          # Create application permissions review
+          $appPermissionReview = @{
+              displayName = "Annual Application Permissions Review"
+              descriptionForAdmins = "Review service principal permissions and app registrations"
+              scope = @{
+                  "@odata.type" = "#microsoft.graph.accessReviewQueryScope"
+                  query = "/servicePrincipals?`$filter=appOwnerOrganizationId eq '$((Get-MgOrganization).Id)'"
+                  queryType = "MicrosoftGraph"
+              }
+              reviewers = @(
+                  @{
+                      query = "/groups?`$filter=displayName eq 'Application Owners'"
+                      queryType = "MicrosoftGraph"
+                  }
+              )
+              settings = @{
+                  instanceDurationInDays = 30
+                  recommendationsEnabled = $true
+                  justificationRequiredOnApproval = $true
+                  autoApplyDecisionsEnabled = $false
+                  recurrence = @{
+                      pattern = @{
+                          type = "annual"
+                          interval = 12
+                      }
+                  }
+              }
+          }
+          
+          New-MgIdentityGovernanceAccessReview -BodyParameter $appPermissionReview
+          ```
+          
+          **Microsoft Sentinel Integration for Review Analytics:**
+          ```kql
+          // Access review completion and compliance tracking
+          AuditLogs
+          | where Category == "AccessReview"
+          | where OperationName has_any ("Complete", "Approve", "Deny")
+          | summarize 
+              TotalReviews = count(),
+              CompletedReviews = countif(OperationName == "Complete"),
+              ApprovedAccess = countif(OperationName == "Approve"),
+              DeniedAccess = countif(OperationName == "Deny"),
+              CompletionRate = round(todouble(countif(OperationName == "Complete")) / count() * 100, 2)
+          by bin(TimeGenerated, 1d), tostring(TargetResources[0].displayName)
+          | order by TimeGenerated desc
+          
+          // Risk-based review prioritization
+          SigninLogs
+          | where TimeGenerated > ago(30d)
+          | summarize 
+              RiskySignins = countif(RiskLevelDuringSignIn in ("high", "medium")),
+              TotalSignins = count(),
+              RiskPercentage = round(todouble(countif(RiskLevelDuringSignIn in ("high", "medium"))) / count() * 100, 2)
+          by UserPrincipalName
+          | where RiskPercentage > 10
+          | join kind=inner (
+              IdentityInfo
+              | summarize arg_max(TimeGenerated, *) by AccountUPN
+              | where AssignedRoles has_any ("Global Administrator", "Privileged Role Administrator")
+          ) on $left.UserPrincipalName == $right.AccountUPN
+          | project UserPrincipalName, RiskPercentage, AssignedRoles, RiskySignins
+          | order by RiskPercentage desc
+          ```
+          
+          **Automated Remediation Workflows:**
+          🚨 **High-Risk Access Denial** - Immediate access revocation for denied reviews
+          📧 **Stakeholder Notifications** - Automated escalation for overdue reviews
+          📊 **Compliance Reporting** - Real-time compliance dashboard updates
+          🔄 **Continuous Monitoring** - Ongoing access pattern analysis between reviews
+
+  - kind: AdaptiveDialog
+    id: EntitlementManagementDialog
+    steps:
+      - kind: SendActivity
+        id: entitlement_management_intro
+        activity: |
+          🎨 **Advanced Entitlement Management Automation**
+          
+          **Enterprise Access Package Framework:**
+          
+          **📦 Pre-configured Access Packages:**
+          - **Department-based Packages** - Role-specific resource bundles
+          - **Project-based Packages** - Temporary access for specific initiatives
+          - **Contractor Packages** - External user access with automatic expiration
+          - **Executive Packages** - High-privilege access with approval workflows
+          
+          **🤖 AI-powered Access Recommendations:**
+          - **Role Mining** - Automatic access pattern discovery
+          - **Peer Analysis** - Similar user access recommendations
+          - **Risk Assessment** - Security impact evaluation for access requests
+          - **Optimization Suggestions** - Access package refinement recommendations
+
+      - kind: Question
+        id: entitlement_focus
+        variable: Dialog.entitlementFocus
+        prompt: |
+          **Entitlement Management Focus:**
+          
+          Which entitlement management component requires configuration?
+
+      - kind: SendActivity
+        id: entitlement_implementation
+        activity: |
+          🎨 **Enterprise Entitlement Management Implementation**
+          
+          **Microsoft Graph PowerShell Configuration:**
+          ```powershell
+          # Connect with entitlement management permissions
+          Connect-MgGraph -Scopes "EntitlementManagement.ReadWrite.All", "Directory.ReadWrite.All"
+          
+          # Create comprehensive access package
+          $accessPackage = @{
+              displayName = "Finance Department Access Package"
+              description = "Complete access bundle for Finance department employees"
+              isHidden = $false
+              catalog = @{
+                  id = "finance-catalog-id"
+              }
+              accessPackageResourceRoleScopes = @(
+                  @{
+                      accessPackageResourceRole = @{
+                          originId = "Member"
+                          accessPackageResource = @{
+                              id = "finance-group-resource-id"
+                          }
+                      }
+                      accessPackageResourceScope = @{
+                          id = "finance-group-scope-id"
+                      }
+                  },
+                  @{
+                      accessPackageResourceRole = @{
+                          originId = "Contribute"
+                          accessPackageResource = @{
+                              id = "sharepoint-site-resource-id"
+                          }
+                      }
+                      accessPackageResourceScope = @{
+                          id = "sharepoint-site-scope-id"
+                      }
+                  }
+              )
+              accessPackageAssignmentPolicies = @(
+                  @{
+                      displayName = "Finance Employee Policy"
+                      description = "Standard access for finance employees"
+                      allowedTargetScope = "specificDirectoryUsers"
+                      specificAllowedTargets = @(
+                          @{
+                              "@odata.type" = "#microsoft.graph.groupMembers"
+                              groupId = "finance-employees-group-id"
+                          }
+                      )
+                      expiration = @{
+                          endDateTime = $null
+                          duration = "P365D"  # 1 year
+                          type = "afterDuration"
+                      }
+                      requestorSettings = @{
+                          scopeType = "specificDirectorySubjects"
+                          acceptRequests = $true
+                          allowedRequestors = @(
+                              @{
+                                  "@odata.type" = "#microsoft.graph.groupMembers"
+                                  groupId = "finance-employees-group-id"
+                              }
+                          )
+                      }
+                      approvalSettings = @{
+                          isApprovalRequired = $true
+                          isApprovalRequiredForExtension = $true
+                          approvalMode = "serial"
+                          approvalStages = @(
+                              @{
+                                  approvalStageTimeOutInDays = 14
+                                  isApproverJustificationRequired = $true
+                                  primaryApprovers = @(
+                                      @{
+                                          "@odata.type" = "#microsoft.graph.groupMembers"
+                                          groupId = "finance-managers-group-id"
+                                      }
+                                  )
+                                  escalationApprovers = @(
+                                      @{
+                                          "@odata.type" = "#microsoft.graph.singleUser"
+                                          userId = "finance-director-user-id"
+                                      }
+                                  )
+                                  escalationTimeInMinutes = 10080  # 1 week
+                              }
+                          )
+                      }
+                  }
+              )
+          }
+          
+          New-MgEntitlementManagementAccessPackage -BodyParameter $accessPackage
+          
+          # AI-powered access recommendation engine
+          function Get-AccessRecommendations {
+              param([string]$UserId)
+              
+              # Get user's current access
+              $userAccess = Get-MgUserMemberOf -UserId $UserId
+              
+              # Find similar users based on department and role
+              $userInfo = Get-MgUser -UserId $UserId -Property "Department,JobTitle"
+              $similarUsers = Get-MgUser -Filter "Department eq '$($userInfo.Department)' and JobTitle eq '$($userInfo.JobTitle)'" -Top 10
+              
+              # Analyze access patterns of similar users
+              $recommendations = @()
+              foreach ($similarUser in $similarUsers) {
+                  $similarUserAccess = Get-MgUserMemberOf -UserId $similarUser.Id
+                  foreach ($access in $similarUserAccess) {
+                      if ($access.Id -notin $userAccess.Id) {
+                          $recommendations += @{
+                              ResourceId = $access.Id
+                              ResourceName = $access.DisplayName
+                              Confidence = 85
+                              Reason = "Commonly used by similar roles"
+                          }
+                      }
+                  }
+              }
+              
+              return $recommendations | Sort-Object Confidence -Descending | Select-Object -First 5
+          }
+          ```
+          
+          **Self-service Access Portal Integration:**
+          ```javascript
+          // Microsoft Graph API integration for custom access portal
+          const accessRequestData = {
+              accessPackageId: "finance-access-package-id",
+              requestType: "userAdd",
+              justification: "Need access for Q4 financial analysis project",
+              targetSchedule: {
+                  startDateTime: "2025-01-01T00:00:00Z",
+                  expiration: {
+                      duration: "P90D",  // 90 days
+                      type: "afterDuration"
+                  }
+              }
+          };
+          
+          // Submit access request
+          fetch('/entitlementManagement/accessPackageAssignmentRequests', {
+              method: 'POST',
+              headers: {
+                  'Authorization': 'Bearer ' + accessToken,
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(accessRequestData)
+          });
+          ```
+          
+          **Microsoft Purview Integration:**
+          📊 **Data Access Governance** - Automatic sensitivity label application
+          🔍 **Access Analytics** - Data access pattern analysis and optimization
+          📋 **Compliance Reporting** - Automated entitlement compliance dashboards
+          
+          **Advanced Automation Features:**
+          ✅ **Dynamic Group Membership** - Attribute-based automatic access assignment
+          ✅ **Conditional Access Integration** - Risk-based access package activation
+          ✅ **Lifecycle Management** - Automatic access package updates based on role changes
+          ✅ **Cost Optimization** - Resource usage analytics and optimization recommendations
+
+  - kind: AdaptiveDialog
+    id: ComplianceAutomationDialog
+    steps:
+      - kind: SendActivity
+        id: compliance_automation_intro
+        activity: |
+          📊 **Enterprise Compliance Automation Framework**
+          
+          **Regulatory Compliance Coverage:**
+          
+          **⚖️ SOX (Sarbanes-Oxley) Compliance:**
+          - **Segregation of Duties** - Automated conflict detection and resolution
+          - **Financial System Access** - Quarterly certification and monitoring
+          - **Executive Access Controls** - Enhanced monitoring for C-level accounts
+          - **Audit Trail Integrity** - Immutable log retention and reporting
+          
+          **🛡️ GDPR (General Data Protection Regulation):**
+          - **Data Subject Rights** - Automated data export and deletion
+          - **Consent Management** - Digital consent tracking and validation
+          - **Breach Notification** - 72-hour automated regulatory reporting
+          - **Privacy Impact Assessment** - Automated PIA workflow integration
+          
+          **🏥 HIPAA (Health Insurance Portability and Accountability Act):**
+          - **Minimum Necessary Access** - Automated least-privilege enforcement
+          - **Audit Controls** - Comprehensive healthcare access monitoring
+          - **Person Authentication** - Enhanced identity verification for PHI access
+          - **Transmission Security** - Encrypted communication validation
+
+      - kind: Question
+        id: compliance_framework
+        variable: Dialog.complianceFramework
+        prompt: |
+          **Compliance Framework Focus:**
+          
+          Which regulatory compliance framework requires immediate implementation?
+
+      - kind: SendActivity
+        id: compliance_implementation
+        activity: |
+          📊 **Advanced Compliance Automation Implementation**
+          
+          **SOX Compliance Automation:**
+          ```powershell
+          # SOX segregation of duties monitoring
+          function Test-SOXCompliance {
+              param([string]$UserId)
+              
+              # Get user's role assignments
+              $userRoles = Get-MgUserAppRoleAssignment -UserId $UserId
+              
+              # Define conflicting role combinations
+              $soxConflicts = @{
+                  "Financial-Preparer" = @("Financial-Approver", "Audit-Review")
+                  "Purchase-Requestor" = @("Purchase-Approver", "Vendor-Management")
+                  "Journal-Entry" = @("Journal-Approval", "Financial-Reporting")
+              }
+              
+              $violations = @()
+              foreach ($conflict in $soxConflicts.GetEnumerator()) {
+                  if ($userRoles.AppRoleId -contains $conflict.Key) {
+                      foreach ($conflictingRole in $conflict.Value) {
+                          if ($userRoles.AppRoleId -contains $conflictingRole) {
+                              $violations += @{
+                                  User = $UserId
+                                  Violation = "SOD Conflict: $($conflict.Key) + $conflictingRole"
+                                  Risk = "High"
+                                  Action = "Remove conflicting role assignment"
+                              }
+                          }
+                      }
+                  }
+              }
+              
+              return $violations
+          }
+          
+          # Automated SOX compliance monitoring
+          $allUsers = Get-MgUser -All
+          $soxViolations = @()
+          foreach ($user in $allUsers) {
+              $violations = Test-SOXCompliance -UserId $user.Id
+              $soxViolations += $violations
+          }
+          
+          # Generate compliance report
+          $soxViolations | Export-Csv -Path "SOX_Compliance_Report_$(Get-Date -Format 'yyyyMMdd').csv"
+          ```
+          
+          **GDPR Automation Framework:**
+          ```powershell
+          # GDPR data subject rights automation
+          function Invoke-GDPRDataExport {
+              param(
+                  [string]$DataSubjectEmail,
+                  [string]$RequestId
+              )
+              
+              # Collect all user data across Microsoft 365
+              $userData = @{
+                  Profile = Get-MgUser -Filter "mail eq '$DataSubjectEmail'"
+                  MailboxData = Get-EXOMailbox -Identity $DataSubjectEmail | Get-EXOMailboxStatistics
+                  OneDriveData = Get-PnPListItem -List "Documents" -Connection (Connect-PnPOnline -Url "https://tenant-my.sharepoint.com/personal/$($DataSubjectEmail.Replace('@','_').Replace('.','_'))")
+                  TeamsData = Get-MgUserChat -UserId $user.Id
+                  CalendarData = Get-MgUserEvent -UserId $user.Id
+              }
+              
+              # Create comprehensive data export
+              $exportPath = "C:\GDPR_Exports\$RequestId"
+              New-Item -Path $exportPath -ItemType Directory -Force
+              
+              $userData | ConvertTo-Json -Depth 10 | Out-File "$exportPath\UserData_$RequestId.json"
+              
+              # Log the export for audit purposes
+              Write-AuditLog -Action "GDPR Data Export" -Subject $DataSubjectEmail -Details "Complete data export generated"
+              
+              return $exportPath
+          }
+          
+          # Automated data retention and deletion
+          function Invoke-GDPRDataDeletion {
+              param(
+                  [string]$DataSubjectEmail,
+                  [int]$RetentionDays = 2555  # 7 years default
+              )
+              
+              $retentionDate = (Get-Date).AddDays(-$RetentionDays)
+              
+              # Delete data older than retention period
+              Get-EXOMailboxFolder -Identity $DataSubjectEmail -Recurse | 
+                  Get-EXOMessage -OlderThan $retentionDate | 
+                  Remove-EXOMessage -Confirm:$false
+              
+              # Remove from SharePoint and OneDrive
+              Get-PnPFile -Connection $oneDriveConnection | 
+                  Where-Object { $_.TimeCreated -lt $retentionDate } | 
+                  Remove-PnPFile -Force
+              
+              Write-AuditLog -Action "GDPR Data Deletion" -Subject $DataSubjectEmail -Details "Automated retention policy enforcement"
+          }
+          ```
+          
+          **HIPAA Compliance Framework:**
+          ```powershell
+          # HIPAA minimum necessary access enforcement
+          function Enforce-HIPAAMinimumNecessary {
+              param([string]$HealthcareRole)
+              
+              # Define role-based PHI access levels
+              $phiAccessLevels = @{
+                  "Physician" = @("FullPHI", "TreatmentRecords", "DiagnosticData")
+                  "Nurse" = @("LimitedPHI", "CareInstructions", "VitalSigns")
+                  "Billing" = @("BillingPHI", "InsuranceInfo", "PaymentRecords")
+                  "Research" = @("DeidentifiedData", "AggregatedStatistics")
+              }
+              
+              $allowedAccess = $phiAccessLevels[$HealthcareRole]
+              
+              # Implement conditional access policy for PHI systems
+              $hipaaPolicy = @{
+                  displayName = "HIPAA Minimum Necessary - $HealthcareRole"
+                  state = "enabled"
+                  conditions = @{
+                      users = @{
+                          includeGroups = @("Healthcare-$HealthcareRole")
+                      }
+                      applications = @{
+                          includeApplications = @("EHR-System-App-Id")
+                      }
+                  }
+                  grantControls = @{
+                      operator = "AND"
+                      builtInControls = @("mfa", "compliantDevice")
+                      customAuthenticationFactors = @()
+                  }
+                  sessionControls = @{
+                      persistentBrowser = @{
+                          mode = "never"
+                          isEnabled = $true
+                      }
+                      signInFrequency = @{
+                          value = 1
+                          type = "hours"
+                          isEnabled = $true
+                      }
+                  }
+              }
+              
+              New-MgIdentityConditionalAccessPolicy -BodyParameter $hipaaPolicy
+          }
+          ```
+          
+          **Microsoft Sentinel Compliance Monitoring:**
+          ```kql
+          // Comprehensive compliance monitoring dashboard
+          union 
+          (AuditLogs | where Category == "RoleManagement" | extend ComplianceType = "SOX-Access"),
+          (AuditLogs | where OperationName has "GDPR" | extend ComplianceType = "GDPR-Rights"),
+          (SigninLogs | where AppDisplayName has "EHR" | extend ComplianceType = "HIPAA-Access")
+          | summarize 
+              TotalEvents = count(),
+              DistinctUsers = dcount(UserPrincipalName),
+              ComplianceScore = round(100 - (countif(ResultType != "0") * 100.0 / count()), 2)
+          by ComplianceType, bin(TimeGenerated, 1d)
+          | order by TimeGenerated desc
+          ```
+          
+          **Automated Compliance Reporting:**
+          📊 **Executive Dashboards** - Real-time compliance posture visualization
+          📋 **Regulatory Reports** - Automated report generation for auditors
+          🚨 **Violation Alerts** - Immediate notification of compliance breaches
+          📈 **Trend Analysis** - Compliance improvement tracking and recommendations
+
+  - kind: AdaptiveDialog
+    id: GovernanceAnalyticsDialog
+    steps:
+      - kind: SendActivity
+        id: governance_analytics_intro
+        activity: |
+          🔍 **Advanced Identity Governance Analytics**
+          
+          **Enterprise Analytics Capabilities:**
+          
+          **📊 Identity Risk Analytics:**
+          - **Risk Scoring Models** - ML-powered identity risk calculation
+          - **Behavioral Analysis** - Anomaly detection and pattern recognition
+          - **Predictive Analytics** - Proactive risk identification and mitigation
+          - **Risk Correlation** - Multi-dimensional risk factor analysis
+          
+          **📈 Access Pattern Analytics:**
+          - **Usage Analytics** - Resource access frequency and patterns
+          - **Optimization Insights** - Access efficiency and waste identification
+          - **Trend Analysis** - Long-term access pattern evolution
+          - **Peer Comparison** - Role-based access benchmarking
+
+      - kind: Question
+        id: analytics_focus
+        variable: Dialog.analyticsFocus
+        prompt: |
+          **Analytics Focus Area:**
+          
+          Which governance analytics capability do you want to implement?
+
+      - kind: SendActivity
+        id: analytics_implementation
+        activity: |
+          🔍 **Enterprise Governance Analytics Implementation**
+          
+          **Microsoft Sentinel Advanced Analytics:**
+          ```kql
+          // Comprehensive identity governance analytics workbook
+          
+          // Identity risk scoring model
+          let IdentityRiskFactors = 
+              SigninLogs
+              | where TimeGenerated > ago(30d)
+              | summarize 
+                  FailedSignins = countif(ResultType != "0"),
+                  RiskySignins = countif(RiskLevelDuringSignIn in ("high", "medium")),
+                  UnusualLocations = dcount(LocationDetails.city),
+                  OffHoursAccess = countif(hourofday(TimeGenerated) < 6 or hourofday(TimeGenerated) > 22),
+                  TotalSignins = count()
+              by UserPrincipalName
+              | extend 
+                  FailureRate = round(FailedSignins * 100.0 / TotalSignins, 2),
+                  RiskRate = round(RiskySignins * 100.0 / TotalSignins, 2),
+                  LocationRisk = case(UnusualLocations > 5, 3, UnusualLocations > 2, 2, 1),
+                  TimeRisk = case(OffHoursAccess > 20, 3, OffHoursAccess > 10, 2, 1);
+          
+          // Calculate composite risk score
+          IdentityRiskFactors
+          | extend RiskScore = round(
+                  (FailureRate * 0.3) + 
+                  (RiskRate * 0.4) + 
+                  (LocationRisk * 10 * 0.2) + 
+                  (TimeRisk * 10 * 0.1), 2)
+          | extend RiskCategory = case(
+                  RiskScore > 50, "Critical",
+                  RiskScore > 30, "High", 
+                  RiskScore > 15, "Medium",
+                  "Low")
+          | order by RiskScore desc;
+          
+          // Access optimization analytics
+          let AccessUtilization = 
+              AuditLogs
+              | where TimeGenerated > ago(90d)
+              | where Category == "ApplicationManagement"
+              | where OperationName has "Access"
+              | summarize 
+                  LastAccess = max(TimeGenerated),
+                  AccessFrequency = count(),
+                  UniqueUsers = dcount(InitiatedBy.user.userPrincipalName)
+              by ResourceId = tostring(TargetResources[0].id)
+              | extend 
+                  DaysSinceLastAccess = datetime_diff('day', now(), LastAccess),
+                  UtilizationScore = case(
+                      DaysSinceLastAccess > 90 and AccessFrequency < 5, 0,  // Unused
+                      DaysSinceLastAccess > 30 and AccessFrequency < 20, 1, // Low usage
+                      DaysSinceLastAccess > 7 and AccessFrequency < 50, 2,  // Medium usage
+                      3  // High usage
+                  );
+          
+          // Governance effectiveness metrics
+          let GovernanceMetrics = 
+              AuditLogs
+              | where TimeGenerated > ago(30d)
+              | where Category in ("RoleManagement", "ApplicationManagement", "GroupManagement")
+              | summarize 
+                  TotalGovernanceActions = count(),
+                  AutomatedActions = countif(InitiatedBy.app.displayName != ""),
+                  ManualActions = countif(InitiatedBy.user.userPrincipalName != ""),
+                  AccessReviews = countif(OperationName has "Review"),
+                  AccessProvisioning = countif(OperationName has_any ("Add", "Grant")),
+                  AccessDeprovisioning = countif(OperationName has_any ("Remove", "Revoke"))
+              by bin(TimeGenerated, 1d)
+              | extend 
+                  AutomationRate = round(AutomatedActions * 100.0 / TotalGovernanceActions, 2),
+                  DeprovisioningRate = round(AccessDeprovisioning * 100.0 / (AccessProvisioning + AccessDeprovisioning), 2);
+          ```
+          
+          **PowerBI Dashboard Integration:**
+          ```powershell
+          # PowerBI governance analytics dashboard
+          $powerBIConfig = @{
+              DashboardName = "Enterprise Identity Governance Analytics"
+              DataSources = @(
+                  @{
+                      Name = "Azure AD Audit Logs"
+                      Connection = "LogAnalytics"
+                      Query = $governanceAnalyticsQuery
+                  },
+                  @{
+                      Name = "Risk Analytics"
+                      Connection = "Microsoft Graph"
+                      Endpoint = "/identityProtection/riskDetections"
+                  }
+              )
+              Visualizations = @(
+                  @{
+                      Type = "RiskScoreHeatmap"
+                      Title = "Identity Risk Score Matrix"
+                      XAxis = "Department"
+                      YAxis = "Risk Category"
+                      Measure = "User Count"
+                  },
+                  @{
+                      Type = "TrendChart"
+                      Title = "Governance Automation Trends"
+                      XAxis = "Time"
+                      YAxis = "Automation Rate %"
+                      Series = @("Provisioning", "Deprovisioning", "Reviews")
+                  },
+                  @{
+                      Type = "ScatterPlot"
+                      Title = "Access Utilization vs Risk"
+                      XAxis = "Utilization Score"
+                      YAxis = "Risk Score"
+                      Size = "Access Frequency"
+                  }
+              )
+          }
+          
+          # Create PowerBI workspace and deploy dashboard
+          New-PowerBIWorkspace -Name "Identity Governance Analytics"
+          Publish-PowerBIReport -WorkspaceName "Identity Governance Analytics" -ReportDefinition $powerBIConfig
+          ```
+          
+          **Machine Learning Integration:**
+          ```python
+          # Azure Machine Learning model for access prediction
+          import pandas as pd
+          from sklearn.ensemble import RandomForestClassifier
+          from sklearn.model_selection import train_test_split
+          from azureml.core import Workspace, Experiment
+          
+          # Load governance data from Azure Sentinel
+          governance_data = pd.read_csv('identity_governance_features.csv')
+          
+          # Feature engineering for access prediction
+          features = [
+              'user_department', 'job_title', 'tenure_days',
+              'current_access_count', 'peer_access_similarity',
+              'business_justification_score', 'risk_score'
+          ]
+          
+          X = governance_data[features]
+          y = governance_data['access_approved']
+          
+          # Train access approval prediction model
+          X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+          
+          access_model = RandomForestClassifier(n_estimators=100, random_state=42)
+          access_model.fit(X_train, y_train)
+          
+          # Deploy model to Azure ML for real-time predictions
+          from azureml.core.model import Model
+          model = Model.register(workspace=ws, 
+                               model_path='access_prediction_model.pkl',
+                               model_name='identity-access-predictor')
+          ```
+          
+          **Predictive Analytics Capabilities:**
+          🎯 **Access Request Prediction** - Proactive access provisioning recommendations
+          📊 **Risk Trend Forecasting** - Future identity risk pattern prediction
+          🔍 **Anomaly Prediction** - Early warning for potential security incidents
+          📈 **Compliance Forecasting** - Predictive compliance posture modeling
+          
+          **Executive Reporting Automation:**
+          📋 **Monthly Governance Scorecards** - Automated executive summary generation
+          📊 **Quarterly Risk Assessments** - Comprehensive identity risk analysis
+          📈 **Annual Compliance Reports** - Regulatory compliance status and trends
+          🎯 **Strategic Recommendations** - Data-driven governance improvement insights
+
+variables:
+  - name: governanceFocus
+    type: text
+    scope: topic
+  - name: lifecycleComponent
+    type: text
+    scope: dialog
+  - name: reviewType
+    type: text
+    scope: dialog
+  - name: entitlementFocus
+    type: text
+    scope: dialog
+  - name: complianceFramework
+    type: text
+    scope: dialog
+  - name: analyticsFocus
+    type: text
+    scope: dialog

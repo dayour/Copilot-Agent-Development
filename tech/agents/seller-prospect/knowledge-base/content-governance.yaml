@@ -1,0 +1,229 @@
+schemaVersion: 1.0
+governance:
+  name: Content Governance
+  scope: external-knowledge-sources
+  description: >
+    Approval workflow and review cadence for all content that will be surfaced
+    to external prospects through the Seller Prospect Agent's public web chat
+    channel. Any document, FAQ entry, case study, or product specification
+    intended for the public-product-library, faq-collection, or case-studies
+    knowledge sources must complete this workflow before publication.
+
+contentSources:
+  inScope:
+    - public-product-library
+    - faq-collection
+    - case-studies
+  outOfScope:
+    - competitive-intel-library
+
+roles:
+  - id: content-author
+    title: Content Author
+    responsibilities:
+      - Draft new content or revisions using the approved content templates
+      - Submit content for review via the Content Review SharePoint list
+      - Address reviewer feedback and resubmit revised drafts
+      - Tag content with correct category, audience, and expiry date
+
+  - id: product-marketing-reviewer
+    title: Product Marketing Reviewer
+    responsibilities:
+      - Verify product claims are accurate and current
+      - Ensure messaging aligns with approved brand and positioning guidelines
+      - Confirm pricing statements include the required disclaimer language
+      - Sign off on product-library and FAQ content before legal review
+
+  - id: legal-reviewer
+    title: Legal Reviewer
+    responsibilities:
+      - Review content for compliance risk, IP issues, and regulatory exposure
+      - Confirm customer reference approvals are on file before case study publication
+      - Verify disclaimer language on pricing and SLA content
+      - Provide written approval or rejection with required change notes
+
+  - id: sales-enablement-owner
+    title: Sales Enablement Owner
+    responsibilities:
+      - Final approval authority for all external-facing knowledge content
+      - Owns the content calendar and publication schedule
+      - Escalates disputed content to VP of Marketing or Legal Counsel
+      - Triggers quarterly content audit and archival process
+
+  - id: knowledge-base-admin
+    title: Knowledge Base Administrator
+    responsibilities:
+      - Publishes approved content to the target SharePoint library
+      - Removes or archives expired content on schedule
+      - Maintains the Content Review SharePoint list and workflow automation
+      - Monitors the SharePoint library index refresh to confirm agent pickup
+
+workflow:
+  name: ExternalContentApprovalWorkflow
+  triggerCondition: >
+    Triggered when a Content Author submits a new item or revision to the
+    Content Review SharePoint list with status set to "Submitted for Review".
+  steps:
+    - step: 1
+      name: Product Marketing Review
+      assignedRole: product-marketing-reviewer
+      slaBusinessDays: 3
+      actions:
+        - Review draft content against approved messaging
+        - Confirm pricing disclaimers are present where required
+        - Set status to "Marketing Approved" or "Returned to Author"
+      escalation:
+        afterDays: 5
+        escalateTo: sales-enablement-owner
+
+    - step: 2
+      name: Legal Review
+      assignedRole: legal-reviewer
+      triggerCondition: Status equals "Marketing Approved"
+      slaBusinessDays: 5
+      actions:
+        - Review for regulatory, IP, and compliance risk
+        - Verify customer reference authorization for case studies
+        - Set status to "Legal Approved" or "Returned to Author"
+      escalation:
+        afterDays: 7
+        escalateTo: sales-enablement-owner
+      note: >
+        Case studies require written customer reference approval on file
+        before Legal Review can be initiated. Authors must attach the
+        signed Reference Authorization Form to the review request.
+
+    - step: 3
+      name: Final Approval and Publication
+      assignedRole: sales-enablement-owner
+      triggerCondition: Status equals "Legal Approved"
+      slaBusinessDays: 2
+      actions:
+        - Final sign-off for publication
+        - Assign expiry date based on content category (see expiryPolicy)
+        - Set status to "Approved for Publication"
+        - Notify Knowledge Base Administrator
+
+    - step: 4
+      name: Publication
+      assignedRole: knowledge-base-admin
+      triggerCondition: Status equals "Approved for Publication"
+      slaBusinessDays: 1
+      actions:
+        - Upload or update document in the target SharePoint library folder
+        - Apply approved metadata tags (category, audience, expiry date)
+        - Verify SharePoint index refresh completes and agent can retrieve content
+        - Set status to "Published" and record publish date
+
+rejectionHandling:
+  returnedToAuthor:
+    description: >
+      When a reviewer sets status to "Returned to Author", the author receives
+      an automated notification with the reviewer's change notes. The author
+      must resolve all noted issues and resubmit. The review workflow restarts
+      from the step that rejected the content.
+    resubmissionLimit: 3
+    escalationAfterLimit: sales-enablement-owner
+
+expiryPolicy:
+  categories:
+    - category: pricing-tiers
+      expiryMonths: 6
+      reason: Pricing changes frequently; stale pricing content creates prospect confusion.
+    - category: feature-comparisons
+      expiryMonths: 12
+      reason: Feature set evolves with product releases; annual review ensures accuracy.
+    - category: product-overviews
+      expiryMonths: 12
+      reason: Core positioning documents reviewed annually or after major product releases.
+    - category: technical-specifications
+      expiryMonths: 12
+      reason: Architectural and integration details reviewed annually.
+    - category: faq-entries
+      expiryMonths: 6
+      reason: FAQ answers should reflect current support tiers, pricing, and timelines.
+    - category: case-studies
+      expiryMonths: 24
+      reason: >
+        Case studies reviewed every two years or when the referenced customer's
+        situation materially changes. Customer reference authorization must also
+        be renewed at expiry.
+  expiryAction:
+    onExpiry: Flag content as "Pending Review" and notify Content Author and Sales Enablement Owner.
+    gracePeriodDays: 30
+    afterGracePeriod: Archive content and remove from active knowledge source. Agent will not surface archived content.
+
+quarterlyAudit:
+  cadence: Quarterly
+  owner: sales-enablement-owner
+  checklist:
+    - Review all content with expiry dates in the next 90 days
+    - Confirm all case studies have active customer reference authorizations
+    - Validate pricing disclaimer language against current legal-approved template
+    - Review agent response quality reports for knowledge gaps or outdated answers
+    - Archive all content past expiry grace period
+    - Report audit findings to VP of Marketing and Legal Counsel
+
+contentTemplates:
+  - id: tpl-product-overview
+    name: Product Overview Template
+    applicableCategory: product-overviews
+    requiredFields:
+      - title
+      - approvalStatus
+      - lastReviewed
+      - expiryDate
+      - content
+    disclaimer: Not required for product overviews.
+
+  - id: tpl-pricing-content
+    name: Pricing Content Template
+    applicableCategory: pricing-tiers
+    requiredFields:
+      - title
+      - approvalStatus
+      - lastReviewed
+      - expiryDate
+      - disclaimer
+      - tiers
+    disclaimer: >
+      REQUIRED: "Pricing is indicative. Final pricing depends on user count, contract
+      term, add-on modules, and negotiated volume discounts. Contact sales for a
+      formal quote." This disclaimer must appear verbatim in all pricing content
+      surfaced externally.
+
+  - id: tpl-case-study
+    name: Case Study Template
+    applicableCategory: case-studies
+    requiredFields:
+      - title
+      - industry
+      - companySize
+      - useCase
+      - approvalStatus
+      - lastReviewed
+      - expiryDate
+      - challenge
+      - solution
+      - outcomes
+      - attribution
+    optionalFields:
+      - quote
+    prerequisite: >
+      Signed Reference Authorization Form must be on file before Legal Review.
+      The form is stored in the Legal > Customer References SharePoint folder.
+
+  - id: tpl-faq-entry
+    name: FAQ Entry Template
+    applicableCategory: faq-entries
+    requiredFields:
+      - id
+      - question
+      - answer
+      - approvalStatus
+      - lastReviewed
+      - expiryDate
+    guidelines:
+      - Answers must be accurate as of the lastReviewed date.
+      - Do not include specific contract terms or pricing figures without the approved pricing disclaimer.
+      - Cross-reference relatedFaqs where relevant to help the agent provide complete answers.

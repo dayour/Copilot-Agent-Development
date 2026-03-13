@@ -1,0 +1,154 @@
+name: AlertConfiguration
+displayName: Alert Configuration
+triggers:
+  - kusto alerts
+  - alert configuration
+  - monitoring alerts
+  - kql alerts
+  - azure data explorer alerts
+  - alert rules
+  - real-time monitoring
+  - alert management
+  - notification setup
+entities: []
+actions:
+  - action: Topic.AlertConfiguration
+variables: []
+
+topic: |
+  # Alert Configuration
+
+  ## Description
+  Comprehensive Kusto alert configuration including real-time monitoring, custom alert rules, multi-dimensional alerting, and enterprise-scale notification management with automated response capabilities.
+
+  ## Conversation Flow
+
+  **System:** Hello! I'm here to help you with Kusto alert configuration and monitoring. I can assist with alert rule creation, real-time monitoring, notification setup, and automated response workflows.
+
+  **Options:**
+  - 🚨 Alert Rule Design & Configuration
+  - 📊 Real-Time Monitoring & Thresholds
+  - 🔔 Notification Management & Escalation
+  - 🤖 Automated Response & Remediation
+  - 📈 Alert Analytics & Optimization
+
+  ---
+
+  ### 🚨 Alert Rule Design & Configuration
+  **Alert Rule Framework:**
+  - **KQL-Based Alerts**: Custom alert queries with complex logic and multi-table joins
+  - **Threshold Alerts**: Static and dynamic threshold configuration with statistical baselines
+  - **Anomaly Detection**: Machine learning-based anomaly alerts with seasonal pattern recognition
+  - **Pattern Matching**: Complex event pattern detection with temporal correlations
+  - **Multi-Dimensional Alerts**: Alerts based on multiple metrics with conditional logic and dependencies
+
+  **Advanced Alert Configurations:**
+  - **Time Window Management**: Sliding windows, tumbling windows, and custom time aggregations
+  - **Data Granularity**: Alert frequency optimization with data sampling and aggregation strategies
+  - **False Positive Reduction**: Alert tuning with noise reduction and intelligent filtering
+  - **Alert Suppression**: Duplicate alert prevention with grouping and correlation logic
+  - **Alert Lifecycle**: Alert state management with automatic resolution and manual intervention
+
+  ---
+
+  ### 📊 Real-Time Monitoring & Thresholds
+  **Real-Time Processing:**
+  - **Streaming Analytics**: Continuous query processing with low-latency alert generation
+  - **Hot Path Monitoring**: Real-time data ingestion monitoring with immediate alert capabilities
+  - **Resource Monitoring**: Cluster resource utilization with capacity-based alerting
+  - **Performance Alerts**: Query performance degradation detection with automated diagnostics
+  - **Data Quality Monitoring**: Real-time data quality alerts with validation rule integration
+
+  **Threshold Management:**
+  - **Dynamic Thresholds**: Adaptive thresholds based on historical patterns and seasonal variations
+  - **Percentile-Based Alerts**: Statistical threshold configuration with confidence intervals
+  - **Rate of Change**: Derivative-based alerting for rapid changes and trend deviations
+  - **Baseline Comparison**: Historical baseline comparison with drift detection and adaptation
+  - **Multi-Level Thresholds**: Warning, critical, and emergency threshold tiers with escalation
+
+  ---
+
+  ### 🔔 Notification Management & Escalation
+  **Notification Framework:**
+  - **Multi-Channel Delivery**: Email, SMS, Teams, Slack, and webhook notifications
+  - **Role-Based Routing**: Alert routing based on severity, category, and organizational structure
+  - **On-Call Integration**: PagerDuty, Opsgenie, and custom on-call system integration
+  - **Notification Templates**: Customizable alert messages with rich context and actionable information
+  - **Delivery Confirmation**: Notification delivery tracking with retry logic and fallback channels
+
+  **Escalation Management:**
+  - **Tiered Escalation**: Multi-level escalation with time-based progression and manual override
+  - **Intelligent Routing**: Machine learning-based routing with expertise matching and workload balancing
+  - **Stakeholder Mapping**: Dynamic stakeholder identification based on alert context and impact
+  - **Emergency Procedures**: Critical alert handling with immediate escalation and executive notification
+  - **Business Hours Awareness**: Time-zone and business hour consideration with appropriate routing
+
+  ---
+
+  ### 🤖 Automated Response & Remediation
+  **Automated Response Framework:**
+  - **Workflow Integration**: Logic Apps and Power Automate integration for complex response workflows
+  - **Self-Healing Capabilities**: Automated remediation for common issues with rollback mechanisms
+  - **Resource Scaling**: Automatic cluster scaling based on performance alerts and resource utilization
+  - **Circuit Breaker Patterns**: Automatic service protection with graceful degradation capabilities
+  - **Incident Creation**: Automatic incident ticket creation with context and diagnostic information
+
+  **Response Automation:**
+  - **Runbook Execution**: Automated diagnostic and remediation script execution
+  - **API Integration**: External system integration for automated response and data enrichment
+  - **Dependency Management**: Cross-system impact analysis with coordinated response actions
+  - **Recovery Procedures**: Automated recovery workflows with validation and verification steps
+  - **Learning Systems**: Machine learning-based response optimization with success rate tracking
+
+  ---
+
+  ### 📈 Alert Analytics & Optimization
+  **Alert Performance Analysis:**
+  - **Alert Effectiveness**: True positive rate analysis with optimization recommendations
+  - **Response Time Metrics**: Mean time to detection (MTTD) and mean time to resolution (MTTR) tracking
+  - **Alert Volume Analysis**: Alert frequency trends with noise reduction and tuning recommendations
+  - **Cost-Benefit Analysis**: Alert value assessment with ROI calculation and priority optimization
+  - **Pattern Recognition**: Alert pattern analysis with proactive monitoring enhancement
+
+  **Optimization Framework:**
+  - **Alert Tuning**: Continuous optimization based on feedback and historical performance
+  - **Threshold Optimization**: Statistical analysis for optimal threshold configuration
+  - **Coverage Analysis**: Monitoring gap identification with comprehensive coverage recommendations
+  - **Performance Benchmarking**: Industry comparison and best practice gap analysis
+  - **Predictive Analytics**: Alert trend prediction with proactive monitoring recommendations
+
+  ## Advanced Features
+
+  ### 🔧 Enterprise Integration
+  - **SIEM Integration**: Microsoft Sentinel, Splunk, and QRadar integration for security correlation
+  - **ITSM Integration**: ServiceNow, Jira, and custom ticket system integration
+  - **Monitoring Platforms**: Azure Monitor, Datadog, and New Relic integration
+  - **Communication Tools**: Microsoft Teams, Slack, and custom notification system integration
+  - **DevOps Tools**: Azure DevOps, GitHub, and CI/CD pipeline integration
+
+  ### 🤖 AI-Powered Alerting
+  - **Intelligent Correlation**: Multi-source event correlation with root cause analysis
+  - **Predictive Alerting**: Predictive models for proactive issue detection and prevention
+  - **Natural Language Processing**: Alert description and context enhancement with NLP
+  - **Automated Tuning**: Machine learning-based alert optimization with continuous improvement
+  - **Contextual Intelligence**: Business context integration for intelligent alert prioritization
+
+  ## Starter Prompts
+
+  ### Quick Actions
+  - "Configure real-time alert for API response time degradation with Teams notification"
+  - "Set up anomaly detection alert for website traffic with statistical baseline"
+  - "Create multi-dimensional alert for application error rates with escalation workflow"
+  - "Configure resource utilization alerts with automatic scaling triggers"
+
+  ### Advanced Operations
+  - "Design comprehensive alerting framework for enterprise monitoring with ML optimization"
+  - "Implement intelligent alert correlation with root cause analysis automation"
+  - "Set up predictive alerting system with proactive issue detection capabilities"
+  - "Configure enterprise alert governance with SLA monitoring and optimization"
+
+  ### Integration Support
+  - "Integrate Kusto alerts with Microsoft Sentinel for security event correlation"
+  - "Set up ServiceNow integration for automated incident creation and tracking"
+  - "Configure Azure DevOps integration for deployment-related alert management"
+  - "Implement Slack integration with rich alert context and response automation"

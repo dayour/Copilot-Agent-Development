@@ -1,0 +1,148 @@
+# Test cases for tech/kusto-analytics agent
+# Covers KQL query generation and data exploration queries.
+#
+# Tiers:
+#   critical   -- KQL query generation accuracy
+#   functional -- data exploration and query optimization queries graded by LLM judge
+
+- id: tech-ka-crit-001
+  tier: critical
+  query: "Write a KQL query to count the number of error events in the last 24 hours."
+  expected_keywords:
+    - where
+    - ago
+    - count
+    - TimeGenerated
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Kusto analytics agent generates and explains KQL (Kusto Query Language)
+    queries for Azure Data Explorer and Log Analytics workspaces.
+    A basic time-filtered count query uses TimeGenerated, where, ago(), and count().
+  description: >
+    Verifies that the agent produces a KQL query containing the required clauses
+    for a time-filtered error count.
+
+- id: tech-ka-crit-002
+  tier: critical
+  query: "How do I join two tables in KQL to correlate events from SigninLogs and AuditLogs?"
+  expected_keywords:
+    - join
+    - SigninLogs
+    - AuditLogs
+    - on
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Kusto analytics agent explains KQL table join operations. KQL supports
+    inner join, left outer join, and fullouter join. Joining SigninLogs and
+    AuditLogs is a common security analytics pattern.
+  description: >
+    Verifies that the agent explains the KQL join syntax and references both
+    target tables correctly.
+
+- id: tech-ka-crit-003
+  tier: critical
+  query: "Write a KQL query to show the top 10 IP addresses by failed login attempts."
+  expected_keywords:
+    - top
+    - IPAddress
+    - failed
+    - summarize
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Kusto analytics agent generates security analytics queries. Summarizing
+    failed logins by IP address uses summarize count() by IPAddress, then top 10.
+  description: >
+    Verifies that the agent generates a correct KQL query using summarize and top
+    operators to rank IP addresses by failed login count.
+
+- id: tech-ka-crit-004
+  tier: critical
+  query: "What is the correct syntax for filtering KQL results by a specific string value?"
+  expected_keywords:
+    - where
+    - contains
+    - has
+    - filter
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The Kusto analytics agent explains KQL filtering. String filtering uses
+    the where operator with contains (substring match), has (token match),
+    or == (exact match) predicates.
+  description: >
+    Verifies that the agent explains string filtering syntax including the
+    where operator and string predicates.
+
+- id: tech-ka-func-001
+  tier: functional
+  query: "How do I aggregate telemetry data by hour to see trends over the past week?"
+  expected_keywords:
+    - summarize
+    - bin
+    - TimeGenerated
+    - hour
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The Kusto analytics agent helps with time-series aggregation. Hourly
+    aggregation uses summarize count() by bin(TimeGenerated, 1h) with a
+    7-day time filter using ago(7d).
+  description: >
+    Tests that the agent provides a complete and accurate KQL pattern for
+    hourly trend aggregation over a one-week window.
+
+- id: tech-ka-func-002
+  tier: functional
+  query: "My query is timing out on a large table. What are best practices to optimize it?"
+  expected_keywords:
+    - filter
+    - index
+    - partition
+    - performance
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The Kusto analytics agent provides query optimization guidance. Best
+    practices include: filtering on indexed columns (TimeGenerated) first,
+    using has instead of contains for string matching, and partitioning large
+    queries with the hint.shufflekey operator for distributed processing.
+  description: >
+    Tests that the agent provides actionable and technically accurate KQL
+    performance optimization guidance.
+
+- id: tech-ka-func-003
+  tier: functional
+  query: "Explain the difference between the project and extend operators in KQL."
+  expected_keywords:
+    - project
+    - extend
+    - columns
+    - compute
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The Kusto analytics agent explains KQL operators. The project operator
+    selects and reorders columns, discarding all others. The extend operator
+    adds computed columns while keeping all existing columns.
+  description: >
+    Tests that the agent correctly distinguishes project from extend with
+    accurate, clear explanations.

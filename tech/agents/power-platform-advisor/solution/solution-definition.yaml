@@ -1,0 +1,178 @@
+schemaVersion: "1.0"
+solutionName: "PowerPlatformAdvisor"
+displayName: "Power Platform Advisor"
+publisher:
+  prefix: "dyo"
+  displayName: "DAYOUR"
+  description: "Publisher for DAYOUR Power Platform Advisor assets and managed solution components."
+version: "1.0.0.0"
+components:
+  - type: bot
+    name: "PowerPlatformAdvisorAgent"
+    displayName: "Power Platform Advisor Agent"
+    description: "Copilot Studio agent for Power Platform architecture, governance, ALM, and troubleshooting guidance."
+
+  - type: topic
+    name: "ALMTopic"
+    displayName: "Application Lifecycle Management"
+    description: "Guidance on solution layering, managed/unmanaged strategy, and deployment pipelines."
+  - type: topic
+    name: "EnvironmentsTopic"
+    displayName: "Environment Strategy"
+    description: "Guidance on developer, test, UAT, and production environment segmentation."
+  - type: topic
+    name: "PowerAppsTopic"
+    displayName: "Power Apps"
+    description: "Guidance on canvas and model-driven app design, delegation, and performance."
+  - type: topic
+    name: "ConnectorsTopic"
+    displayName: "Connectors"
+    description: "Guidance on standard, premium, and custom connector implementation and governance."
+  - type: topic
+    name: "DataverseTopic"
+    displayName: "Dataverse"
+    description: "Guidance on table design, relationships, security, and Web API usage."
+  - type: topic
+    name: "FlowsTopic"
+    displayName: "Power Automate Flows"
+    description: "Guidance on cloud flow architecture, error handling, and child flow reuse."
+  - type: topic
+    name: "MCPTopic"
+    displayName: "MCP Integration"
+    description: "Guidance on MCP integration patterns across desktop and cloud agents."
+  - type: topic
+    name: "TopicsManagementTopic"
+    displayName: "Topic Management"
+    description: "Guidance on topic taxonomy, triggering, and intent coverage."
+  - type: topic
+    name: "PowerFxTopic"
+    displayName: "Power Fx"
+    description: "Guidance on formulas, named formulas, variable reduction, and delegation-aware patterns."
+  - type: topic
+    name: "VariablesTopic"
+    displayName: "Variables"
+    description: "Guidance on context variables, global variables, collections, and environment variables."
+  - type: topic
+    name: "FeaturesTopic"
+    displayName: "Platform Features"
+    description: "Guidance on modern controls, managed environments, CoE, and feature rollout strategy."
+  - type: topic
+    name: "EscalationTopic"
+    displayName: "Escalation"
+    description: "Escalation workflow for high-severity platform issues and governance incidents."
+  - type: topic
+    name: "FallbackTopic"
+    displayName: "Fallback Handling"
+    description: "Fallback behavior for unsupported asks and safe handoff to human support."
+
+  - type: knowledgeSource
+    name: "SharePointKnowledgeBase"
+    displayName: "SharePoint Knowledge Base"
+    sourceType: "sharepoint"
+    connection:
+      url: "${SharePointKnowledgeBaseUrl}"
+    description: "Primary internal knowledge source for standards, playbooks, and operating procedures."
+  - type: knowledgeSource
+    name: "MSLearnPowerPlatform"
+    displayName: "Microsoft Learn Power Platform"
+    sourceType: "website"
+    connection:
+      url: "${MSLearnKnowledgeUrl}"
+    description: "Public Microsoft Learn documentation for product capabilities and best practices."
+  - type: knowledgeSource
+    name: "MSLearnDataverse"
+    displayName: "Microsoft Learn Dataverse"
+    sourceType: "website"
+    connection:
+      url: "https://learn.microsoft.com/power-apps/developer/data-platform/"
+    description: "Dataverse developer guidance and reference architecture."
+  - type: knowledgeSource
+    name: "MSLearnPowerAutomate"
+    displayName: "Microsoft Learn Power Automate"
+    sourceType: "website"
+    connection:
+      url: "https://learn.microsoft.com/power-automate/"
+    description: "Power Automate architecture, connector usage, and flow governance guidance."
+
+  - type: connector
+    name: "DataverseConnector"
+    displayName: "Microsoft Dataverse"
+    connectorType: "standard"
+    description: "Required for CRUD, table metadata, and solution-aware operations in Dataverse."
+  - type: connector
+    name: "HttpConnector"
+    displayName: "HTTP with Microsoft Entra ID"
+    connectorType: "premium"
+    description: "Required for outbound REST integrations, webhooks, and API orchestration scenarios."
+  - type: connector
+    name: "CustomConnectors"
+    displayName: "Custom Connectors"
+    connectorType: "custom"
+    description: "Required for enterprise APIs not covered by standard or premium connectors."
+
+  - type: environmentVariableDefinition
+    name: "PowerPlatformAdminUrl"
+    valueType: "string"
+    defaultValue: "https://admin.powerplatform.microsoft.com"
+    description: "Base URL for Power Platform Admin Center and admin operations."
+  - type: environmentVariableDefinition
+    name: "DataverseOrgUrl"
+    valueType: "string"
+    defaultValue: "https://org.crm.dynamics.com"
+    description: "Primary Dataverse organization URL for the target environment."
+  - type: environmentVariableDefinition
+    name: "ALMPipelineEnvironmentId"
+    valueType: "string"
+    defaultValue: ""
+    description: "Environment ID used by ALM pipelines for solution import and deployment."
+  - type: environmentVariableDefinition
+    name: "CoETenantId"
+    valueType: "string"
+    defaultValue: ""
+    description: "Tenant ID used by CoE and governance automation components."
+  - type: environmentVariableDefinition
+    name: "SharePointKnowledgeBaseUrl"
+    valueType: "string"
+    defaultValue: "https://contoso.sharepoint.com/sites/PowerPlatformKB"
+    description: "SharePoint site or library URL used as internal knowledge source."
+  - type: environmentVariableDefinition
+    name: "MSLearnKnowledgeUrl"
+    valueType: "string"
+    defaultValue: "https://learn.microsoft.com/power-platform/"
+    description: "Root Microsoft Learn URL for public Power Platform knowledge grounding."
+  - type: environmentVariableDefinition
+    name: "EscalationEmailAddress"
+    valueType: "string"
+    defaultValue: "powerplatform-escalation@contoso.com"
+    description: "Email distribution list for escalation alerts."
+  - type: environmentVariableDefinition
+    name: "EscalationTeamsChannelId"
+    valueType: "string"
+    defaultValue: ""
+    description: "Microsoft Teams channel ID used for incident and support escalations."
+  - type: environmentVariableDefinition
+    name: "DefaultModel"
+    valueType: "string"
+    defaultValue: "gpt-4o"
+    description: "Default model used by the advisor agent for grounded responses."
+  - type: environmentVariableDefinition
+    name: "MaxTopicsPerAgent"
+    valueType: "number"
+    defaultValue: 128
+    description: "Maximum number of active topics configured for the agent."
+
+dependencies:
+  requiredPlatformComponents:
+    - "Microsoft Dataverse"
+    - "Copilot Studio"
+    - "Power Automate"
+    - "Power Apps"
+    - "Environment Variables"
+    - "Connection References"
+    - "Microsoft Entra ID"
+
+importSettings:
+  behavior: "createOrUpdate"
+  overwriteUnmanagedCustomizations: false
+  publishWorkflows: true
+  activatePlugins: true

@@ -1,0 +1,33 @@
+# Copilot Studio Agent Definition — Claims Assistant (Enterprise P&C)
+# Format: Copilot Studio code-first (VS Code extension)
+# Docs: https://learn.microsoft.com/microsoft-copilot-studio/visual-studio-code-extension-edit-agent-components
+
+displayName: Claims Assistant
+schemaName: contoso_claimsAssistant
+description: >-
+  Enterprise claims assistant for auto, property, and casualty lines.
+  Supports FNOL intake, claim status lookup, document submission,
+  and compliant escalation to human adjusters.
+accessControlPolicy: ChatbotReaders
+authenticationMode: Integrated
+authenticationTrigger: Always
+
+configuration:
+  settings:
+    GenerativeActionsEnabled: true
+
+  gPTSettings:
+    defaultSchemaName: contoso_claimsAssistant.gpt.default
+
+  aISettings:
+    useModelKnowledge: false
+    isFileAnalysisEnabled: true
+    isSemanticSearchEnabled: true
+    contentModeration: High
+    optInUseLatestModels: true
+
+  recognizer:
+    kind: GenerativeAIRecognizer
+
+template: default-2.1.0
+language: 1033

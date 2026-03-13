@@ -1,0 +1,399 @@
+kind: Topic
+metadata:
+  name: "incident-response"
+  displayName: "Security Incident Response"
+  description: "Comprehensive security incident response coordination and management workflow"
+  category: "Security Operations"
+  priority: "Critical"
+
+trigger:
+  phrases:
+    - "incident response"
+    - "coordinate incident"
+    - "security incident"
+    - "incident management"
+    - "response coordination"
+    - "incident commander"
+    - "emergency response"
+    - "incident coordination"
+
+nodes:
+  - action: SendMessage
+    message: |
+      🚨 **Security Incident Response Command Center** 🚨
+      
+      I'm here to help coordinate and manage security incident response activities.
+      This workflow supports the full incident response lifecycle from detection through resolution.
+
+  - action: Question
+    variable: incidentPhase
+    prompt: |
+      **Current Incident Response Phase:**
+      What phase of incident response are you in?
+    options:
+      - "Initial Detection & Assessment"
+      - "Incident Classification & Scoping"
+      - "Containment & Mitigation"
+      - "Investigation & Evidence Collection"
+      - "Eradication & Recovery"
+      - "Post-Incident Activities"
+      - "Ongoing Incident Coordination"
+
+  - action: Condition
+    condition: incidentPhase == "Initial Detection & Assessment"
+    ifTrue:
+      - action: Question
+        variable: detectionSource
+        prompt: |
+          **Detection Source:**
+          How was this incident detected?
+        options:
+          - "Automated security alert"
+          - "User report"
+          - "Threat hunting discovery"
+          - "External notification"
+          - "Monitoring system alert"
+          - "Third-party intelligence"
+
+      - action: Question
+        variable: initialIndicators
+        prompt: |
+          **Initial Indicators:**
+          What are the key indicators or symptoms observed?
+
+      - action: SendMessage
+        message: |
+          🔍 **Initial Detection & Assessment Protocol**
+          
+          **Detection Summary:**
+          - **Source:** {detectionSource}
+          - **Indicators:** {initialIndicators}
+          - **Assessment Time:** {CurrentDateTime}
+          
+          **Immediate Assessment Actions:**
+          
+          **Step 1: Rapid Threat Assessment (5 minutes)**
+          ✅ Verify the alert is not a false positive
+          ✅ Assess immediate threat to business operations
+          ✅ Identify potentially affected systems/users
+          ✅ Determine if containment is urgently needed
+          
+          **Step 2: Initial Incident Classification**
+          ✅ Assess potential impact (Critical/High/Medium/Low)
+          ✅ Determine incident category (Data breach, malware, etc.)
+          ✅ Evaluate scope and potential spread
+          ✅ Identify required response resources
+          
+          **Step 3: Notification Protocol**
+          ✅ Alert Security Operations Center (SOC)
+          ✅ Notify Incident Commander if high severity
+          ✅ Inform relevant technical teams
+          ✅ Document initial findings in incident system
+          
+          **Next Step:** Proceed to Incident Classification & Scoping
+
+  - action: Condition
+    condition: incidentPhase == "Incident Classification & Scoping"
+    ifTrue:
+      - action: Question
+        variable: incidentSeverity
+        prompt: |
+          **Incident Severity Classification:**
+          Based on your assessment, what is the incident severity?
+        options:
+          - "Critical - Major business impact, active breach"
+          - "High - Significant impact, potential breach"
+          - "Medium - Limited impact, contained threat"
+          - "Low - Minimal impact, suspicious activity"
+
+      - action: Question
+        variable: incidentCategory
+        prompt: |
+          **Incident Category:**
+          What type of security incident is this?
+        options:
+          - "Data Breach/Exfiltration"
+          - "Malware/Ransomware"
+          - "Credential Compromise"
+          - "Insider Threat"
+          - "Phishing/Social Engineering"
+          - "Network Intrusion"
+          - "DDoS Attack"
+          - "Policy Violation"
+
+      - action: Question
+        variable: affectedSystems
+        prompt: |
+          **Affected Systems/Assets:**
+          What systems, applications, or data are affected or at risk?
+
+      - action: SendMessage
+        message: |
+          📊 **Incident Classification Complete**
+          
+          **Incident Details:**
+          - **Severity:** {incidentSeverity}
+          - **Category:** {incidentCategory}
+          - **Affected Systems:** {affectedSystems}
+          - **Classification Time:** {CurrentDateTime}
+          
+          **Response Team Activation:**
+          
+          Based on {incidentSeverity} severity:
+          
+          ✅ **Core Response Team Activated:**
+          - Incident Commander assigned
+          - Security Operations Center (SOC) engaged
+          - Technical investigation team assembled
+          - Communications lead designated
+          
+          ✅ **Stakeholder Notifications:**
+          - IT Security Manager notified
+          - Affected business unit leads alerted
+          - Legal/Compliance team informed (if required)
+          - Executive leadership briefed (if critical)
+          
+          **Recommended Response Structure:**
+          - **Command:** Incident Commander coordinates overall response
+          - **Operations:** Technical teams handle containment/investigation
+          - **Intelligence:** Threat analysis and attribution
+          - **Communications:** Internal/external communications
+
+  - action: Condition
+    condition: incidentPhase == "Containment & Mitigation"
+    ifTrue:
+      - action: Question
+        variable: containmentStrategy
+        prompt: |
+          **Containment Strategy:**
+          What containment approach is appropriate?
+        options:
+          - "Immediate isolation - Critical threat"
+          - "Selective containment - Targeted approach"
+          - "Monitoring enhancement - Observation mode"
+          - "Graduated response - Phased containment"
+
+      - action: SendMessage
+        message: |
+          🛡️ **Containment & Mitigation Operations**
+          
+          **Strategy:** {containmentStrategy}
+          
+          **Containment Checklist:**
+          
+          **Immediate Actions (0-15 minutes):**
+          ✅ Disable compromised user accounts
+          ✅ Reset passwords for affected accounts
+          ✅ Revoke active authentication tokens
+          ✅ Block malicious IP addresses/domains
+          ✅ Isolate affected network segments
+          
+          **Short-term Actions (15-60 minutes):**
+          ✅ Update security rules and policies
+          ✅ Deploy additional monitoring tools
+          ✅ Enhance logging for affected systems
+          ✅ Coordinate with affected system owners
+          ✅ Preserve evidence for investigation
+          
+          **Mitigation Measures:**
+          ✅ Implement compensating controls
+          ✅ Increase monitoring frequency
+          ✅ Deploy threat hunting activities
+          ✅ Update incident response procedures
+          ✅ Coordinate with external partners (if needed)
+          
+          **Containment Validation:**
+          ✅ Verify threat activity has stopped
+          ✅ Confirm systems are secure
+          ✅ Test business process continuity
+          ✅ Document containment effectiveness
+
+  - action: Condition
+    condition: incidentPhase == "Investigation & Evidence Collection"
+    ifTrue:
+      - action: SendMessage
+        message: |
+          🔍 **Investigation & Evidence Collection**
+          
+          **Forensic Investigation Protocol:**
+          
+          **Evidence Preservation (Priority 1):**
+          ✅ Image affected systems and memory
+          ✅ Preserve authentication and access logs
+          ✅ Capture network traffic and communications
+          ✅ Document system configurations and states
+          ✅ Secure email and file artifacts
+          
+          **Timeline Analysis:**
+          ✅ Map incident timeline from initial compromise
+          ✅ Identify attack vectors and progression
+          ✅ Correlate events across multiple systems
+          ✅ Determine scope of unauthorized access
+          ✅ Assess data or system impact
+          
+          **Technical Analysis:**
+          ✅ Analyze malware or attack tools used
+          ✅ Review privilege escalation methods
+          ✅ Examine data access and exfiltration
+          ✅ Investigate lateral movement techniques
+          ✅ Assess persistence mechanisms
+          
+          **Attribution & Intelligence:**
+          ✅ Compare with known threat patterns
+          ✅ Analyze tactics, techniques, and procedures
+          ✅ Correlate with external threat intelligence
+          ✅ Assess threat actor capabilities
+          ✅ Identify indicators of compromise (IOCs)
+
+      - action: Question
+        variable: evidenceStatus
+        prompt: |
+          **Evidence Collection Status:**
+          What is the current status of evidence collection?
+        options:
+          - "Just starting collection"
+          - "In progress - partial evidence"
+          - "Complete - ready for analysis"
+          - "Need forensic expert assistance"
+
+  - action: Condition
+    condition: incidentPhase == "Eradication & Recovery"
+    ifTrue:
+      - action: SendMessage
+        message: |
+          🔧 **Eradication & Recovery Operations**
+          
+          **Eradication Phase:**
+          
+          **Remove Threat Presence:**
+          ✅ Remove malware and malicious files
+          ✅ Close unauthorized access points
+          ✅ Patch vulnerabilities that enabled attack
+          ✅ Update security configurations
+          ✅ Remove unauthorized accounts and permissions
+          
+          **System Hardening:**
+          ✅ Apply security patches and updates
+          ✅ Implement additional security controls
+          ✅ Update security policies and procedures
+          ✅ Enhance monitoring and detection capabilities
+          ✅ Strengthen access controls and authentication
+          
+          **Recovery Phase:**
+          
+          **System Restoration:**
+          ✅ Restore systems from clean backups
+          ✅ Rebuild compromised systems if necessary
+          ✅ Verify system integrity and security
+          ✅ Test business process functionality
+          ✅ Validate security control effectiveness
+          
+          **Business Continuity:**
+          ✅ Coordinate gradual service restoration
+          ✅ Monitor for signs of reinfection
+          ✅ Communicate with affected stakeholders
+          ✅ Document recovery procedures and lessons learned
+          ✅ Prepare for potential threat return
+
+  - action: Condition
+    condition: incidentPhase == "Post-Incident Activities"
+    ifTrue:
+      - action: SendMessage
+        message: |
+          📝 **Post-Incident Activities**
+          
+          **Documentation & Reporting:**
+          
+          **Incident Report Preparation:**
+          ✅ Compile comprehensive incident timeline
+          ✅ Document response actions and effectiveness
+          ✅ Analyze root cause and contributing factors
+          ✅ Assess financial and operational impact
+          ✅ Prepare executive summary and detailed report
+          
+          **Lessons Learned Session:**
+          ✅ Schedule post-incident review meeting
+          ✅ Gather feedback from all response team members
+          ✅ Identify response process improvements
+          ✅ Update incident response procedures
+          ✅ Plan additional training or resources needed
+          
+          **Follow-up Actions:**
+          ✅ Implement identified security improvements
+          ✅ Update threat detection capabilities
+          ✅ Enhance monitoring and alerting rules
+          ✅ Conduct security awareness training updates
+          ✅ Schedule follow-up security assessments
+          
+          **Legal & Compliance:**
+          ✅ Complete regulatory notifications (if required)
+          ✅ Prepare legal documentation if needed
+          ✅ Update compliance and audit records
+          ✅ Coordinate with insurance and legal teams
+          ✅ Archive incident documentation appropriately
+
+  - action: Question
+    variable: nextPhase
+    prompt: |
+      **Incident Response Next Steps:**
+      What phase should we proceed to next, or do you need assistance with current activities?
+    options:
+      - "Continue current phase activities"
+      - "Advance to next response phase"
+      - "Escalate incident severity"
+      - "Request additional resources"
+      - "Coordinate with external parties"
+      - "Complete incident closure"
+
+  - action: SendMessage
+    message: |
+      ✅ **Incident Response Coordination Complete**
+      
+      **Current Status Summary:**
+      - **Phase:** {incidentPhase}
+      - **Actions Coordinated:** Response workflow guidance provided
+      - **Next Steps:** {nextPhase}
+      
+      **Key Reminders:**
+      1. Maintain continuous communication with all stakeholders
+      2. Document all response activities thoroughly
+      3. Preserve evidence and maintain chain of custody
+      4. Monitor for signs of recurring threats
+      5. Schedule post-incident review upon completion
+      
+      **24/7 Support Resources:**
+      - Security Operations Center: Always available
+      - Incident Commander: For escalation and coordination
+      - Technical Teams: For specialized response support
+      - External Partners: For advanced threat analysis
+      
+      Stay coordinated and maintain response effectiveness!
+
+variables:
+  - name: incidentPhase
+    type: text
+    scope: topic
+  - name: detectionSource
+    type: text
+    scope: topic
+  - name: initialIndicators
+    type: text
+    scope: topic
+  - name: incidentSeverity
+    type: text
+    scope: topic
+  - name: incidentCategory
+    type: text
+    scope: topic
+  - name: affectedSystems
+    type: text
+    scope: topic
+  - name: containmentStrategy
+    type: text
+    scope: topic
+  - name: evidenceStatus
+    type: text
+    scope: topic
+  - name: nextPhase
+    type: text
+    scope: topic

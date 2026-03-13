@@ -1,0 +1,644 @@
+# Name: Privilege Escalation Detection
+# Advanced detection and response for privilege escalation attempts with ML-based anomaly detection
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Privilege Escalation Detection
+    triggerQueries:
+      - privilege escalation
+      - privilege escalation detection
+      - unauthorized elevation
+      - admin rights abuse
+      - role elevation
+      - privilege abuse
+      - permission escalation
+      - administrative privileges
+      - elevated access detection
+      - privilege anomaly
+
+  actions:
+    - kind: SendActivity
+      id: privilege_escalation_intro
+      activity: |
+        🚨 **Advanced Privilege Escalation Detection Center**
+        
+        **Critical Security Focus:** Detecting and preventing unauthorized privilege elevation attempts
+        
+        **Detection Capabilities:**
+        🔍 **Real-time Monitoring** - Continuous privilege usage analysis
+        🤖 **ML-based Anomaly Detection** - Behavioral analysis for unusual elevation patterns
+        ⚡ **Automated Response** - Immediate containment and investigation workflows
+        📊 **Forensic Analysis** - Deep investigation and evidence collection
+        
+        **Threat Vectors Monitored:**
+        🎯 **Direct Role Assignment** - Unauthorized administrative role grants
+        🎯 **Group Membership Changes** - Suspicious group elevation activities
+        🎯 **Application Permissions** - Service principal privilege escalation
+        🎯 **Delegation Abuse** - Constrained/unconstrained delegation exploitation
+        
+        What type of privilege escalation investigation do you need?
+
+    - kind: Question
+      id: escalation_type
+      interruptionPolicy:
+        allowInterruption: true
+      variable: Topic.escalationType
+      prompt:
+        kind: Activity
+        activity: |
+          **Select Investigation Focus:**
+          
+          🚨 **1. Active Threat Investigation** - Investigate ongoing privilege escalation attempt
+          📊 **2. Anomaly Detection Analysis** - Review ML-detected privilege anomalies
+          🔍 **3. Proactive Hunting** - Search for potential escalation indicators
+          🛡️ **4. Prevention Configuration** - Configure escalation prevention controls
+          📈 **5. Behavioral Baseline** - Establish normal privilege usage patterns
+          
+          Choose your investigation priority:
+
+    - kind: ConditionGroup
+      id: escalation_routing
+      conditions:
+        - kind: Condition
+          id: active_threat_condition
+          condition: =Topic.escalationType = "Active Threat Investigation"
+          actions:
+            - kind: BeginDialog
+              id: start_active_investigation
+              dialog: ActiveThreatDialog
+
+        - kind: Condition
+          id: anomaly_analysis_condition
+          condition: =Topic.escalationType = "Anomaly Detection Analysis"
+          actions:
+            - kind: BeginDialog
+              id: start_anomaly_analysis
+              dialog: AnomalyAnalysisDialog
+
+        - kind: Condition
+          id: proactive_hunting_condition
+          condition: =Topic.escalationType = "Proactive Hunting"
+          actions:
+            - kind: BeginDialog
+              id: start_proactive_hunting
+              dialog: ProactiveHuntingDialog
+
+        - kind: Condition
+          id: prevention_config_condition
+          condition: =Topic.escalationType = "Prevention Configuration"
+          actions:
+            - kind: BeginDialog
+              id: start_prevention_config
+              dialog: PreventionConfigDialog
+
+        - kind: Condition
+          id: behavioral_baseline_condition
+          condition: =Topic.escalationType = "Behavioral Baseline"
+          actions:
+            - kind: BeginDialog
+              id: start_behavioral_baseline
+              dialog: BehavioralBaselineDialog
+
+      elseActions:
+        - kind: SendActivity
+          id: invalid_escalation_selection
+          activity: |
+            ⚠️ Please select a valid investigation option from the list above.
+
+dialogs:
+  - kind: AdaptiveDialog
+    id: ActiveThreatDialog
+    steps:
+      - kind: SendActivity
+        id: active_threat_intro
+        activity: |
+          🚨 **ACTIVE PRIVILEGE ESCALATION INVESTIGATION**
+          
+          **⚠️ IMMEDIATE CONTAINMENT PROTOCOL INITIATED**
+          
+          **Investigation Workflow:**
+          1. **Rapid Assessment** - Identify escalation scope and impact
+          2. **Immediate Containment** - Block unauthorized access
+          3. **Evidence Collection** - Gather forensic artifacts
+          4. **Threat Actor Analysis** - Profile attacker behavior
+          5. **Remediation Execution** - Remove unauthorized privileges
+
+      - kind: Question
+        id: incident_details
+        variable: Dialog.incidentId
+        prompt: |
+          **Please provide the incident details:**
+          - Incident ID or Alert Reference
+          - Affected User Account
+          - Detected Privilege Changes
+          - Timeline of Suspicious Activity
+
+      - kind: SendActivity
+        id: investigation_commands
+        activity: |
+          🔍 **Advanced Investigation Commands**
+          
+          **PowerShell Investigation Script:**
+          ```powershell
+          # Connect with required permissions
+          Connect-MgGraph -Scopes "Directory.Read.All", "AuditLog.Read.All", "RoleManagement.Read.All"
+          
+          # Investigate recent role assignments
+          $suspiciousUser = "user@domain.com"
+          $timeframe = (Get-Date).AddHours(-24)
+          
+          # Check recent role assignments
+          Get-MgAuditLogDirectoryAudit | Where-Object {
+              $_.ActivityDateTime -gt $timeframe -and
+              $_.OperationType -eq "Add" -and
+              $_.Category -eq "RoleManagement" -and
+              $_.TargetResources.UserPrincipalName -eq $suspiciousUser
+          } | Select-Object ActivityDateTime, InitiatedBy, TargetResources, Result
+          
+          # Check group membership changes
+          Get-MgAuditLogDirectoryAudit | Where-Object {
+              $_.ActivityDateTime -gt $timeframe -and
+              $_.OperationType -eq "Add member to group" -and
+              $_.TargetResources.UserPrincipalName -eq $suspiciousUser
+          }
+          
+          # Analyze sign-in patterns
+          Get-MgAuditLogSignIn | Where-Object {
+              $_.CreatedDateTime -gt $timeframe -and
+              $_.UserPrincipalName -eq $suspiciousUser
+          } | Select-Object CreatedDateTime, UserPrincipalName, AppDisplayName, IPAddress, Location
+          ```
+
+      - kind: Question
+        id: containment_decision
+        variable: Dialog.containmentAction
+        prompt: |
+          **Immediate Containment Decision:**
+          
+          Based on initial analysis, what containment action should be taken?
+
+      - kind: SendActivity
+        id: automated_response
+        activity: |
+          ⚡ **AUTOMATED INCIDENT RESPONSE EXECUTED**
+          
+          **Containment Actions for: {Dialog.incidentId}**
+          
+          **Microsoft Graph API Containment:**
+          ```powershell
+          # Immediate account disable
+          Update-MgUser -UserId $suspiciousUser -AccountEnabled:$false
+          
+          # Revoke all sessions
+          Revoke-MgUserSignInSession -UserId $suspiciousUser
+          
+          # Remove suspicious role assignments
+          $roleAssignments = Get-MgRoleManagementDirectoryRoleAssignment | Where-Object {
+              $_.PrincipalId -eq $suspiciousUser -and
+              $_.CreatedDateTime -gt $timeframe
+          }
+          foreach ($assignment in $roleAssignments) {
+              Remove-MgRoleManagementDirectoryRoleAssignment -UnifiedRoleAssignmentId $assignment.Id
+          }
+          ```
+          
+          **Integration with Microsoft Security Stack:**
+          📊 **Microsoft Sentinel Playbook:** Automated investigation and evidence collection
+          🛡️ **Defender for Identity:** Enhanced monitoring for lateral movement
+          🔐 **Azure AD PIM:** Emergency access review for all privileged accounts
+          
+          **Evidence Collection:**
+          ✅ **Audit Logs Secured** - 90-day retention for forensic analysis
+          ✅ **Network Traffic Analysis** - Defender for Endpoint correlation
+          ✅ **Behavioral Analysis** - User and Entity Behavior Analytics (UEBA)
+          ✅ **Timeline Reconstruction** - Complete attack timeline documentation
+
+  - kind: AdaptiveDialog
+    id: AnomalyAnalysisDialog
+    steps:
+      - kind: SendActivity
+        id: anomaly_analysis_intro
+        activity: |
+          🤖 **Machine Learning-Based Privilege Anomaly Analysis**
+          
+          **Advanced Analytics Engine:**
+          📊 **Behavioral Modeling** - ML algorithms analyzing privilege usage patterns
+          🎯 **Anomaly Scoring** - Risk-based scoring for privilege activities
+          📈 **Trend Analysis** - Historical pattern comparison and deviation detection
+          🔍 **Correlation Engine** - Multi-dimensional risk factor analysis
+          
+          **Detection Models:**
+          🧠 **Temporal Anomalies** - Unusual timing of privilege usage
+          🌍 **Geographical Anomalies** - Location-based privilege access patterns
+          👤 **Behavioral Anomalies** - Deviation from user's normal privilege patterns
+          🔗 **Relationship Anomalies** - Unusual privilege delegation or sharing
+
+      - kind: Question
+        id: anomaly_timeframe
+        variable: Dialog.anomalyTimeframe
+        prompt: |
+          **Anomaly Analysis Timeframe:**
+          
+          What timeframe should we analyze for privilege anomalies?
+
+      - kind: SendActivity
+        id: ml_analysis_results
+        activity: |
+          📊 **Advanced ML Analysis Results**
+          
+          **Microsoft Sentinel ML Detection Query:**
+          ```kql
+          // Advanced privilege escalation anomaly detection
+          let BaselineWindow = 30d;
+          let AnalysisWindow = 1d;
+          
+          // Build behavioral baseline
+          let UserPrivilegeBaseline = 
+              AuditLogs
+              | where TimeGenerated > ago(BaselineWindow)
+              | where Category == "RoleManagement"
+              | where OperationName has_any ("Add", "Assign")
+              | summarize 
+                  BaselineRoleCount = dcount(TargetResources),
+                  BaselineFrequency = count(),
+                  TypicalHours = make_set(hourofday(TimeGenerated))
+              by InitiatedBy.user.userPrincipalName;
+          
+          // Detect anomalies in recent activity
+          AuditLogs
+          | where TimeGenerated > ago(AnalysisWindow)
+          | where Category == "RoleManagement"
+          | where OperationName has_any ("Add", "Assign")
+          | summarize 
+              RecentRoleCount = dcount(TargetResources),
+              RecentFrequency = count(),
+              CurrentHours = make_set(hourofday(TimeGenerated))
+          by InitiatedBy.user.userPrincipalName
+          | join kind=inner UserPrivilegeBaseline on $left.InitiatedBy_user_userPrincipalName == $right.InitiatedBy_user_userPrincipalName
+          | extend 
+              RoleCountAnomaly = iff(RecentRoleCount > BaselineRoleCount * 3, "High", "Normal"),
+              FrequencyAnomaly = iff(RecentFrequency > BaselineFrequency * 5, "High", "Normal"),
+              TimeAnomaly = iff(set_difference(CurrentHours, TypicalHours) != dynamic([]), "Medium", "Normal")
+          | where RoleCountAnomaly == "High" or FrequencyAnomaly == "High" or TimeAnomaly == "Medium"
+          | project UserPrincipalName, RoleCountAnomaly, FrequencyAnomaly, TimeAnomaly, RecentRoleCount, RecentFrequency
+          ```
+          
+          **Anomaly Risk Scoring:**
+          🔴 **Critical Risk (9-10)** - Multiple high-severity anomalies detected
+          🟠 **High Risk (7-8)** - Significant deviation from baseline behavior
+          🟡 **Medium Risk (4-6)** - Moderate anomalies requiring investigation
+          🟢 **Low Risk (1-3)** - Minor deviations within acceptable variance
+          
+          **Recommended Actions:**
+          ✅ **Immediate Investigation** for Critical/High risk anomalies
+          📋 **Enhanced Monitoring** for Medium risk anomalies
+          📊 **Baseline Adjustment** for Low risk anomalies with business justification
+
+  - kind: AdaptiveDialog
+    id: ProactiveHuntingDialog
+    steps:
+      - kind: SendActivity
+        id: proactive_hunting_intro
+        activity: |
+          🔍 **Proactive Privilege Escalation Hunting**
+          
+          **Advanced Hunting Methodologies:**
+          🎯 **Hypothesis-driven Hunting** - Structured threat hunting based on TTPs
+          🔗 **Chain Analysis** - Multi-stage attack pattern identification
+          🕵️ **Behavioral Hunting** - Anomalous privilege usage pattern detection
+          📈 **Trend Hunting** - Long-term privilege escalation trend analysis
+          
+          **MITRE ATT&CK Techniques Targeted:**
+          - **T1078** - Valid Accounts
+          - **T1484** - Domain Policy Modification
+          - **T1098** - Account Manipulation
+          - **T1068** - Exploitation for Privilege Escalation
+
+      - kind: Question
+        id: hunting_hypothesis
+        variable: Dialog.huntingHypothesis
+        prompt: |
+          **Hunting Hypothesis:**
+          
+          What specific privilege escalation pattern or technique are you investigating?
+
+      - kind: SendActivity
+        id: hunting_queries
+        activity: |
+          🎯 **Advanced Privilege Escalation Hunting Queries**
+          
+          **Microsoft Sentinel Hunting Queries:**
+          
+          **1. Suspicious Role Assignment Patterns:**
+          ```kql
+          // Hunt for rapid privilege escalation chains
+          AuditLogs
+          | where TimeGenerated > ago(7d)
+          | where Category == "RoleManagement" 
+          | where OperationName has "Add"
+          | extend TargetUser = tostring(TargetResources[0].userPrincipalName)
+          | extend InitiatingUser = tostring(InitiatedBy.user.userPrincipalName)
+          | summarize 
+              RoleAssignments = count(),
+              UniqueRoles = dcount(tostring(TargetResources[0].displayName)),
+              TimeSpan = max(TimeGenerated) - min(TimeGenerated)
+          by TargetUser, InitiatingUser
+          | where RoleAssignments >= 3 and TimeSpan <= 1h
+          | order by RoleAssignments desc
+          ```
+          
+          **2. Off-hours Administrative Activity:**
+          ```kql
+          // Detect privilege escalation during unusual hours
+          AuditLogs
+          | where TimeGenerated > ago(30d)
+          | where Category == "RoleManagement"
+          | extend Hour = hourofday(TimeGenerated)
+          | where Hour < 6 or Hour > 22  // Outside business hours
+          | where OperationName has_any ("Add", "Assign", "Elevate")
+          | summarize Count = count() by bin(TimeGenerated, 1h), InitiatedBy.user.userPrincipalName
+          | where Count > 2
+          ```
+          
+          **3. Service Principal Privilege Abuse:**
+          ```kql
+          // Hunt for service principal privilege escalation
+          AuditLogs
+          | where TimeGenerated > ago(14d)
+          | where Category == "ApplicationManagement"
+          | where OperationName has_any ("Add app role assignment", "Add OAuth2PermissionGrant")
+          | extend AppId = tostring(TargetResources[0].id)
+          | join kind=inner (
+              AuditLogs
+              | where Category == "RoleManagement"
+              | where OperationName has "Add"
+              | extend ServicePrincipal = tostring(TargetResources[0].id)
+          ) on $left.AppId == $right.ServicePrincipal
+          | project TimeGenerated, OperationName, InitiatedBy, TargetResources
+          ```
+          
+          **Hunting Playbook Integration:**
+          📋 **Automated Investigation** - SOAR playbooks for immediate response
+          🔍 **Evidence Collection** - Comprehensive artifact gathering
+          📊 **Threat Intelligence** - IOC enrichment and attribution analysis
+          
+          **Next Steps:**
+          1. Execute hunting queries against your environment
+          2. Analyze results for suspicious patterns
+          3. Correlate findings with threat intelligence
+          4. Escalate confirmed threats to incident response
+
+  - kind: AdaptiveDialog
+    id: PreventionConfigDialog
+    steps:
+      - kind: SendActivity
+        id: prevention_config_intro
+        activity: |
+          🛡️ **Privilege Escalation Prevention Configuration**
+          
+          **Prevention Strategy Framework:**
+          🔐 **Privileged Identity Management (PIM)** - Just-in-time privilege activation
+          ⚡ **Conditional Access** - Risk-based privilege access controls
+          📊 **Monitoring & Alerting** - Real-time privilege usage monitoring
+          🎯 **Zero Standing Privileges** - Eliminate persistent administrative access
+          
+          **Microsoft Azure AD PIM Configuration:**
+          
+          **Core Prevention Controls:**
+          ✅ **Eligible vs Permanent Assignments** - Remove permanent admin roles
+          ✅ **Approval Workflows** - Multi-stage approval for privilege activation
+          ✅ **Time-bound Access** - Automatic privilege expiration
+          ✅ **MFA for Activation** - Strong authentication for privilege elevation
+
+      - kind: Question
+        id: prevention_scope
+        variable: Dialog.preventionScope
+        prompt: |
+          **Prevention Configuration Scope:**
+          
+          Which privilege prevention area requires immediate configuration?
+
+      - kind: SendActivity
+        id: prevention_implementation
+        activity: |
+          🎯 **Advanced Prevention Implementation**
+          
+          **Azure AD PIM PowerShell Configuration:**
+          ```powershell
+          # Connect to PIM module
+          Install-Module -Name Microsoft.Graph.Identity.Governance
+          Connect-MgGraph -Scopes "RoleManagement.ReadWrite.Directory"
+          
+          # Configure Global Administrator role settings
+          $pimSettings = @{
+              id = "62e90394-69f5-4237-9190-012177145e10"  # Global Admin role
+              activationDuration = "PT4H"  # 4 hour activation
+              activationReqJustification = $true
+              activationReqMFA = $true
+              activationReqApproval = $true
+              approvalStages = @(
+                  @{
+                      approvalStageTimeOutInDays = 1
+                      isApproverJustificationRequired = $true
+                      escalationTimeInMinutes = 60
+                      primaryApprovers = @(
+                          @{
+                              id = "security-team-group-id"
+                              displayName = "Security Team"
+                          }
+                      )
+                  }
+              )
+          }
+          Update-MgRoleManagementDirectoryRoleDefinition -UnifiedRoleDefinitionId $pimSettings.id -Settings $pimSettings
+          ```
+          
+          **Conditional Access for Privileged Accounts:**
+          ```powershell
+          # Create privileged user conditional access policy
+          $privilegedCAPolicy = @{
+              displayName = "Privileged Account Protection"
+              state = "enabled"
+              conditions = @{
+                  users = @{
+                      includeGroups = @("privileged-users-group-id")
+                  }
+                  applications = @{
+                      includeApplications = @("All")
+                  }
+                  locations = @{
+                      includeLocations = @("All")
+                      excludeLocations = @("trusted-network-location-id")
+                  }
+              }
+              grantControls = @{
+                  operator = "AND"
+                  builtInControls = @("mfa", "compliantDevice")
+                  customAuthenticationFactors = @()
+              }
+              sessionControls = @{
+                  signInFrequency = @{
+                      value = 4
+                      type = "hours"
+                      isEnabled = $true
+                  }
+              }
+          }
+          New-MgIdentityConditionalAccessPolicy -BodyParameter $privilegedCAPolicy
+          ```
+          
+          **Real-time Monitoring Configuration:**
+          📊 **Microsoft Sentinel Alert Rules:**
+          - Privilege escalation attempts
+          - Unusual administrative activity patterns
+          - Failed privilege activation attempts
+          - Privileged account compromise indicators
+          
+          **Automated Response Workflows:**
+          🚨 **Immediate Containment** - Automatic account lockdown for high-risk activities
+          📧 **Executive Notifications** - Real-time alerts for critical privilege events
+          🔍 **Automated Investigation** - SOAR-driven evidence collection and analysis
+
+  - kind: AdaptiveDialog
+    id: BehavioralBaselineDialog
+    steps:
+      - kind: SendActivity
+        id: behavioral_baseline_intro
+        activity: |
+          📈 **Behavioral Baseline Establishment for Privilege Usage**
+          
+          **Baseline Components:**
+          ⏰ **Temporal Patterns** - Normal working hours and frequency of privilege usage
+          🌍 **Geographical Patterns** - Typical locations for administrative access
+          🎯 **Role Usage Patterns** - Standard roles and permissions for each user
+          🔗 **Relationship Patterns** - Normal delegation and approval workflows
+          
+          **Machine Learning Model Training:**
+          🧠 **Historical Analysis** - 90-day privilege usage pattern analysis
+          📊 **Statistical Modeling** - Variance calculation and anomaly thresholds
+          🎯 **Risk Scoring** - Dynamic risk calculation based on deviation from baseline
+
+      - kind: Question
+        id: baseline_period
+        variable: Dialog.baselinePeriod
+        prompt: |
+          **Baseline Analysis Period:**
+          
+          What timeframe should we use for establishing behavioral baselines?
+
+      - kind: SendActivity
+        id: baseline_analysis
+        activity: |
+          📊 **Comprehensive Behavioral Baseline Analysis**
+          
+          **Microsoft Sentinel Baseline Establishment Query:**
+          ```kql
+          // Comprehensive privilege usage baseline
+          let BaselinePeriod = 90d;
+          let MinimumActivity = 5;  // Minimum privilege activities for reliable baseline
+          
+          // User privilege usage patterns
+          AuditLogs
+          | where TimeGenerated > ago(BaselinePeriod)
+          | where Category in ("RoleManagement", "ApplicationManagement")
+          | where OperationName has_any ("Add", "Remove", "Assign", "Revoke")
+          | extend User = tostring(InitiatedBy.user.userPrincipalName)
+          | where isnotempty(User)
+          | summarize 
+              // Temporal patterns
+              TypicalHours = make_set(hourofday(TimeGenerated)),
+              TypicalDaysOfWeek = make_set(dayofweek(TimeGenerated)),
+              AverageDaily = count() / (BaselinePeriod / 1d),
+              
+              // Activity patterns
+              UniqueRoles = dcount(tostring(TargetResources[0].displayName)),
+              UniqueApplications = dcount(tostring(TargetResources[0].id)),
+              TotalActivities = count(),
+              
+              // Geographical patterns
+              UniqueLocations = dcount(tostring(Location.city)),
+              TypicalIPs = make_set(tostring(IPAddress)),
+              
+              // Variance calculations
+              HourlyVariance = variance(hourofday(TimeGenerated)),
+              DailyVariance = variance(dayofyear(TimeGenerated))
+              
+          by User
+          | where TotalActivities >= MinimumActivity
+          | extend 
+              RiskProfile = case(
+                  UniqueRoles > 10 and HourlyVariance > 50, "High",
+                  UniqueRoles > 5 and HourlyVariance > 30, "Medium",
+                  "Low"
+              ),
+              BaselineConfidence = case(
+                  TotalActivities > 100, "High",
+                  TotalActivities > 50, "Medium",
+                  "Low"
+              )
+          ```
+          
+          **Anomaly Detection Thresholds:**
+          
+          **🔴 High Risk Indicators:**
+          - Role usage 300% above baseline
+          - Activity during unusual hours (>3 standard deviations)
+          - New geographical locations not seen in baseline
+          - Privilege delegation patterns not previously observed
+          
+          **🟡 Medium Risk Indicators:**
+          - Role usage 200% above baseline
+          - Activity frequency 150% above normal
+          - Minor geographical deviations
+          - Role combinations not typically used together
+          
+          **Implementation Framework:**
+          ```powershell
+          # Automated baseline monitoring setup
+          $baselineRule = @{
+              displayName = "Privilege Baseline Monitoring"
+              description = "Monitor deviations from established privilege usage baselines"
+              query = $baselineQuery
+              queryFrequency = "PT1H"
+              queryPeriod = "P7D"
+              triggerOperator = "GreaterThan"
+              triggerThreshold = 0
+              suppressionDuration = "PT1H"
+              suppressionEnabled = $false
+          }
+          ```
+          
+          **Continuous Improvement:**
+          📈 **Weekly Baseline Updates** - Automatic baseline adjustment for evolving patterns
+          🎯 **Seasonal Adjustments** - Account for business cycles and organizational changes
+          🔍 **False Positive Reduction** - Machine learning refinement based on analyst feedback
+          
+          **Executive Reporting:**
+          📊 Monthly privilege usage analytics and risk trend analysis
+          🎯 Quarterly baseline accuracy assessment and model optimization
+          📈 Annual security posture improvement recommendations
+
+variables:
+  - name: escalationType
+    type: text
+    scope: topic
+  - name: incidentId
+    type: text
+    scope: dialog
+  - name: containmentAction
+    type: text
+    scope: dialog
+  - name: anomalyTimeframe
+    type: text
+    scope: dialog
+  - name: huntingHypothesis
+    type: text
+    scope: dialog
+  - name: preventionScope
+    type: text
+    scope: dialog
+  - name: baselinePeriod
+    type: text
+    scope: dialog

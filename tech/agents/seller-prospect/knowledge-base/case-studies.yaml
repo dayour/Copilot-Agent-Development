@@ -1,0 +1,159 @@
+schemaVersion: 1.0
+knowledgeSource:
+  key: case-studies
+  name: Case Studies and Social Proof
+  visibility: external-and-internal
+  sourceType: structured-content
+  contentPolicy: public-safe-only
+  description: >
+    Curated customer success stories approved for external prospect reference.
+    The agent surfaces relevant stories when prospects ask "Who else uses this?"
+    or request evidence of outcomes in their industry or use-case category.
+    All customer references have written approval from the customer and have
+    passed the content governance review workflow.
+
+curationCriteria:
+  - Customer has provided written reference approval
+  - Metrics and outcomes have been verified by customer success manager
+  - Identifying details match what the customer has approved for public use
+  - Content has passed the governance review workflow (see content-governance.yaml)
+
+industries:
+  - id: financial-services
+    cases:
+      - id: cs-finserv-01
+        title: Regional Bank Reduces Lead Response Time by 60 Percent
+        industry: Financial Services
+        companySize: 1,200 employees
+        useCase: Prospect qualification and lead routing automation
+        approvalStatus: approved
+        lastReviewed: "2025-09-01"
+        challenge: >
+          The bank's inside sales team was manually triaging hundreds of inbound
+          web inquiries per week. Average response time exceeded 8 hours, causing
+          significant lead decay and lost pipeline.
+        solution: >
+          Deployed the Seller Prospect agent on the bank's public website. The agent
+          qualifies inbound inquiries using BANT, logs qualified leads directly into
+          Salesforce, and routes hot leads to available representatives via Teams
+          notifications within minutes of inquiry submission.
+        outcomes:
+          - Lead response time reduced from 8 hours to under 30 minutes
+          - BANT qualification completion rate: 74 percent of web inquiries
+          - 22 percent increase in sales-qualified lead volume in first quarter
+        quote: >
+          "The agent gave us a consistent, always-on qualification layer that our
+          team simply could not staff manually. Pipeline quality improved immediately."
+        attribution: VP of Sales Operations, Regional Bank (name withheld per reference agreement)
+
+      - id: cs-finserv-02
+        title: Insurance Broker Scales Prospect Engagement Without Headcount Growth
+        industry: Financial Services
+        companySize: 340 employees
+        useCase: External prospect chat and FAQ deflection
+        approvalStatus: approved
+        lastReviewed: "2025-10-01"
+        challenge: >
+          A growing insurance brokerage needed to handle increasing website traffic
+          from prospective commercial clients without adding sales development headcount.
+        solution: >
+          Deployed the public-facing web chat agent powered by the product library and
+          FAQ knowledge sources. Prospects receive immediate answers to product, pricing,
+          and implementation questions. Complex inquiries escalate to the sales queue.
+        outcomes:
+          - 65 percent of prospect questions resolved without human escalation
+          - Sales team reports higher-quality discovery calls with pre-qualified leads
+          - First-contact resolution rate for FAQ topics: 89 percent
+
+  - id: technology
+    cases:
+      - id: cs-tech-01
+        title: SaaS Company Accelerates Enterprise Pipeline with AI-Assisted Qualification
+        industry: Technology
+        companySize: 800 employees
+        useCase: BANT qualification and Salesforce automation for SDR team
+        approvalStatus: approved
+        lastReviewed: "2025-10-15"
+        challenge: >
+          A fast-growing SaaS vendor's SDR team was spending 40 percent of selling time
+          on administrative tasks: logging calls, updating Salesforce fields, and manually
+          scoring leads.
+        solution: >
+          Integrated the Seller Prospect agent into the SDR workflow in Microsoft Teams.
+          The agent automates Salesforce updates after each qualification call, calculates
+          BANT scores, and surfaces deal coaching prompts inline in the rep's workspace.
+        outcomes:
+          - Administrative time per SDR reduced by 35 percent
+          - BANT score consistency improved: 94 percent of leads scored within 24 hours
+          - Pipeline coverage ratio improved from 2.8x to 3.6x within two quarters
+        quote: >
+          "Our SDRs spend more time talking to prospects and less time in Salesforce.
+          The agent handles the data work while they handle the conversations."
+        attribution: Director of Sales Development, Enterprise SaaS Company
+
+      - id: cs-tech-02
+        title: Cybersecurity Firm Improves Win Rate with Competitive Intelligence Routing
+        industry: Technology
+        companySize: 1,500 employees
+        useCase: Internal competitive intelligence delivery to field sales
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        challenge: >
+          Field account executives frequently encountered competitor objections mid-deal
+          without quick access to up-to-date battlecards. Competitive responses were
+          inconsistent across the team.
+        solution: >
+          Connected the internal Teams channel of the Seller Prospect agent to the
+          competitive intelligence library. Reps ask the agent for competitor context
+          and receive relevant battlecard content inline. The external channel does not
+          expose this knowledge.
+        outcomes:
+          - Time to retrieve relevant battlecard reduced from 12 minutes to under 60 seconds
+          - Sales team competitive confidence scores improved in quarterly survey
+          - Win rate in contested deals increased by 11 percent over two quarters
+
+  - id: manufacturing
+    cases:
+      - id: cs-mfg-01
+        title: Industrial Equipment Manufacturer Converts Website Visitors to Pipeline
+        industry: Manufacturing
+        companySize: 2,400 employees
+        useCase: External prospect qualification on product website
+        approvalStatus: approved
+        lastReviewed: "2025-09-15"
+        challenge: >
+          A manufacturer of capital equipment had a high-traffic product website but
+          minimal conversion infrastructure. Prospects would view specifications but
+          leave without engaging sales.
+        solution: >
+          Deployed the external web chat agent on product pages. The agent answers
+          technical specification questions using the product library knowledge source,
+          shares relevant case studies for the prospect's industry, and captures
+          qualification data when the prospect expresses purchase intent.
+        outcomes:
+          - Website-to-lead conversion rate increased from 0.8 percent to 3.1 percent
+          - 41 percent of captured leads had BANT scores above 75
+          - Average time to first sales contact reduced from 3 days to same day
+
+  - id: professional-services
+    cases:
+      - id: cs-proserv-01
+        title: Management Consulting Firm Reduces Partner Time Spent on Intake Qualification
+        industry: Professional Services
+        companySize: 600 employees
+        useCase: Inbound prospect qualification for senior partner review
+        approvalStatus: approved
+        lastReviewed: "2025-10-01"
+        challenge: >
+          Partners at a consulting firm were spending 4 to 6 hours per week on initial
+          intake calls for inbound inquiries that were often not qualified for their
+          service scope or fee level.
+        solution: >
+          Implemented the agent to handle initial prospect qualification through web chat.
+          The agent gathers project scope, timeline, and budget parameters before scheduling
+          any partner time. Unqualified prospects receive helpful guidance without consuming
+          partner capacity.
+        outcomes:
+          - Partner time on unqualified intake calls reduced by 70 percent
+          - Qualified inquiry rate improved: 82 percent of partner calls now meet minimum criteria
+          - Prospect satisfaction with initial experience: 4.4 out of 5 in survey

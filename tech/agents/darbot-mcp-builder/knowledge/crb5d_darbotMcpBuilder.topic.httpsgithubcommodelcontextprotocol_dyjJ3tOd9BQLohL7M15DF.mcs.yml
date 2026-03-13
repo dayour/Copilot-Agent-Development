@@ -1,0 +1,6 @@
+# Name: https://github.com/modelcontextprotocol
+# This knowledge source searches information on the web found in https://github.com/modelcontextprotocol website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://github.com/modelcontextprotocol

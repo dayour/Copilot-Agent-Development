@@ -1,0 +1,322 @@
+kind: Topic
+metadata:
+  name: "alert-triage"
+  displayName: "Security Alert Triage"
+  description: "Systematic security alert triage and prioritization workflow for operations teams"
+  category: "Security Operations"
+  priority: "High"
+
+trigger:
+  phrases:
+    - "alert triage"
+    - "security alerts"
+    - "high priority alerts"
+    - "alert analysis"
+    - "triage alerts"
+    - "security monitoring"
+    - "alert dashboard"
+    - "priority alerts"
+
+nodes:
+  - action: SendMessage
+    message: |
+      🚨 **Security Alert Triage Center** 🚨
+      
+      Welcome to the Security Operations Alert Triage workflow. I'll help you systematically
+      analyze, prioritize, and action security alerts in your environment.
+
+  - action: Question
+    variable: triageScope
+    prompt: |
+      **What type of alert triage do you need?**
+      Please select the scope of your triage activity:
+    options:
+      - "Real-time Alert Dashboard"
+      - "High Priority Alert Review"
+      - "Specific Alert Investigation"
+      - "Bulk Alert Processing"
+      - "Alert Trend Analysis"
+      - "False Positive Review"
+
+  - action: Condition
+    condition: triageScope == "Real-time Alert Dashboard"
+    ifTrue:
+      - action: SendMessage
+        message: |
+          📊 **Real-time Security Alert Dashboard**
+          
+          **Current Alert Status Overview:**
+          
+          🔴 **CRITICAL ALERTS** (Immediate Action Required)
+          ▫️ Active credential attacks: 3 alerts
+          ▫️ Data exfiltration attempts: 1 alert  
+          ▫️ Privileged account compromise: 2 alerts
+          ▫️ Malware detection: 1 alert
+          
+          🟠 **HIGH PRIORITY ALERTS** (Action within 1 hour)
+          ▫️ Suspicious authentication patterns: 8 alerts
+          ▫️ Policy violations: 5 alerts
+          ▫️ Unusual access patterns: 12 alerts
+          ▫️ Failed authentication spikes: 6 alerts
+          
+          🟡 **MEDIUM PRIORITY ALERTS** (Action within 4 hours)
+          ▫️ Configuration changes: 15 alerts
+          ▫️ Application access anomalies: 23 alerts
+          ▫️ Geographic access variations: 18 alerts
+          
+          🟢 **LOW PRIORITY ALERTS** (Action within 24 hours)
+          ▫️ Informational events: 45 alerts
+          ▫️ Routine security events: 32 alerts
+          
+          **Recommended Actions:**
+          1. Address all CRITICAL alerts immediately
+          2. Review HIGH priority authentication patterns
+          3. Investigate privileged account activities
+          4. Monitor for alert escalation patterns
+
+  - action: Condition
+    condition: triageScope == "High Priority Alert Review"
+    ifTrue:
+      - action: SendMessage
+        message: |
+          🔥 **High Priority Alert Review**
+          
+          **Critical Alerts Requiring Immediate Attention:**
+          
+          **Alert #SOC-2025-0609-001** 🔴 CRITICAL
+          - **Type:** Possible credential attack
+          - **User:** admin@company.com
+          - **Location:** Multiple countries (US, Russia, China)
+          - **Time:** Last 30 minutes
+          - **Action:** Investigate immediately
+          
+          **Alert #SOC-2025-0609-002** 🔴 CRITICAL  
+          - **Type:** Data access anomaly
+          - **Resource:** SharePoint sensitive files
+          - **User:** contractor@external.com
+          - **Volume:** 500+ files accessed
+          - **Action:** Contain and investigate
+          
+          **Alert #SOC-2025-0609-003** 🟠 HIGH
+          - **Type:** Privileged escalation attempt
+          - **User:** user@company.com
+          - **Target:** Global Admin role
+          - **Status:** Blocked by policy
+          - **Action:** Verify user intent
+          
+          **Triage Recommendations:**
+          1. Start with credential attack investigation
+          2. Immediately secure affected accounts
+          3. Preserve forensic evidence
+          4. Coordinate with incident response team
+
+      - action: Question
+        variable: priorityAlert
+        prompt: |
+          Which critical alert would you like to investigate first?
+        options:
+          - "SOC-2025-0609-001 - Credential Attack"
+          - "SOC-2025-0609-002 - Data Access Anomaly" 
+          - "SOC-2025-0609-003 - Privilege Escalation"
+          - "Show detailed analysis for all"
+
+  - action: Condition
+    condition: triageScope == "Specific Alert Investigation"
+    ifTrue:
+      - action: Question
+        variable: alertId
+        prompt: |
+          **Alert Investigation**
+          Please provide the Alert ID or reference number you want to investigate:
+
+      - action: Question
+        variable: investigationDepth
+        prompt: |
+          **Investigation Depth Required:**
+          How deep should the investigation go?
+        options:
+          - "Quick triage assessment"
+          - "Standard investigation"
+          - "Deep forensic analysis"
+          - "Full incident response"
+
+      - action: SendMessage
+        message: |
+          🔍 **Alert Investigation: {alertId}**
+          
+          **Investigation Protocol for {investigationDepth}:**
+          
+          **Step 1: Alert Context Analysis**
+          ✅ Retrieve alert details and metadata
+          ✅ Identify affected users, systems, resources
+          ✅ Determine alert source and detection method
+          ✅ Review alert confidence score and indicators
+          
+          **Step 2: Timeline Analysis**
+          ✅ Map event timeline and sequence
+          ✅ Identify related events and correlations
+          ✅ Check for pattern repetition or escalation
+          ✅ Review historical context for user/system
+          
+          **Step 3: Impact Assessment**
+          ✅ Assess potential security impact
+          ✅ Identify affected business processes
+          ✅ Evaluate data or system exposure risk
+          ✅ Determine containment requirements
+          
+          **Step 4: Evidence Collection**
+          ✅ Preserve relevant logs and artifacts
+          ✅ Capture system state and configurations
+          ✅ Document investigation findings
+          ✅ Prepare evidence for potential escalation
+
+  - action: Condition
+    condition: triageScope == "Alert Trend Analysis"
+    ifTrue:
+      - action: Question
+        variable: timeframe
+        prompt: |
+          **Alert Trend Analysis Timeframe:**
+          What time period should I analyze?
+        options:
+          - "Last 4 hours"
+          - "Last 24 hours"
+          - "Last 7 days"
+          - "Last 30 days"
+          - "Custom timeframe"
+
+      - action: SendMessage
+        message: |
+          📈 **Security Alert Trend Analysis - {timeframe}**
+          
+          **Alert Volume Trends:**
+          
+          **Authentication Alerts:**
+          - Failed login attempts: ↗️ 45% increase
+          - Geographic anomalies: ↘️ 12% decrease  
+          - MFA challenges: ↗️ 23% increase
+          - Impossible travel: → Stable
+          
+          **Access Control Alerts:**
+          - Privilege escalations: ↗️ 67% increase
+          - Policy violations: ↘️ 8% decrease
+          - Unusual access patterns: ↗️ 34% increase
+          - After-hours access: ↗️ 19% increase
+          
+          **Application Security:**
+          - Suspicious app installations: ↗️ 28% increase
+          - API access anomalies: → Stable
+          - Data access alerts: ↗️ 156% increase
+          - File sharing violations: ↘️ 15% decrease
+          
+          **Key Insights:**
+          🔍 Significant increase in privilege escalation attempts
+          🔍 Data access activity shows concerning spike
+          🔍 Authentication challenges rising - possible attack campaign
+          🔍 After-hours activity requires investigation
+          
+          **Recommended Actions:**
+          1. Investigate privilege escalation pattern
+          2. Review data access spike for potential exfiltration
+          3. Enhanced monitoring for authentication attacks
+          4. Correlate timing with external threat intelligence
+
+  - action: Question
+    variable: nextAction
+    prompt: |
+      **Next Steps:**
+      What would you like to do next?
+    options:
+      - "Escalate to Incident Response"
+      - "Create investigation ticket"
+      - "Set up enhanced monitoring"
+      - "Review another alert category"
+      - "Generate triage summary report"
+
+  - action: Condition
+    condition: nextAction == "Escalate to Incident Response"
+    ifTrue:
+      - action: SendMessage
+        message: |
+          🚀 **Escalating to Incident Response Team**
+          
+          **Escalation Package Prepared:**
+          - Alert details and analysis
+          - Investigation findings
+          - Evidence preservation status
+          - Recommended priority level
+          - Initial containment actions
+          
+          Use the "Incident Response" topic to complete the escalation
+          with full incident management workflow.
+
+  - action: Condition
+    condition: nextAction == "Generate triage summary report"
+    ifTrue:
+      - action: SendMessage
+        message: |
+          📋 **Security Alert Triage Summary Report**
+          
+          **Triage Session Details:**
+          - **Date/Time:** {CurrentDateTime}
+          - **Scope:** {triageScope}
+          - **Alerts Reviewed:** Multiple categories
+          - **Priority Actions Identified:** Critical and High priority items
+          
+          **Key Findings:**
+          ▫️ Critical alerts require immediate attention
+          ▫️ Authentication attack patterns detected
+          ▫️ Data access anomalies identified
+          ▫️ Privilege escalation attempts noted
+          
+          **Actions Completed:**
+          ✅ Alert prioritization and categorization
+          ✅ Threat analysis and context review
+          ✅ Investigation recommendations provided
+          ✅ Escalation paths identified
+          
+          **Follow-up Required:**
+          - Continue monitoring critical alerts
+          - Coordinate with incident response team
+          - Implement enhanced detection rules
+          - Schedule post-incident review
+
+  - action: SendMessage
+    message: |
+      🎯 **Triage Session Complete**
+      
+      **Security Operations Recommendations:**
+      
+      **Immediate Priorities:**
+      1. Address all critical and high-priority alerts
+      2. Maintain continuous monitoring stance
+      3. Coordinate with response teams as needed
+      4. Document all investigation activities
+      
+      **Ongoing Monitoring:**
+      - Set up real-time alert dashboards
+      - Implement automated triage rules
+      - Schedule regular trend analysis
+      - Maintain threat intelligence updates
+      
+      Stay vigilant and maintain operational security awareness!
+
+variables:
+  - name: triageScope
+    type: text
+    scope: topic
+  - name: priorityAlert
+    type: text
+    scope: topic
+  - name: alertId
+    type: text
+    scope: topic
+  - name: investigationDepth
+    type: text
+    scope: topic
+  - name: timeframe
+    type: text
+    scope: topic
+  - name: nextAction
+    type: text
+    scope: topic

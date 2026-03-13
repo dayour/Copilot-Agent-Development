@@ -1,0 +1,6 @@
+# Name: https://modelcontextprotocol.io/introduction
+# This knowledge source searches information on the web found in https://modelcontextprotocol.io/introduction website
+kind: KnowledgeSourceConfiguration
+source:
+  kind: PublicSiteSearchSource
+  site: https://modelcontextprotocol.io/introduction

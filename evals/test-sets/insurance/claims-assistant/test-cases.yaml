@@ -1,0 +1,169 @@
+# Test cases for insurance/claims-assistant agent
+# Covers claims processing, policy lookup, and compliance queries.
+#
+# Tiers:
+#   critical   -- claims processing facts that must always be present
+#   functional -- policy lookup and compliance queries graded by LLM judge
+
+- id: ins-ca-crit-001
+  tier: critical
+  query: "How do I file a new auto insurance claim?"
+  expected_keywords:
+    - claim
+    - file
+    - policy
+    - incident
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The claims assistant helps policyholders and agents with claims processing
+    for auto, home, and life insurance products. Filing a claim requires providing
+    a policy number, the date of incident, and a description of the loss.
+  description: >
+    Verifies that the agent provides essential claims-filing guidance including
+    references to policy, incident documentation, and the filing process.
+
+- id: ins-ca-crit-002
+  tier: critical
+  query: "What is the current status of claim number CLM-2024-087432?"
+  expected_keywords:
+    - status
+    - claim
+    - adjuster
+    - review
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The claims assistant can look up claim status by claim number. Statuses include:
+    submitted, under review, adjuster assigned, approved, denied, and closed.
+  description: >
+    Verifies that the agent returns a response structured around claim status
+    and the relevant workflow stages.
+
+- id: ins-ca-crit-003
+  tier: critical
+  query: "What documents are required to support a home insurance water damage claim?"
+  expected_keywords:
+    - documents
+    - photos
+    - estimate
+    - damage
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The claims assistant provides documentation guidance. For water damage claims,
+    required documents include: photos of the damage, a repair estimate from a
+    licensed contractor, and proof of ownership for damaged items.
+  description: >
+    Verifies that the agent lists the required documentation for a water damage claim.
+
+- id: ins-ca-crit-004
+  tier: critical
+  query: "How long does the claims review process typically take?"
+  expected_keywords:
+    - days
+    - review
+    - process
+    - timeline
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The claims assistant communicates standard processing timelines.
+    Auto claims are typically reviewed within 5 to 10 business days.
+    Home claims may take 10 to 20 business days depending on complexity.
+  description: >
+    Verifies that the agent provides a timeline reference for the claims review process.
+
+- id: ins-ca-func-001
+  tier: functional
+  query: "What does my auto insurance policy cover for rental car reimbursement?"
+  expected_keywords:
+    - rental
+    - reimbursement
+    - coverage
+    - policy
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The claims assistant can look up policy coverage details. Rental car
+    reimbursement is an optional endorsement that covers rental costs while
+    the insured vehicle is being repaired after a covered loss.
+  description: >
+    Tests that the agent accurately describes rental car reimbursement coverage
+    and prompts the user to verify their specific policy terms.
+
+- id: ins-ca-func-002
+  tier: functional
+  query: "My policy number is POL-773921. What is my deductible for collision coverage?"
+  expected_keywords:
+    - deductible
+    - collision
+    - policy
+    - coverage
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The claims assistant can retrieve deductible information from a policy record.
+    Deductibles vary by coverage type and are set at policy inception. Collision
+    deductibles are commonly $500 or $1000.
+  description: >
+    Tests policy lookup by policy number to retrieve a specific coverage deductible.
+
+- id: ins-ca-func-003
+  tier: functional
+  query: "Is my property claim compliant with the state-mandated reporting deadline?"
+  expected_keywords:
+    - compliance
+    - deadline
+    - reporting
+    - state
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The claims assistant provides compliance guidance. Most states require
+    insurers to acknowledge a claim within 10 days and make a coverage decision
+    within 40 days. Policyholders are encouraged to file promptly after a loss.
+  description: >
+    Tests that the agent addresses compliance and reporting deadline concerns
+    accurately and advises on state-specific requirements.
+
+- id: ins-ca-func-004
+  tier: functional
+  query: "What fraud prevention measures are in place for claims submissions?"
+  expected_keywords:
+    - fraud
+    - verification
+    - investigation
+    - documentation
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The claims assistant can explain claims integrity measures. Fraud prevention
+    includes document verification, third-party data cross-referencing, and
+    SIU (Special Investigations Unit) referrals for suspicious claims.
+  description: >
+    Tests that the agent explains fraud prevention measures in a professional,
+    non-accusatory tone while providing factually accurate information.

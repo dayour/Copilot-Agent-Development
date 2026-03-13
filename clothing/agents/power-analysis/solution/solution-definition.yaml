@@ -1,0 +1,1642 @@
+# Copilot Studio Solution Definition — Power Analysis (Clothing)
+# This file defines the exportable solution components for the Power Analysis agent.
+# Import this into your Copilot Studio / Power Platform environment.
+
+solution:
+  name: ClothingPowerAnalysis
+  display_name: "Clothing — Power Analysis"
+  version: "2.2.0"
+  publisher: Copilot Agent Development
+  description: >
+    Deep reasoning analytics solution for the Power Analysis agent in the
+    Clothing vertical. Provides decomposition analysis, trend detection,
+    anomaly identification, what-if simulation, and recommendation generation
+    backed by Dataverse and Power BI semantic models. Version 2.0 adds AI Builder
+    models for demand forecasting, category classification, sentiment analysis,
+    and document processing.
+
+environment_variables:
+  - name: PowerBiWorkspaceId
+    display_name: Power BI Workspace ID
+    type: string
+    description: GUID of the Power BI workspace containing the retail semantic model.
+    default_value: ""
+
+  - name: PowerBiDatasetId
+    display_name: Power BI Dataset ID
+    type: string
+    description: GUID of the primary retail semantic model (dataset) in Power BI.
+    default_value: ""
+
+  - name: SalesDashboardReportId
+    display_name: Sales Dashboard Report ID
+    type: string
+    description: GUID of the sales performance Power BI report.
+    default_value: ""
+
+  - name: InventoryReportId
+    display_name: Inventory Report ID
+    type: string
+    description: GUID of the inventory analysis Power BI report.
+    default_value: ""
+
+  - name: PosApiBaseUrl
+    display_name: POS API Base URL
+    type: string
+    description: Base URL for POS transaction synchronization endpoint.
+    default_value: ""
+
+  - name: ErpApiBaseUrl
+    display_name: ERP API Base URL
+    type: string
+    description: Base URL for ERP product and inventory cost synchronization endpoint.
+    default_value: ""
+
+  - name: AllocationApiBaseUrl
+    display_name: Allocation API Base URL
+    type: string
+    description: Base URL for inventory snapshot and allocation updates.
+    default_value: ""
+
+  - name: SynapseWorkspaceUrl
+    display_name: Synapse Workspace URL
+    type: string
+    description: Azure Synapse Analytics workspace URL for Dataverse Synapse Link historical workloads.
+    default_value: ""
+
+  - name: DataLakeStorageAccountUrl
+    display_name: Data Lake Storage Account URL
+    type: string
+    description: ADLS Gen2 storage account URL for Synapse Link export target.
+    default_value: ""
+
+  - name: PipelineAlertTeamsChannelId
+    display_name: Pipeline Alert Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for pipeline failure and health alerts.
+    default_value: ""
+
+  - name: KpiCacheRefreshIntervalHours
+    display_name: KPI Cache Refresh Interval (Hours)
+    type: integer
+    description: How frequently (in hours) the KPI cache refresh flow runs. Default is 4.
+    default_value: "4"
+
+  - name: PosSyncLastTimestampVariableName
+    display_name: POS Sync Last Timestamp Variable Name
+    type: string
+    description: Name of the environment variable used to persist the last successful POS sync timestamp for incremental change tracking.
+    default_value: "PosSyncLastSuccessfulTimestamp"
+
+  - name: ErpSyncLastTimestampVariableName
+    display_name: ERP Sync Last Timestamp Variable Name
+    type: string
+    description: Name of the environment variable used to persist the last successful ERP sync timestamp for delta sync.
+    default_value: "ErpSyncLastSuccessfulTimestamp"
+
+  - name: AllocationSyncLastTimestampVariableName
+    display_name: Allocation Sync Last Timestamp Variable Name
+    type: string
+    description: Name of the environment variable used to persist the last successful allocation sync timestamp for incremental movement loads.
+    default_value: "AllocationSyncLastSuccessfulTimestamp"
+
+  - name: PosSyncMaxRetries
+    display_name: POS Sync Max Retries
+    type: integer
+    description: Maximum number of retry attempts for POS sync before marking the pipeline run as failed.
+    default_value: "3"
+
+  - name: ErpSyncMaxRetries
+    display_name: ERP Sync Max Retries
+    type: integer
+    description: Maximum number of retry attempts for ERP sync before marking the pipeline run as failed.
+    default_value: "3"
+
+  - name: AllocationSyncMaxRetries
+    display_name: Allocation Sync Max Retries
+    type: integer
+    description: Maximum number of retry attempts for Allocation sync before marking the pipeline run as failed.
+    default_value: "3"
+
+  - name: AnalyticsTeamsChannelId
+    display_name: Analytics Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for automated KPI alert notifications.
+    default_value: ""
+
+  - name: ScheduledReportsTeamsChannelId
+    display_name: Scheduled Reports Teams Channel ID
+    type: string
+    description: Microsoft Teams channel ID for delivery of scheduled report outputs.
+    default_value: ""
+
+  - name: ReportDefaultRecipients
+    display_name: Report Default Recipients
+    type: string
+    description: Comma-separated list of default email recipients for scheduled reports.
+    default_value: ""
+
+  - name: BiGlossaryLibraryUrl
+    display_name: BI Glossary SharePoint URL
+    type: string
+    description: SharePoint document library URL containing KPI definitions and BI glossary.
+    default_value: ""
+
+  - name: AIBuilderEnvironmentId
+    display_name: AI Builder Environment ID
+    type: string
+    description: GUID of the Power Platform environment where AI Builder models are registered.
+    default_value: ""
+
+  - name: DemandForecastingModelId
+    display_name: Demand Forecasting Model ID
+    type: string
+    description: AI Builder model ID for the demand forecasting prediction model.
+    default_value: ""
+
+  - name: CategoryClassificationModelId
+    display_name: Category Classification Model ID
+    type: string
+    description: AI Builder model ID for the product category text classification model.
+    default_value: ""
+
+  - name: SentimentAnalysisModelId
+    display_name: Sentiment Analysis Model ID
+    type: string
+    description: AI Builder model ID for the customer feedback sentiment analysis model.
+    default_value: ""
+
+  - name: DocumentProcessingModelId
+    display_name: Document Processing Model ID
+    type: string
+    description: AI Builder model ID for the document processing (form recognition) model.
+    default_value: ""
+
+  - name: SentimentAlertThreshold
+    display_name: Sentiment Alert Threshold
+    type: decimal
+    description: >
+      Negative sentiment percentage threshold that triggers a Teams alert.
+      Default is 0.4 (40% negative feedback within the selected period).
+    default_value: "0.4"
+
+  - name: ModelRetrainingSchedule
+    display_name: Model Retraining Schedule
+    type: string
+    description: >
+      Schedule for periodic AI Builder model retraining. Accepts plain-text values
+      (e.g., "monthly", "weekly") or a cron expression (e.g., "0 0 1 * *" for the
+      first day of each calendar month at midnight).
+    default_value: "monthly"
+
+components:
+  dataverse_tables:
+    - name: SalesTransactions
+      display_name: Sales Transactions
+      description: Transaction-level sales facts ingested from POS.
+      primary_key: SalesTransactionId
+      columns:
+        - name: SalesTransactionId
+          type: string
+        - name: TransactionDate
+          type: datetime
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: Channel
+          type: string
+        - name: UnitsSold
+          type: decimal
+        - name: NetSalesAmount
+          type: currency
+        - name: GrossMarginAmount
+          type: currency
+
+    - name: ProductCatalog
+      display_name: Product Catalog
+      description: Product and assortment dimensions from ERP.
+      primary_key: ProductId
+      columns:
+        - name: ProductId
+          type: string
+        - name: SKU
+          type: string
+        - name: Brand
+          type: string
+        - name: Category
+          type: string
+        - name: SubCategory
+          type: string
+        - name: Season
+          type: string
+        - name: LifecycleStatus
+          type: string
+        - name: StandardCost
+          type: currency
+
+    - name: StoreMaster
+      display_name: Store Master
+      description: Store hierarchy and segmentation data.
+      primary_key: StoreId
+      columns:
+        - name: StoreId
+          type: string
+        - name: StoreName
+          type: string
+        - name: Region
+          type: string
+        - name: Country
+          type: string
+        - name: Format
+          type: string
+        - name: Cluster
+          type: string
+        - name: OpeningDate
+          type: date
+
+    - name: InventorySnapshots
+      display_name: Inventory Snapshots
+      description: Daily and intraday inventory positions from allocation systems.
+      primary_key: SnapshotId
+      columns:
+        - name: SnapshotId
+          type: string
+        - name: SnapshotDate
+          type: datetime
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: UnitsOnHand
+          type: decimal
+        - name: UnitsReceived
+          type: decimal
+        - name: InventoryCost
+          type: currency
+        - name: AvgWeeklySales
+          type: decimal
+        - name: WeeksCover
+          type: calculated
+          formula: "UnitsOnHand / AvgWeeklySales"
+        - name: ReorderPoint
+          type: decimal
+
+    - name: BasketDetails
+      display_name: Basket Details
+      description: Line-item basket contents per POS transaction, ingested in the daily POS batch sync.
+      primary_key: BasketDetailId
+      columns:
+        - name: BasketDetailId
+          type: string
+        - name: SalesTransactionId
+          type: lookup
+          references: SalesTransactions
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: LineNumber
+          type: integer
+        - name: Quantity
+          type: decimal
+        - name: UnitPrice
+          type: currency
+        - name: LineNetAmount
+          type: currency
+        - name: LineDiscountAmount
+          type: currency
+        - name: LineGrossMarginAmount
+          type: currency
+        - name: PromotionCode
+          type: string
+
+    - name: TenderMix
+      display_name: Tender Mix
+      description: Payment method breakdown per POS transaction, ingested in the daily POS batch sync.
+      primary_key: TenderMixId
+      columns:
+        - name: TenderMixId
+          type: string
+        - name: SalesTransactionId
+          type: lookup
+          references: SalesTransactions
+        - name: TenderType
+          type: string
+          description: "Payment method: Cash, Card, Digital Wallet, Gift Card, Loyalty Points."
+        - name: TenderAmount
+          type: currency
+        - name: TenderCurrency
+          type: string
+        - name: TenderSequence
+          type: integer
+
+    - name: PurchaseOrders
+      display_name: Purchase Orders
+      description: ERP purchase order headers and lines synced daily for open-to-buy and cost tracking.
+      primary_key: PurchaseOrderId
+      columns:
+        - name: PurchaseOrderId
+          type: string
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: OrderDate
+          type: date
+        - name: ExpectedDeliveryDate
+          type: date
+        - name: OrderedQuantity
+          type: decimal
+        - name: ReceivedQuantity
+          type: decimal
+        - name: OutstandingQuantity
+          type: calculated
+          formula: "OrderedQuantity - ReceivedQuantity"
+        - name: UnitCost
+          type: currency
+        - name: TotalOrderValue
+          type: currency
+        - name: POStatus
+          type: string
+          description: "Status: Open, Partially Received, Closed, Cancelled."
+        - name: SupplierCode
+          type: string
+        - name: ModifiedDate
+          type: datetime
+          description: Source ERP last-modified timestamp used for delta sync.
+
+    - name: StockMovements
+      display_name: Stock Movements
+      description: Incremental inventory movement records from the allocation system, synced hourly.
+      primary_key: StockMovementId
+      columns:
+        - name: StockMovementId
+          type: string
+        - name: MovementDate
+    - name: DemandForecasts
+      display_name: Demand Forecasts
+      description: >
+        AI Builder demand forecasting model outputs stored per SKU, store,
+        and forecast horizon. Used for replenishment planning and trend validation.
+      primary_key: ForecastId
+      columns:
+        - name: ForecastId
+          type: string
+        - name: ForecastDate
+          type: datetime
+        - name: StoreId
+          type: lookup
+          references: StoreMaster
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: MovementType
+          type: string
+          description: "Type: Sale, Return, Transfer In, Transfer Out, Adjustment, Write-Off."
+        - name: QuantityChange
+          type: decimal
+          description: Positive for inbound movements; negative for outbound.
+        - name: ReferenceId
+          type: string
+          description: Source system reference (TransactionId, TransferOrderId, or AdjustmentId).
+        - name: PostedTimestamp
+          type: datetime
+          description: UTC timestamp when the movement was posted in the source system.
+
+    - name: TransferOrders
+      display_name: Transfer Orders
+      description: Inter-store and DC-to-store transfer orders from the allocation system, synced hourly.
+      primary_key: TransferOrderId
+      columns:
+        - name: TransferOrderId
+          type: string
+        - name: ProductId
+          type: lookup
+          references: ProductCatalog
+        - name: FromStoreId
+          type: lookup
+          references: StoreMaster
+        - name: ToStoreId
+          type: lookup
+          references: StoreMaster
+        - name: RequestedDate
+          type: date
+        - name: ExpectedArrivalDate
+          type: date
+        - name: TransferQuantity
+          type: decimal
+        - name: TransferStatus
+          type: string
+          description: "Status: Requested, Approved, In Transit, Received, Cancelled."
+        - name: ModifiedTimestamp
+          type: datetime
+          description: UTC timestamp for incremental change tracking.
+
+    - name: KpiCache
+      display_name: KPI Cache
+      description: >
+        Pre-calculated KPIs and aggregated metrics refreshed from Power BI every 4 hours.
+        Used to serve common agent queries without real-time DAX execution.
+      primary_key: KpiCacheId
+      columns:
+        - name: KpiCacheId
+          type: string
+        - name: CacheTimestamp
+          type: datetime
+          description: UTC timestamp when this cache row was generated.
+        - name: GrainType
+          type: string
+          description: "Aggregation grain: StoreScorecard, CategoryPerformance, RegionalSummary."
+        - name: DimensionKey
+          type: string
+          description: "Dimension identifier (StoreId, CategoryCode, RegionCode, or 'ALL')."
+        - name: PeriodKey
+          type: string
+          description: "Period identifier in format YYYY-Www (week) or YYYY-MM (month)."
+        - name: SellThroughRatePct
+          type: decimal
+        - name: GmroiValue
+          type: decimal
+        - name: WeeksCoverValue
+          type: decimal
+        - name: StockTurnValue
+          type: decimal
+        - name: NetSalesAmount
+          type: currency
+        - name: GrossMarginAmount
+          type: currency
+        - name: GrossMarginPct
+          type: decimal
+        - name: UnitsOnHand
+          type: decimal
+        - name: OpenToBuyValue
+          type: currency
+
+    - name: PipelineHealth
+      display_name: Pipeline Health
+      description: >
+        Tracks every pipeline run outcome. Agents query this table to report on
+        data feed health and surface pipeline failures to operations teams.
+      primary_key: PipelineHealthId
+      columns:
+        - name: PipelineHealthId
+          type: string
+        - name: PipelineName
+          type: string
+          description: "Name of the pipeline: PosDataSync, ErpDataSync, AllocationDataSync, KpiCacheRefresh."
+        - name: RunStartTimestamp
+          type: datetime
+        - name: RunEndTimestamp
+          type: datetime
+        - name: RunStatus
+          type: string
+          description: "Status: Running, Succeeded, Failed, PartialFailure, Skipped."
+        - name: RecordsProcessed
+          type: integer
+        - name: RecordsFailed
+          type: integer
+        - name: ErrorCode
+          type: string
+        - name: ErrorMessage
+          type: string
+        - name: RetryAttempt
+          type: integer
+          description: "0 for the initial attempt; increments by 1 for each retry."
+        - name: DataQualityChecksPassed
+          type: boolean
+        - name: DataQualityFailureDetails
+          type: string
+          description: JSON summary of any failed data quality checks.
+        - name: SourceSystemTimestamp
+          type: datetime
+          description: Watermark timestamp from the source system used for this run.
+        - name: CorrelationId
+          type: string
+          description: Power Automate flow run correlation ID for end-to-end trace.
+        - name: ForecastHorizon
+          type: string
+        - name: PredictedUnits
+          type: decimal
+        - name: ConfidenceLow
+          type: decimal
+        - name: ConfidenceHigh
+          type: decimal
+        - name: SeasonalityIndex
+          type: decimal
+        - name: PromotionImpact
+          type: decimal
+        - name: KeyDrivers
+          type: string
+        - name: ModelVersion
+          type: string
+
+    - name: SentimentResults
+      display_name: Sentiment Analysis Results
+      description: >
+        AI Builder sentiment analysis outputs aggregated by product category,
+        brand, feedback source, and analysis period.
+      primary_key: SentimentResultId
+      columns:
+        - name: SentimentResultId
+          type: string
+        - name: AnalysisDate
+          type: datetime
+        - name: Category
+          type: string
+        - name: Brand
+          type: string
+        - name: FeedbackSource
+          type: string
+        - name: PeriodLabel
+          type: string
+        - name: OverallScore
+          type: decimal
+        - name: PositivePct
+          type: decimal
+        - name: NeutralPct
+          type: decimal
+        - name: NegativePct
+          type: decimal
+        - name: TopPositiveThemes
+          type: string
+        - name: TopNegativeThemes
+          type: string
+        - name: AlertTriggered
+          type: boolean
+        - name: ModelVersion
+          type: string
+
+    - name: DocumentExtractionResults
+      display_name: Document Extraction Results
+      description: >
+        Structured data extracted by the AI Builder document processing model from
+        uploaded supplier invoices, delivery notes, and competitor price sheets.
+      primary_key: ExtractionId
+      columns:
+        - name: ExtractionId
+          type: string
+        - name: ExtractionDate
+          type: datetime
+        - name: DocumentType
+          type: string
+        - name: SupplierName
+          type: string
+        - name: DocumentDate
+          type: date
+        - name: LineItemCount
+          type: integer
+        - name: TotalValue
+          type: currency
+        - name: DiscrepancyCount
+          type: integer
+        - name: ExtractedPayload
+          type: string
+        - name: ReviewStatus
+          type: string
+        - name: ModelVersion
+          type: string
+
+    - name: CustomerFeedback
+      display_name: Customer Feedback
+      description: >
+        Raw customer feedback records from surveys, reviews, and social media ingested
+        for sentiment analysis model training and inference.
+      primary_key: FeedbackId
+      columns:
+        - name: FeedbackId
+          type: string
+        - name: FeedbackDate
+          type: datetime
+        - name: FeedbackText
+          type: string
+        - name: FeedbackSource
+          type: string
+        - name: Category
+          type: string
+        - name: Brand
+          type: string
+        - name: SentimentLabel
+          type: string
+
+    - name: AlertRules
+      display_name: Alert Rules
+      description: >
+        Configurable alert threshold definitions that the agent evaluates to detect
+        metric breaches across stores, regions, and categories.
+      primary_key: AlertRuleId
+      columns:
+        - name: AlertRuleId
+          type: string
+        - name: RuleName
+          type: string
+        - name: Metric
+          type: string
+        - name: Operator
+          type: choice
+          options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        - name: Threshold
+          type: decimal
+        - name: ThresholdUnit
+          type: string
+        - name: Scope
+          type: choice
+          options: [store, region, category, enterprise]
+        - name: ScopeValue
+          type: string
+        - name: CompoundLogic
+          type: choice
+          options: [none, AND, OR]
+          default: none
+        - name: SecondaryMetric
+          type: string
+        - name: SecondaryOperator
+          type: choice
+          options: [less_than, greater_than, less_than_or_equal, greater_than_or_equal, equals]
+        - name: SecondaryThreshold
+          type: decimal
+        - name: EvaluationFrequency
+          type: choice
+          options: [real_time, hourly, daily, weekly]
+          default: daily
+        - name: Owner
+          type: string
+        - name: OwnerEntraId
+          type: string
+        - name: IsActive
+          type: boolean
+          default: true
+        - name: CreatedOn
+          type: datetime
+        - name: ModifiedOn
+          type: datetime
+
+    - name: AlertHistory
+      display_name: Alert History
+      description: >
+        Log of all triggered alert events with lifecycle status tracking from
+        new through acknowledged to resolved.
+      primary_key: AlertHistoryId
+      columns:
+        - name: AlertHistoryId
+          type: string
+        - name: AlertRuleId
+          type: lookup
+          references: AlertRules
+        - name: TriggeredAt
+          type: datetime
+        - name: MetricValue
+          type: decimal
+        - name: ThresholdValue
+          type: decimal
+        - name: Scope
+          type: string
+        - name: ScopeValue
+          type: string
+        - name: Status
+          type: choice
+          options: [new, acknowledged, resolved]
+          default: new
+        - name: AcknowledgedBy
+          type: string
+        - name: AcknowledgedAt
+          type: datetime
+        - name: ResolvedAt
+          type: datetime
+        - name: ResolutionNotes
+          type: string
+
+    - name: SavedAnalyses
+      display_name: Saved Analyses
+      description: >
+        Persisted analysis snapshots including query parameters, result data,
+        generated insights, and sharing metadata.
+      primary_key: SavedAnalysisId
+      columns:
+        - name: SavedAnalysisId
+          type: string
+        - name: AnalysisName
+          type: string
+        - name: QueryParameters
+          type: string
+        - name: ResultSnapshot
+          type: string
+        - name: GeneratedInsights
+          type: string
+        - name: AnalysisType
+          type: choice
+          options: [sales_performance, root_cause, inventory, trend, what_if, anomaly]
+        - name: SavedAt
+          type: datetime
+        - name: Owner
+          type: string
+        - name: OwnerEntraId
+          type: string
+        - name: SharedWith
+          type: string
+        - name: IsShared
+          type: boolean
+          default: false
+
+    - name: ScheduledReports
+      display_name: Scheduled Reports
+      description: >
+        Definitions for scheduled report delivery, including cron schedule, query
+        parameters, recipients, and output format. Each active record corresponds
+        to a live Power Automate recurrence flow.
+      primary_key: ScheduledReportId
+      columns:
+        - name: ScheduledReportId
+          type: string
+        - name: ReportName
+          type: string
+        - name: CronSchedule
+          type: string
+        - name: HumanReadableSchedule
+          type: string
+        - name: QueryDefinition
+          type: string
+        - name: Recipients
+          type: string
+        - name: OutputFormat
+          type: choice
+          options: [teams, email, pdf]
+          default: email
+        - name: FlowRunId
+          type: string
+        - name: Owner
+          type: string
+        - name: OwnerEntraId
+          type: string
+        - name: IsActive
+          type: boolean
+          default: true
+        - name: CreatedOn
+          type: datetime
+        - name: LastRunAt
+          type: datetime
+        - name: NextRunAt
+          type: datetime
+
+  relationships:
+    - from_table: SalesTransactions
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: SalesTransactions
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: InventorySnapshots
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: InventorySnapshots
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: BasketDetails
+      from_column: SalesTransactionId
+      to_table: SalesTransactions
+      to_column: SalesTransactionId
+      cardinality: many_to_one
+    - from_table: BasketDetails
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: TenderMix
+      from_column: SalesTransactionId
+      to_table: SalesTransactions
+      to_column: SalesTransactionId
+      cardinality: many_to_one
+    - from_table: PurchaseOrders
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: PurchaseOrders
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: StockMovements
+      from_column: StoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: StockMovements
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: TransferOrders
+      from_column: ProductId
+      to_table: ProductCatalog
+      to_column: ProductId
+      cardinality: many_to_one
+    - from_table: TransferOrders
+      from_column: FromStoreId
+      to_table: StoreMaster
+      to_column: StoreId
+      cardinality: many_to_one
+    - from_table: TransferOrders
+      from_column: ToStoreId
+      to_table: StoreMaster
+      to_column: StoreId
+    - from_table: AlertHistory
+      from_column: AlertRuleId
+      to_table: AlertRules
+      to_column: AlertRuleId
+      cardinality: many_to_one
+
+  agents:
+    - name: PowerAnalysis
+      template_file: ../templates/agent-template.yaml
+      knowledge_sources:
+        - id: bi-glossary-library
+          type: sharepoint
+          url: "${BiGlossaryLibraryUrl}"
+      authentication:
+        type: azure_ad
+        tenant_restriction: true
+
+  power_automate_flows:
+    - name: MultiMeasureQuery
+      description: >
+        Executes parameterized DAX queries against the semantic model and returns
+        KPI outputs across store, category, brand, and channel dimensions.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+      query_patterns:
+        - SalesPerformance
+        - RCASalesDiagnostics
+        - RCAInventoryDiagnostics
+        - RCAStaffingExternal
+        - InventoryIntelligence
+
+    - name: TrendAnalysis
+      description: >
+        Performs period-over-period trend calculations and driver decomposition.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+
+    - name: AnomalyDetection
+      description: >
+        Detects KPI deviations using baseline and z-score logic for proactive monitoring.
+      trigger: scheduled_recurrence
+      schedule: hourly
+      connector: power_bi
+
+    - name: WhatIfScenario
+      description: >
+        Applies scenario parameters to project KPI impacts for planning decisions.
+      trigger: copilot_studio_topic_action
+      connector: power_bi
+
+    - name: SendAnomalyAlertNotification
+      description: >
+        Sends anomaly summaries and impacted KPI details to analytics stakeholders in Teams.
+      trigger: flow_called_from_anomaly_detection
+      connector: microsoft_teams
+
+    - name: PosDataSync
+      description: >
+        Daily batch sync of POS sales transactions, basket line items, and tender mix
+        into Dataverse. Uses incremental load with change tracking via a last-sync
+        watermark timestamp. Processes approximately 500K to 1M transactions per day
+        across all stores. Writes a PipelineHealth row for each run. Applies
+        exponential backoff with up to 3 retries on transient failures.
+      trigger: scheduled_recurrence
+      schedule: daily
+      schedule_time: "02:00 UTC"
+      connector: custom_pos_connector
+      sync_strategy:
+        method: incremental
+        watermark_field: TransactionTimestamp
+        watermark_variable: PosSyncLastSuccessfulTimestamp
+        upsert_key: SalesTransactionId
+      targets:
+        - table: SalesTransactions
+          upsert_key: SalesTransactionId
+        - table: BasketDetails
+          upsert_key: BasketDetailId
+        - table: TenderMix
+          upsert_key: TenderMixId
+      data_quality_checks:
+        - check: null_detection
+          columns: [SalesTransactionId, StoreId, ProductId, TransactionDate, UnitsSold, NetSalesAmount]
+        - check: range_validation
+          rules:
+            - column: UnitsSold
+              min: 0
+            - column: NetSalesAmount
+              min: 0
+            - column: GrossMarginAmount
+              min: -999999
+        - check: referential_integrity
+          rules:
+            - from: SalesTransactions.StoreId
+              to: StoreMaster.StoreId
+            - from: SalesTransactions.ProductId
+              to: ProductCatalog.ProductId
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+      estimated_volume: "500K to 1M transactions per day"
+
+    - name: ErpDataSync
+      description: >
+        Daily delta sync of ERP product catalog updates, cost price changes, and
+        purchase order lines into Dataverse. Uses modified-date delta strategy to
+        load only changed records. Processes approximately 10K product updates and
+        5K PO lines per day. Writes a PipelineHealth row for each run. Applies
+        exponential backoff with up to 3 retries on transient failures.
+      trigger: scheduled_recurrence
+      schedule: daily
+      schedule_time: "03:00 UTC"
+      connector: custom_erp_connector
+      sync_strategy:
+        method: delta
+        watermark_field: ModifiedDate
+        watermark_variable: ErpSyncLastSuccessfulTimestamp
+        upsert_key: ProductId
+      targets:
+        - table: ProductCatalog
+          upsert_key: ProductId
+          delta_field: ModifiedDate
+        - table: PurchaseOrders
+          upsert_key: PurchaseOrderId
+          delta_field: ModifiedDate
+      data_quality_checks:
+        - check: null_detection
+          columns: [ProductId, SKU, Brand, Category, StandardCost]
+        - check: range_validation
+          rules:
+            - column: StandardCost
+              min: 0
+        - check: referential_integrity
+          rules:
+            - from: PurchaseOrders.ProductId
+              to: ProductCatalog.ProductId
+            - from: PurchaseOrders.StoreId
+              to: StoreMaster.StoreId
+        - check: uniqueness
+          columns: [ProductCatalog.ProductId]
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+      estimated_volume: "10K product updates, 5K PO lines per day"
+
+    - name: AllocationDataSync
+      description: >
+        Hourly sync of inventory data from the allocation system into Dataverse.
+        Performs a full snapshot upsert for InventorySnapshots and an incremental
+        load for StockMovements and TransferOrders. Processes approximately 200K
+        inventory records per snapshot. Writes a PipelineHealth row for each run.
+        Applies exponential backoff with up to 3 retries on transient failures.
+      trigger: scheduled_recurrence
+      schedule: hourly
+      connector: custom_allocation_connector
+      sync_strategy:
+        inventory_snapshots:
+          method: full_snapshot
+          upsert_key: SnapshotId
+          composite_key: [SnapshotDate, StoreId, ProductId]
+        stock_movements:
+          method: incremental
+          watermark_field: PostedTimestamp
+          watermark_variable: AllocationSyncLastSuccessfulTimestamp
+          upsert_key: StockMovementId
+        transfer_orders:
+          method: incremental
+          watermark_field: ModifiedTimestamp
+          upsert_key: TransferOrderId
+      targets:
+        - table: InventorySnapshots
+          upsert_key: SnapshotId
+        - table: StockMovements
+          upsert_key: StockMovementId
+        - table: TransferOrders
+          upsert_key: TransferOrderId
+      data_quality_checks:
+        - check: null_detection
+          columns: [SnapshotId, SnapshotDate, StoreId, ProductId, UnitsOnHand]
+        - check: range_validation
+          rules:
+            - column: UnitsOnHand
+              min: 0
+            - column: InventoryCost
+              min: 0
+            - column: WeeksCover
+              min: 0
+              max: 52
+        - check: referential_integrity
+          rules:
+            - from: InventorySnapshots.StoreId
+              to: StoreMaster.StoreId
+            - from: InventorySnapshots.ProductId
+              to: ProductCatalog.ProductId
+            - from: StockMovements.StoreId
+              to: StoreMaster.StoreId
+            - from: StockMovements.ProductId
+              to: ProductCatalog.ProductId
+        - check: uniqueness
+          composite_key: [SnapshotDate, StoreId, ProductId]
+          table: InventorySnapshots
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 30
+        backoff_multiplier: 2
+        max_delay_seconds: 240
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+      estimated_volume: "200K inventory records per snapshot"
+
+    - name: KpiCacheRefresh
+      description: >
+        Scheduled refresh that queries pre-calculated KPIs and aggregated metrics
+        from the Power BI semantic model and writes them into the Dataverse KpiCache
+        table. Runs every 4 hours to keep common agent queries fast without
+        triggering real-time DAX execution. Covers store scorecards, category
+        performance, and regional summaries. Writes a PipelineHealth row for each run.
+      trigger: scheduled_recurrence
+      schedule: every_4_hours
+      connector: power_bi
+      targets:
+        - table: KpiCache
+          grain_types:
+            - StoreScorecard
+            - CategoryPerformance
+            - RegionalSummary
+      kpi_queries:
+        - grain: StoreScorecard
+          measures: [SellThroughRatePct, GmroiValue, WeeksCoverValue, StockTurnValue, NetSalesAmount, GrossMarginPct, OpenToBuyValue]
+          dimensions: [StoreId]
+          periods: [CurrentWeek, CurrentMonth, QuarterToDate]
+        - grain: CategoryPerformance
+          measures: [SellThroughRatePct, GmroiValue, WeeksCoverValue, NetSalesAmount, GrossMarginPct]
+          dimensions: [CategoryCode]
+          periods: [CurrentWeek, CurrentMonth]
+        - grain: RegionalSummary
+          measures: [NetSalesAmount, GrossMarginPct, SellThroughRatePct, UnitsOnHand]
+          dimensions: [RegionCode]
+          periods: [CurrentWeek, CurrentMonth, QuarterToDate]
+      retry_policy:
+        max_retries: 3
+        initial_delay_seconds: 60
+        backoff_multiplier: 2
+        max_delay_seconds: 480
+      error_logging:
+        table: PipelineHealth
+        on_failure: write_failure_record
+        on_success: write_success_record
+
+    - name: DataQualityValidation
+      description: >
+        Standalone validation flow executed after each sync pipeline completes.
+        Runs null detection, range validation, uniqueness, and referential integrity
+        checks across all sync target tables. Writes check results to PipelineHealth.
+        If critical rules fail, posts an alert to the pipeline alert Teams channel
+        and halts any pending downstream processing.
+      trigger: flow_called_from_sync_pipeline
+      connector: dataverse
+      validation_rules:
+        null_checks:
+          - table: SalesTransactions
+            required_columns: [SalesTransactionId, StoreId, ProductId, TransactionDate]
+          - table: ProductCatalog
+            required_columns: [ProductId, SKU, Brand, Category, StandardCost]
+          - table: InventorySnapshots
+            required_columns: [SnapshotId, SnapshotDate, StoreId, ProductId, UnitsOnHand]
+          - table: PurchaseOrders
+            required_columns: [PurchaseOrderId, ProductId, OrderDate, OrderedQuantity, UnitCost]
+        range_checks:
+          - table: SalesTransactions
+            column: UnitsSold
+            min: 0
+          - table: InventorySnapshots
+            column: UnitsOnHand
+            min: 0
+          - table: InventorySnapshots
+            column: WeeksCover
+            min: 0
+            max: 52
+          - table: ProductCatalog
+            column: StandardCost
+            min: 0
+        uniqueness_checks:
+          - table: SalesTransactions
+            key: SalesTransactionId
+          - table: ProductCatalog
+            key: ProductId
+          - table: InventorySnapshots
+            composite_key: [SnapshotDate, StoreId, ProductId]
+          - table: PurchaseOrders
+            key: PurchaseOrderId
+        referential_integrity_checks:
+          - from_table: SalesTransactions
+            from_column: StoreId
+            to_table: StoreMaster
+            to_column: StoreId
+          - from_table: SalesTransactions
+            from_column: ProductId
+            to_table: ProductCatalog
+            to_column: ProductId
+          - from_table: BasketDetails
+            from_column: SalesTransactionId
+            to_table: SalesTransactions
+            to_column: SalesTransactionId
+          - from_table: InventorySnapshots
+            from_column: StoreId
+            to_table: StoreMaster
+            to_column: StoreId
+          - from_table: InventorySnapshots
+            from_column: ProductId
+            to_table: ProductCatalog
+            to_column: ProductId
+        reconciliation_checks:
+          - description: POS daily totals vs Power BI semantic model totals at day and store level
+            method: sum_comparison
+            tolerance_pct: 0.01
+
+    - name: PipelineHealthAlert
+      description: >
+        Monitors the PipelineHealth table and posts failure alerts to the pipeline
+        alert Teams channel. Triggered when a sync pipeline writes a Failed or
+        PartialFailure status. Provides pipeline name, error details, retry count,
+        and last successful run timestamp so operations teams can respond quickly.
+        Also surfaces results to the agent via the Pipeline Health Check topic.
+      trigger: dataverse_row_created
+      table: PipelineHealth
+      filter: "RunStatus eq 'Failed' or RunStatus eq 'PartialFailure'"
+      connector: microsoft_teams
+      alert_content:
+        - PipelineName
+        - RunStatus
+        - RunStartTimestamp
+        - RecordsProcessed
+        - RecordsFailed
+        - ErrorCode
+        - ErrorMessage
+        - RetryAttempt
+        - DataQualityFailureDetails
+
+    - name: InvokeDemandForecastModel
+      description: >
+        Calls the AI Builder demand forecasting prediction model for a given SKU and store
+        combination. Writes forecast results to the DemandForecasts Dataverse table and
+        returns predicted units, confidence interval, and key drivers to the agent topic.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: prediction
+      model_id_variable: "${DemandForecastingModelId}"
+
+    - name: InvokeCategoryClassificationModel
+      description: >
+        Calls the AI Builder text classification model to assign merchandising categories
+        to submitted product IDs. Writes accepted classifications to ProductCatalog and
+        queues low-confidence results for human review.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: text_classification
+      model_id_variable: "${CategoryClassificationModelId}"
+
+    - name: InvokeSentimentAnalysisModel
+      description: >
+        Calls the AI Builder sentiment analysis model against aggregated customer feedback
+        for the requested category, period, and source. Writes results to SentimentResults
+        and triggers a Teams alert when negative sentiment exceeds the configured threshold.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: sentiment_analysis
+      model_id_variable: "${SentimentAnalysisModelId}"
+
+    - name: InvokeDocumentProcessingModel
+      description: >
+        Calls the AI Builder document processing model on an uploaded file. Extracts
+        structured fields and line items and writes results to DocumentExtractionResults
+        for downstream review and approval.
+      trigger: copilot_studio_topic_action
+      connector: ai_builder
+      ai_builder_model_type: document_processing
+      model_id_variable: "${DocumentProcessingModelId}"
+
+    - name: ScheduleModelRetraining
+      description: >
+        Orchestrates periodic retraining of all AI Builder models with fresh Dataverse data.
+        Publishes the new model version after passing accuracy and precision thresholds.
+        Logs version history and sends a status report to the analytics Teams channel.
+      trigger: scheduled_recurrence
+      schedule: "${ModelRetrainingSchedule}"
+      connector: ai_builder
+    - name: AlertRuleCreate
+      description: >
+        Creates a new alert rule record in the AlertRules Dataverse table.
+        Validates metric name, operator, and threshold before writing.
+        Called from the agent when a user defines a new alert via conversation.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleUpdate
+      description: >
+        Updates threshold, operator, frequency, or active flag on an existing
+        AlertRules record. Enforces owner-or-admin authorization check before write.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleDelete
+      description: >
+        Soft-deletes an alert rule by setting IsActive to false.
+        Enforces owner-or-admin authorization check.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleList
+      description: >
+        Retrieves active alert rules scoped to the requesting user or all rules
+        for admin users. Returns rule name, metric, threshold, scope, and status.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertHistoryQuery
+      description: >
+        Queries AlertHistory for triggered alerts filtered by status, date range,
+        scope, or rule. Supports natural language requests such as
+        "What alerts are firing right now?" or "Show resolved alerts this week."
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertAcknowledge
+      description: >
+        Sets the status of an AlertHistory record to acknowledged and records
+        the acknowledging user and timestamp.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertResolve
+      description: >
+        Sets the status of an AlertHistory record to resolved, records resolved
+        timestamp, and persists optional resolution notes.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: AlertRuleEvaluator
+      description: >
+        Evaluates all active AlertRules against the latest metric values from the
+        semantic model and writes new AlertHistory records for any threshold breaches.
+        Supports compound AND/OR rules.
+      trigger: scheduled_recurrence
+      schedule: hourly
+      connector: dataverse
+
+    - name: SavedAnalysisCreate
+      description: >
+        Persists the current analysis context (query parameters, result snapshot,
+        generated insights) as a new SavedAnalyses record in Dataverse.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: SavedAnalysisQuery
+      description: >
+        Retrieves saved analyses for the requesting user filtered by name, date,
+        or analysis type. Supports recall requests such as
+        "Show me the analysis I saved last Tuesday."
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: SavedAnalysisShare
+      description: >
+        Updates the SharedWith field and IsShared flag on a SavedAnalyses record
+        to grant read access to specified users or Entra groups.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: SavedAnalysisDelete
+      description: >
+        Deletes a SavedAnalyses record. Enforces owner-or-admin authorization.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportCreate
+      description: >
+        Creates a new ScheduledReports record and provisions a corresponding
+        Power Automate recurrence flow to execute and deliver the report on schedule.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportList
+      description: >
+        Lists scheduled reports for the requesting user, including schedule,
+        recipients, output format, and next run time.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportUpdate
+      description: >
+        Modifies schedule, recipients, or output format for an existing scheduled
+        report and updates the backing Power Automate recurrence flow accordingly.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportCancel
+      description: >
+        Deactivates a ScheduledReports record and disables the backing
+        Power Automate recurrence flow.
+      trigger: copilot_studio_topic_action
+      connector: dataverse
+
+    - name: ScheduledReportDelivery
+      description: >
+        Executes the query definition for a scheduled report, formats output
+        per the specified format (Teams/email/PDF), and delivers to recipients.
+        Triggered by each report's individual recurrence flow.
+      trigger: flow_called_from_scheduled_report
+      connector: microsoft_teams
+
+connections:
+  - connector: power_bi
+    display_name: Power BI
+  - connector: dataverse
+    display_name: Dataverse
+  - connector: microsoft_teams
+    display_name: Microsoft Teams
+  - connector: ai_builder
+    display_name: AI Builder
+  - connector: custom_pos_connector
+    display_name: POS Connector
+  - connector: custom_erp_connector
+    display_name: ERP Connector
+  - connector: custom_allocation_connector
+    display_name: Allocation Connector
+  - connector: dataverse
+    display_name: Microsoft Dataverse
+
+custom_connectors:
+  - name: PosConnector
+    source: openapi
+    base_url: "${PosApiBaseUrl}"
+    auth: oauth2
+    operations:
+      - name: GetTransactions
+        description: Retrieves sales transactions changed after a given timestamp.
+        parameters:
+          - name: since_timestamp
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 1000
+          - name: page_token
+            type: string
+      - name: GetBasketDetails
+        description: Retrieves basket line items for a set of transaction IDs.
+      - name: GetTenderMix
+        description: Retrieves tender payment details for a set of transaction IDs.
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
+  - name: ErpConnector
+    source: openapi
+    base_url: "${ErpApiBaseUrl}"
+    auth: oauth2
+    operations:
+      - name: GetProductUpdates
+        description: Retrieves product catalog records modified after a given timestamp.
+        parameters:
+          - name: modified_since
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 500
+      - name: GetPurchaseOrders
+        description: Retrieves purchase order lines modified after a given timestamp.
+        parameters:
+          - name: modified_since
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 500
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
+  - name: AllocationConnector
+    source: openapi
+    base_url: "${AllocationApiBaseUrl}"
+    auth: oauth2
+    operations:
+      - name: GetInventorySnapshot
+        description: Retrieves the current full inventory snapshot for all stores and products.
+        parameters:
+          - name: snapshot_date
+            type: string
+            format: date
+      - name: GetStockMovements
+        description: Retrieves stock movements posted after a given timestamp.
+        parameters:
+          - name: since_timestamp
+            type: string
+            format: datetime
+          - name: page_size
+            type: integer
+            default: 1000
+      - name: GetTransferOrders
+        description: Retrieves transfer orders modified after a given timestamp.
+        parameters:
+          - name: modified_since
+            type: string
+            format: datetime
+      - name: GetHealthStatus
+        description: Probe endpoint for connector health check.
+        path: /health
+
+data_platform_extensions:
+  synapse_link:
+    enabled: true
+    tables:
+      - SalesTransactions
+      - BasketDetails
+      - TenderMix
+      - InventorySnapshots
+      - StockMovements
+      - PurchaseOrders
+      - ProductCatalog
+      - StoreMaster
+    purpose: Historical and high-volume analytical workloads (2+ years of transactions)
+      - DemandForecasts
+      - SentimentResults
+      - DocumentExtractionResults
+      - CustomerFeedback
+    purpose: Historical and high-volume analytical workloads
+    export_mode: incremental
+    storage_account_url: "${DataLakeStorageAccountUrl}"
+    synapse_workspace_url: "${SynapseWorkspaceUrl}"
+
+pipeline_monitoring:
+  health_table: PipelineHealth
+  alert_channel: "${PipelineAlertTeamsChannelId}"
+  pipelines:
+    - name: PosDataSync
+      expected_schedule: daily
+      sla_completion_by: "06:00 UTC"
+      alert_on_failure: true
+      alert_on_sla_breach: true
+    - name: ErpDataSync
+      expected_schedule: daily
+      sla_completion_by: "07:00 UTC"
+      alert_on_failure: true
+      alert_on_sla_breach: true
+    - name: AllocationDataSync
+      expected_schedule: hourly
+      sla_latency_minutes: 30
+      alert_on_failure: true
+      alert_on_sla_breach: true
+    - name: KpiCacheRefresh
+      expected_schedule: every_4_hours
+      sla_latency_minutes: 45
+      alert_on_failure: true
+      alert_on_sla_breach: true
+
+ai_builder_models:
+  - name: DemandForecastingModel
+    display_name: Demand Forecasting
+    type: prediction
+    model_id_variable: "${DemandForecastingModelId}"
+    description: >
+      Predicts next-period demand by SKU and store combination. Trained on 2+ years of
+      historical sales data incorporating seasonality, promotions, and trend signals.
+    training_data:
+      dataverse_table: SalesTransactions
+      feature_columns:
+        - ProductId
+        - StoreId
+        - TransactionDate
+        - UnitsSold
+        - Channel
+      label_column: UnitsSold
+      minimum_training_rows: 10000
+    performance_targets:
+      mean_absolute_percentage_error_max: 0.15
+      r_squared_min: 0.75
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_rows_to_trigger: 5000
+      ab_testing_enabled: true
+      ab_test_traffic_pct: 10
+
+  - name: CategoryClassificationModel
+    display_name: Category Classification
+    type: text_classification
+    model_id_variable: "${CategoryClassificationModelId}"
+    description: >
+      Classifies new products into merchandising categories based on product name,
+      description, material, and target demographic attributes.
+    training_data:
+      dataverse_table: ProductCatalog
+      feature_columns:
+        - SKU
+        - Brand
+        - SubCategory
+        - Season
+      label_column: Category
+      filter: "LifecycleStatus eq 'Active'"
+      minimum_training_rows: 500
+    performance_targets:
+      accuracy_min: 0.85
+      precision_min: 0.80
+      recall_min: 0.80
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_rows_to_trigger: 100
+      ab_testing_enabled: false
+
+  - name: SentimentAnalysisModel
+    display_name: Sentiment Analysis
+    type: sentiment_analysis
+    model_id_variable: "${SentimentAnalysisModelId}"
+    description: >
+      Analyzes customer feedback from surveys, reviews, and social media.
+      Returns positive, neutral, and negative sentiment scores and key themes
+      aggregated by product category and brand.
+    training_data:
+      source: CustomerFeedback
+      feature_columns:
+        - FeedbackText
+        - FeedbackSource
+        - Category
+        - Brand
+      label_column: SentimentLabel
+      minimum_training_rows: 2000
+    performance_targets:
+      accuracy_min: 0.80
+      f1_score_min: 0.78
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_rows_to_trigger: 500
+      ab_testing_enabled: false
+
+  - name: DocumentProcessingModel
+    display_name: Document Processing
+    type: document_processing
+    model_id_variable: "${DocumentProcessingModelId}"
+    description: >
+      Extracts structured fields and line items from supplier invoices, delivery notes,
+      and competitor price sheets using AI Builder form processing capabilities.
+    document_types:
+      - label: supplier invoice
+        fields:
+          - SupplierName
+          - DocumentDate
+          - InvoiceNumber
+          - LineItems
+          - TotalAmount
+          - CurrencyCode
+      - label: delivery note
+        fields:
+          - SupplierName
+          - DeliveryDate
+          - PurchaseOrderNumber
+          - ReceivedQuantities
+          - Discrepancies
+      - label: competitor price sheet
+        fields:
+          - CompetitorName
+          - EffectiveDate
+          - ProductMatches
+          - PriceComparisons
+    performance_targets:
+      field_extraction_accuracy_min: 0.90
+    retraining:
+      schedule: "${ModelRetrainingSchedule}"
+      minimum_new_documents_to_trigger: 50
+      ab_testing_enabled: false
+
+channels:
+  - type: microsoft_teams
+    enabled: true
+    require_admin_approval: false

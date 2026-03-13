@@ -1,0 +1,282 @@
+# Copilot Studio Agent Template — Fleet Coordinator (Transportation)
+# Import this file as a starting point. Customise trigger phrases,
+# API flow names, and knowledge sources to match your fleet operation.
+
+agent:
+  name: Fleet Coordinator
+  description: >
+    A virtual agent for fleet managers and drivers. Handles vehicle
+    scheduling, maintenance alerts, compliance checks, incident reporting,
+    and route guidance.
+  language: en-US
+  fallback_message: >
+    I'm sorry, I didn't quite understand that. Would you like me to connect
+    you with your fleet manager?
+
+topics:
+
+  - name: Greeting
+    trigger_phrases:
+      - Hello
+      - Hi
+      - Fleet help
+      - I need fleet support
+    messages:
+      - text: >
+          Hi! 🚛 I'm your Fleet Coordinator. I can help with vehicle scheduling,
+          maintenance, compliance checks, incident reporting, and routing.
+          What do you need?
+    quick_replies:
+      - Check vehicle availability
+      - Report maintenance issue
+      - Compliance check
+      - Report an incident
+      - Get route guidance
+
+  - name: Vehicle Scheduling
+    trigger_phrases:
+      - "Is {vehicle_id} available?"
+      - "Check availability of {vehicle_id}"
+      - "Which vehicles are available on {date}?"
+      - Assign vehicle for trip
+    entities:
+      - name: vehicle_id
+        type: string
+        prompt: What is the vehicle registration or ID?
+      - name: date
+        type: date
+        prompt: For which date do you need the vehicle?
+    actions:
+      - type: power_automate_flow
+        flow_name: GetVehicleAvailability
+        input:
+          vehicle_id: "{vehicle_id}"
+          date: "{date}"
+        output_message: >
+          Vehicle {vehicle_id}: **{availability_status}** on {date}.
+          {assignment_details}
+
+  - name: Maintenance Alert
+    trigger_phrases:
+      - Report a fault
+      - Log a maintenance issue
+      - Vehicle defect
+      - "{vehicle_id} needs repair"
+    entities:
+      - name: vehicle_id
+        type: string
+        prompt: What is the vehicle registration or ID?
+    adaptive_card:
+      title: Maintenance Alert
+      fields:
+        - id: vehicle_id
+          label: Vehicle ID
+          type: text
+          required: true
+        - id: fault_type
+          label: Type of fault
+          type: choice
+          options:
+            - Engine
+            - Tyres
+            - Brakes
+            - Lights
+            - Bodywork
+            - Other
+          required: true
+        - id: severity
+          label: Severity
+          type: choice
+          options:
+            - Low — can continue operating
+            - Medium — needs attention soon
+            - High — take vehicle off road
+          required: true
+        - id: description
+          label: Description
+          type: text
+          multiline: true
+    submit_action:
+      type: power_automate_flow
+      flow_name: LogMaintenanceAlert
+      output_message: >
+        Maintenance alert logged for {vehicle_id}. Reference: {alert_id}.
+        The maintenance team has been notified.
+        If this vehicle is currently scheduled for active routes, dispatchers
+        will be alerted automatically.
+
+  - name: Compliance Check
+    trigger_phrases:
+      - "When is {vehicle_id} MOT due?"
+      - "Compliance status for {vehicle_id}"
+      - "Is {vehicle_id} roadworthy?"
+      - "Check driver licence expiry for {driver_id}"
+    entities:
+      - name: vehicle_id
+        type: string
+        prompt: What is the vehicle registration or ID?
+    actions:
+      - type: power_automate_flow
+        flow_name: GetComplianceStatus
+        input:
+          vehicle_id: "{vehicle_id}"
+        output_message: >
+          Vehicle {vehicle_id} compliance: MOT due **{mot_due_date}**,
+          insurance expires **{insurance_expiry}**,
+          last inspection **{last_inspection_date}**.
+
+  - name: Incident Reporting
+    trigger_phrases:
+      - Report an accident
+      - Log an incident
+      - I was in a collision
+      - Vehicle breakdown
+    adaptive_card:
+      title: Incident Report
+      fields:
+        - id: vehicle_id
+          label: Vehicle ID
+          type: text
+          required: true
+        - id: incident_type
+          label: Incident type
+          type: choice
+          options:
+            - Collision
+            - Breakdown
+            - Near miss
+            - Theft/vandalism
+            - Other
+          required: true
+        - id: incident_date_time
+          label: Date and time of incident
+          type: datetime
+          required: true
+        - id: location
+          label: Location
+          type: text
+          required: true
+        - id: description
+          label: Description
+          type: text
+          multiline: true
+          required: true
+        - id: injuries
+          label: Were there any injuries?
+          type: boolean
+    submit_action:
+      type: power_automate_flow
+      flow_name: CreateIncidentReport
+      output_message: >
+        Incident report submitted. Reference: {incident_id}.
+        Your fleet manager has been notified.
+
+  - name: Route Guidance
+    trigger_phrases:
+      - "Best route from {origin} to {destination}"
+      - "Route to {destination}"
+      - "How long will it take to get to {destination}?"
+    entities:
+      - name: origin
+        type: string
+        prompt: What is your current location or starting point?
+      - name: destination
+        type: string
+        prompt: Where do you need to go?
+    actions:
+      - type: power_automate_flow
+        flow_name: GetRouteGuidance
+        input:
+          origin: "{origin}"
+          destination: "{destination}"
+        output_message: >
+          Recommended route from {origin} to {destination}:
+          {route_summary}. Estimated travel time: {eta}.
+          {traffic_alerts}
+
+  - name: Unified Fleet Dashboard
+    trigger_phrases:
+      - Give me a fleet overview
+      - Fleet dashboard
+      - Show fleet status
+      - Fleet operations summary
+    actions:
+      - type: power_automate_flow
+        flow_name: GetFleetDashboard
+        output_message: >
+          Fleet overview as of {dashboard_timestamp}.
+    adaptive_card:
+      title: Fleet Operations Dashboard
+      sections:
+        - heading: Vehicle Health (Fleet Coordinator)
+          fields:
+            - label: Total active vehicles
+              value: "{active_vehicle_count}"
+            - label: Vehicles with maintenance alerts
+              value: "{maintenance_alert_count}"
+            - label: Earliest maintenance hold expiry
+              value: "{next_maintenance_hold_expiry}"
+        - heading: Fuel Overview (Fuel Tracking)
+          fields:
+            - label: Weekly fuel spend
+              value: "{weekly_fuel_spend}"
+            - label: Budget variance
+              value: "{fuel_budget_variance}"
+            - label: Open anomaly count
+              value: "{open_anomaly_count}"
+        - heading: Route Performance (Route Optimizer)
+          fields:
+            - label: Routes completed this week
+              value: "{routes_completed_this_week}"
+            - label: On-time delivery rate
+              value: "{on_time_delivery_rate}"
+            - label: Active re-routing alerts
+              value: "{active_reroute_alerts}"
+
+  - name: Incident Escalation
+    trigger_phrases:
+      - Report a breakdown
+      - Vehicle is broken down
+      - Truck broke down
+      - Emergency incident
+    entities:
+      - name: vehicle_id
+        type: string
+        prompt: What is the vehicle registration or ID?
+      - name: location
+        type: string
+        prompt: What is the current location of the vehicle?
+    adaptive_card:
+      title: Incident Escalation
+      fields:
+        - id: vehicle_id
+          label: Vehicle ID
+          type: text
+          required: true
+        - id: incident_type
+          label: Incident type
+          type: choice
+          options:
+            - Breakdown
+            - Collision
+            - Medical emergency
+            - Cargo spill
+            - Other
+          required: true
+        - id: location
+          label: Location
+          type: text
+          required: true
+        - id: description
+          label: Description
+          type: text
+          multiline: true
+          required: true
+    submit_action:
+      type: power_automate_flow
+      flow_name: TriggerCrossAgentEscalation
+      output_message: >
+        Escalation triggered for {vehicle_id}. Reference: {escalation_id}.
+        Route Optimizer has been notified to re-route affected deliveries.
+        Fuel card suspension check has been initiated.
+        Dispatcher has been notified.

@@ -1,0 +1,25 @@
+# Name: Cost Optimization
+# Domain-specific topic for Azure_Subscriptions
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnRecognizedIntent
+  id: main
+  intent:
+    displayName: Cost Optimization
+    includeInOnSelectIntent: true
+    triggerQueries:
+      - cost optimization
+      - reduce costs
+      - cost management
+      - billing
+  actions:
+    - kind: SendActivity
+      id: sendMessage_response
+      activity:
+        text:
+          - I'll help optimize your Azure costs. Would you like to analyze current spending, identify cost-saving opportunities, or set up budget alerts?
+        speak:
+          - I'll help optimize your Azure costs. Would you like to analyze current spending, identify cost-saving opportunities, or set up budget alerts?
+
+    - kind: CancelAllDialogs
+      id: cancelAllDialogs_end

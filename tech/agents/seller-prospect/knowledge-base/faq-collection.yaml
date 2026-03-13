@@ -1,0 +1,202 @@
+schemaVersion: 1.0
+knowledgeSource:
+  key: faq-collection
+  name: FAQ Collection
+  visibility: external-and-internal
+  sourceType: structured-faq
+  contentPolicy: public-safe-only
+  description: >
+    Structured FAQ content covering the most common questions from website prospects.
+    Topics include pricing, implementation timeline, integration capabilities, and
+    support tier definitions. The agent uses this source to provide accurate,
+    consistent answers in external web chat sessions.
+
+categories:
+
+  - id: pricing
+    title: Pricing and Packaging
+    questions:
+      - id: faq-pricing-01
+        question: How much does the platform cost?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Pricing depends on your user count, chosen modules, and contract term. We offer
+          three published tiers: Essentials (SMB), Professional (mid-market), and Enterprise
+          (custom pricing). For a formal quote tailored to your requirements, please speak
+          with one of our sales specialists. I can connect you now if you are ready.
+        relatedFaqs:
+          - faq-pricing-02
+          - faq-pricing-03
+
+      - id: faq-pricing-02
+        question: Is there a free trial or pilot program available?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Yes. We offer a guided proof-of-concept program for qualified prospects. The pilot
+          includes a provisioned sandbox environment, onboarding support, and a defined
+          success criteria framework. Pilot eligibility is confirmed during the qualification
+          call with your account executive.
+
+      - id: faq-pricing-03
+        question: Are there discounts for multi-year contracts?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Volume and multi-year discounts are available and negotiated as part of your
+          Enterprise Agreement. Typical structures include annual prepay discounts and
+          volume tiers tied to user count growth. Your account executive can share the
+          current discount schedule under NDA.
+
+      - id: faq-pricing-04
+        question: What is included in each pricing tier?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Essentials includes core Sales Accelerator, standard CRM connectors, and community
+          support for up to 50 users. Professional adds Analytics Studio, the full connector
+          library, and 9x5 business-hours support for up to 500 users. Enterprise is fully
+          customized and includes unlimited users, a dedicated customer success manager,
+          24x7 Premier Support, and advanced compliance options.
+
+      - id: faq-pricing-05
+        question: Is billing per user or per usage?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Standard billing is per named user on an annual subscription. Enterprise customers
+          can negotiate capacity-based or consumption-based models for certain add-on
+          services such as API throughput and AI credits. Details are confirmed during
+          the commercial proposal stage.
+
+  - id: implementation
+    title: Implementation Timeline
+    questions:
+      - id: faq-impl-01
+        question: How long does implementation take?
+        approvalStatus: approved
+        lastReviewed: "2025-10-15"
+        answer: >
+          Typical implementation timelines: Essentials tier deploys in 4 to 6 weeks with
+          a standard onboarding package. Professional tier takes 8 to 12 weeks including
+          connector configuration and user training. Enterprise engagements are scoped
+          individually; typical range is 3 to 6 months depending on integration complexity,
+          data migration, and change management scope.
+
+      - id: faq-impl-02
+        question: Do you provide implementation support or do we need a partner?
+        approvalStatus: approved
+        lastReviewed: "2025-10-15"
+        answer: >
+          We offer a Professional Services team for direct implementation engagements.
+          Essentials and Professional customers can also engage our certified partner
+          network. Enterprise customers receive a named Customer Success Manager who
+          oversees the implementation program and partner delivery.
+
+      - id: faq-impl-03
+        question: What does the onboarding process look like?
+        approvalStatus: approved
+        lastReviewed: "2025-10-15"
+        answer: >
+          Onboarding follows four phases: environment provisioning, connector and identity
+          configuration, content and workflow setup, and user acceptance testing. Each phase
+          has defined deliverables and a sign-off checkpoint. Your Customer Success Manager
+          or onboarding specialist tracks progress in a shared project plan.
+
+      - id: faq-impl-04
+        question: What technical resources do we need internally to support implementation?
+        approvalStatus: approved
+        lastReviewed: "2025-10-15"
+        answer: >
+          Recommended internal roles: a project sponsor, an IT or Power Platform administrator
+          for environment setup, and a business lead for workflow and content decisions. For
+          CRM integrations, access to a Salesforce or Dynamics 365 admin is required.
+          No custom development is required for standard deployments.
+
+  - id: integration
+    title: Integration Capabilities
+    questions:
+      - id: faq-integ-01
+        question: Which CRM systems do you integrate with?
+        approvalStatus: approved
+        lastReviewed: "2025-09-15"
+        answer: >
+          We provide native connectors for Salesforce (all editions), Microsoft Dynamics 365,
+          HubSpot, and Pipedrive. Integration is bidirectional: the platform can read and
+          write records, trigger workflows, and sync field-level data in real time. SAP CRM
+          and other enterprise CRMs are supported through our Integration Hub Premium add-on.
+
+      - id: faq-integ-02
+        question: Do you have APIs we can use for custom integrations?
+        approvalStatus: approved
+        lastReviewed: "2025-09-15"
+        answer: >
+          Yes. We publish a fully documented REST API with an OpenAPI 3.0 specification.
+          Authentication uses OAuth 2.0 and API key options. We also support inbound and
+          outbound webhooks for event-driven integration. A custom connector SDK is
+          available for teams building proprietary connectors.
+
+      - id: faq-integ-03
+        question: Can the platform integrate with our existing identity provider?
+        approvalStatus: approved
+        lastReviewed: "2025-09-15"
+        answer: >
+          Yes. We support Microsoft Entra ID (Azure AD) for enterprise SSO and SCIM
+          provisioning. External-facing deployments support Azure AD B2C and any
+          OIDC-compliant identity provider. SAML 2.0 federation is also supported for
+          legacy identity infrastructure.
+
+      - id: faq-integ-04
+        question: How does the platform handle data from multiple source systems?
+        approvalStatus: approved
+        lastReviewed: "2025-09-15"
+        answer: >
+          All integrated data is normalized into a unified Dataverse data layer. Cross-system
+          entity resolution uses configurable matching keys (email, account ID, domain).
+          Data lineage is tracked per record so you can trace every value back to its
+          originating system. Conflict resolution policies are configurable by field.
+
+  - id: support
+    title: Support Tiers
+    questions:
+      - id: faq-support-01
+        question: What support options are available?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Three support tiers: Community (Essentials) provides access to documentation,
+          community forums, and ticket submission with a 2-business-day response target.
+          Business Hours Support (Professional) adds phone and chat access Monday to
+          Friday 9am to 5pm local time with a 4-hour response target for critical issues.
+          Premier Support (Enterprise) provides 24x7 phone and chat with a 1-hour
+          critical response target and a named senior support engineer.
+
+      - id: faq-support-02
+        question: Is there a dedicated support contact for Enterprise customers?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Enterprise customers receive a named Customer Success Manager for strategic
+          guidance and a named Premier Support Engineer for technical escalations. Both
+          roles are accessible via direct contact channels outside the standard ticket queue.
+
+      - id: faq-support-03
+        question: What is your uptime SLA?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Essentials carries a 99.5 percent monthly uptime SLA. Professional is 99.9 percent.
+          Enterprise SLAs are negotiated and can reach 99.99 percent with optional active-active
+          regional redundancy. SLA credits are defined in the service agreement and applied
+          automatically when breach thresholds are exceeded.
+
+      - id: faq-support-04
+        question: Where can I find your documentation and training resources?
+        approvalStatus: approved
+        lastReviewed: "2025-11-01"
+        answer: >
+          Our public documentation portal covers product guides, API references, connector
+          setup, and best practices. All customers receive access to our learning management
+          system with role-based training paths. Enterprise customers also receive access
+          to recorded workshops and quarterly roadmap briefings.

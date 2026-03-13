@@ -1,0 +1,169 @@
+# Test cases for transportation/route-optimizer agent
+# Covers route optimization queries, ETA calculations, and distance queries.
+#
+# Tiers:
+#   critical   -- route optimization and distance facts that must always be present
+#   functional -- ETA and route planning queries graded by LLM judge
+
+- id: trans-ro-crit-001
+  tier: critical
+  query: "What is the optimal route from the main depot to the Northside delivery zone?"
+  expected_keywords:
+    - route
+    - optimal
+    - depot
+    - Northside
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The route optimizer agent calculates optimal delivery routes using real-time
+    traffic data and vehicle capacity constraints. Routes are optimized for
+    minimum travel time or minimum fuel consumption depending on the objective.
+  description: >
+    Verifies that the agent returns a response addressing route optimization
+    with the specified origin and destination.
+
+- id: trans-ro-crit-002
+  tier: critical
+  query: "What is the estimated travel time between the warehouse and the Eastpark distribution center?"
+  expected_keywords:
+    - travel time
+    - warehouse
+    - Eastpark
+    - estimated
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The route optimizer agent provides estimated travel times using routing API
+    data. Times account for current traffic conditions and time of day.
+  description: >
+    Verifies that the agent provides an ETA response referencing both endpoints
+    and the estimated travel time concept.
+
+- id: trans-ro-crit-003
+  tier: critical
+  query: "How many stops does the standard morning delivery route include?"
+  expected_keywords:
+    - stops
+    - route
+    - morning
+    - delivery
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The route optimizer agent manages scheduled delivery routes. The standard
+    morning route includes a defined set of stops loaded from the routing
+    configuration.
+  description: >
+    Verifies that the agent correctly references stop count and route context
+    for the morning delivery schedule.
+
+- id: trans-ro-crit-004
+  tier: critical
+  query: "What is the total distance in miles for route RT-042?"
+  expected_keywords:
+    - distance
+    - miles
+    - RT-042
+    - route
+  grader: keyword_match
+  pass_threshold: 1.0
+  context: >
+    The route optimizer agent can retrieve route details by route ID. Route IDs
+    follow the format RT-XXX. Distance is stored in the routing API for each
+    configured route.
+  description: >
+    Verifies that the agent handles a route-specific distance query by route ID.
+
+- id: trans-ro-func-001
+  tier: functional
+  query: "Traffic is heavy on Highway 7 this morning. Can you suggest an alternative route for the southern delivery zone?"
+  expected_keywords:
+    - alternative
+    - route
+    - southern
+    - traffic
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - safety
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The route optimizer agent dynamically adjusts routes based on real-time
+    traffic conditions. When a primary route is congested, the agent can
+    propose alternative routes with comparative travel time estimates.
+  description: >
+    Tests that the agent responds appropriately to a dynamic re-routing request
+    caused by traffic conditions and proposes a plausible alternative.
+
+- id: trans-ro-func-002
+  tier: functional
+  query: "We have a new stop added at 450 Commerce Boulevard. How does this affect the current route timing?"
+  expected_keywords:
+    - stop
+    - Commerce
+    - timing
+    - route
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The route optimizer agent can recalculate route timing when stops are added
+    or removed. Adding a stop requires updating the routing configuration and
+    recomputing travel time estimates for the affected route segment.
+  description: >
+    Tests that the agent handles a route modification request by acknowledging
+    the new stop and explaining the timing impact calculation process.
+
+- id: trans-ro-func-003
+  tier: functional
+  query: "What is the fuel cost estimate for a round trip from the depot to the Central Business District?"
+  expected_keywords:
+    - fuel
+    - cost
+    - estimate
+    - round trip
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The route optimizer agent can estimate fuel cost for a route by combining
+    distance data with the fleet average miles-per-gallon figure and current
+    fuel price from the fuel tracking system.
+  description: >
+    Tests that the agent provides a fuel cost estimate by combining route
+    distance, vehicle efficiency, and fuel pricing data.
+
+- id: trans-ro-func-004
+  tier: functional
+  query: "Which delivery routes have the highest average delay and what is causing it?"
+  expected_keywords:
+    - delay
+    - routes
+    - average
+    - cause
+  grader: llm_judge
+  dimensions:
+    - groundedness
+    - completeness
+    - relevance
+    - tone
+  pass_threshold: 0.7
+  context: >
+    The route optimizer agent analyzes historical route performance data to
+    identify patterns of delay. Common delay causes include traffic congestion,
+    long dwell times at stops, vehicle breakdowns, and inaccurate time estimates.
+  description: >
+    Tests that the agent provides a grounded analysis of route delays and their
+    contributing factors with actionable improvement suggestions.

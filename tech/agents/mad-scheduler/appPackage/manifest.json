@@ -1,0 +1,88 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.20/MicrosoftTeams.schema.json",
+  "version": "1.0.0",
+  "manifestVersion": "1.20",
+  "id": "${{TEAMS_APP_ID}}",
+  "name": {
+    "short": "scheduler-agent-${{APP_NAME_SUFFIX}}",
+    "full": "Scheduler Agent"
+  },
+  "developer": {
+    "name": "Microsoft",
+    "mpnId": "",
+    "websiteUrl": "https://microsoft.com",
+    "privacyUrl": "https://privacy.microsoft.com/privacystatement",
+    "termsOfUseUrl": "https://www.microsoft.com/legal/terms-of-use"
+  },
+  "description": {
+    "short": "An AI-powered scheduling assistant.",
+    "full": "This AI-powered scheduling assistant helps you manage your calendar, schedule meetings, and find available time slots with ease. It can understand natural language requests to create, update, and cancel appointments."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#FFFFFF",
+  "staticTabs": [
+    {
+      "entityId": "conversations",
+      "scopes": ["personal"]
+    },
+    {
+      "entityId": "about",
+      "scopes": ["personal"]
+    }
+  ],
+  "bots": [
+    {
+      "botId": "${{BOT_ID}}",
+      "scopes": ["personal", "team", "groupChat"],
+      "isNotificationOnly": false,
+      "supportsCalling": false,
+      "supportsVideo": false,
+      "supportsFiles": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal",
+            "team",
+            "groupChat"
+          ],
+          "commands": [
+            {
+              "title": "schedule",
+              "description": "Schedule a new meeting."
+            },
+            {
+              "title": "view",
+              "description": "View your upcoming schedule."
+            },
+            {
+              "title": "cancel",
+              "description": "Cancel an existing meeting."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "copilotAgents": {
+    "customEngineAgents": [
+      {
+        "id": "${{BOT_ID}}",
+        "type": "bot",
+        "disclaimer": {
+          "text": "This is a custom AI agent and may not always be accurate."
+        }
+      }
+    ]
+  },
+  "validDomains": [
+    "${{BOT_DOMAIN}}",
+    "*.botframework.com"
+  ],
+  "webApplicationInfo": {
+    "id": "${{BOT_ID}}",
+    "resource": "api://botid-${{BOT_ID}}"
+  }
+}

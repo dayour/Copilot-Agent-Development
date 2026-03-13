@@ -1,0 +1,638 @@
+solution:
+  name: RouteOptimizationSchedulerSolution
+  display_name: Route Optimization Scheduler Solution
+  version: 1.0.0.0
+  publisher: transportation-platform
+  managed: true
+  dependencies:
+    - solution_name: TransportationSharedDataverse
+      minimum_version: "1.0.0.0"
+
+environment_variables:
+  - schema_name: MappingApiUrl
+    display_name: Mapping API URL
+    type: string
+    required: true
+    default_value: https://atlas.microsoft.com/route
+  - schema_name: MappingApiKey
+    display_name: Mapping API Key
+    type: secret
+    required: true
+  - schema_name: TrafficApiUrl
+    display_name: Traffic API URL
+    type: string
+    required: true
+    default_value: https://atlas.microsoft.com/traffic
+  - schema_name: TrafficApiKey
+    display_name: Traffic API Key
+    type: secret
+    required: true
+  - schema_name: TelematicsApiUrl
+    display_name: Telematics API URL
+    type: string
+    required: true
+    default_value: https://api.telematicsvendor.com/v2
+  - schema_name: TelematicsApiKey
+    display_name: Telematics API Key
+    type: secret
+    required: true
+  - schema_name: HosApiUrl
+    display_name: HOS System API URL
+    type: string
+    required: true
+    default_value: https://api.hossystem.com/v1
+  - schema_name: HosApiKey
+    display_name: HOS System API Key
+    type: secret
+    required: true
+  - schema_name: RerouteDelayThresholdMinutes
+    display_name: Re-route Delay Threshold (minutes)
+    type: number
+    required: true
+    default_value: 30
+  - schema_name: DispatchAlertEmail
+    display_name: Dispatch Alert Email
+    type: string
+    required: true
+    default_value: fleet-dispatch@contoso.com
+  - schema_name: FuelTrackingFlowBaseUrl
+    display_name: Fuel Tracking Flow Base URL
+    type: string
+    required: true
+    default_value: ""
+
+dataverse:
+  tables:
+    - logical_name: crd_routes
+      display_name: Routes
+      description: Route definitions with planned stops, time windows, and assignment metadata.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Route Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          required: false
+          max_length: 50
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: false
+          max_length: 50
+        - name: crd_planned_departure
+          display_name: planned_departure
+          type: datetime
+          required: true
+          behavior: user_local
+        - name: crd_status
+          display_name: status
+          type: choice
+          options:
+            - planned
+            - in_progress
+            - completed
+            - cancelled
+        - name: crd_total_stops
+          display_name: total_stops
+          type: whole_number
+          required: true
+        - name: crd_optimized_sequence_json
+          display_name: optimized_sequence_json
+          type: multiline_text
+          max_length: 4000
+        - name: crd_required_certification
+          display_name: required_certification
+          type: text
+          max_length: 100
+        - name: crd_reroute_active
+          display_name: reroute_active
+          type: boolean
+          default_value: false
+        - name: crd_estimated_fuel_cost
+          display_name: estimated_fuel_cost
+          type: currency
+          precision: 2
+          required: false
+      indexes:
+        - name: idx_routes_driver_departure
+          columns:
+            - crd_driver_id
+            - crd_planned_departure
+        - name: idx_routes_vehicle_status
+          columns:
+            - crd_vehicle_id
+            - crd_status
+
+    - logical_name: crd_routestops
+      display_name: RouteStops
+      description: Individual stop records associated with a route, including time windows and sequence position.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Stop Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_stop_id
+          display_name: stop_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_sequence_position
+          display_name: sequence_position
+          type: whole_number
+          required: true
+        - name: crd_address
+          display_name: address
+          type: text
+          max_length: 500
+        - name: crd_location_lat
+          display_name: location_lat
+          type: decimal
+          precision: 9
+          scale: 6
+          required: false
+        - name: crd_location_lon
+          display_name: location_lon
+          type: decimal
+          precision: 9
+          scale: 6
+          required: false
+        - name: crd_time_window_start
+          display_name: time_window_start
+          type: datetime
+          behavior: user_local
+        - name: crd_time_window_end
+          display_name: time_window_end
+          type: datetime
+          behavior: user_local
+        - name: crd_actual_arrival
+          display_name: actual_arrival
+          type: datetime
+          behavior: user_local
+        - name: crd_estimated_arrival
+          display_name: estimated_arrival
+          type: datetime
+          behavior: user_local
+
+    - logical_name: crd_driverassignments
+      display_name: DriverAssignments
+      description: Driver-to-route assignments with certification validation metadata.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Assignment Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_assignment_id
+          display_name: assignment_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_route_id
+          display_name: route_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: true
+          max_length: 50
+        - name: crd_certifications_verified
+          display_name: certifications_verified
+          type: multiline_text
+          max_length: 1000
+        - name: crd_hos_hours_remaining_at_assign
+          display_name: hos_hours_remaining_at_assign
+          type: decimal
+          precision: 5
+          scale: 2
+        - name: crd_assigned_on
+          display_name: assigned_on
+          type: datetime
+          behavior: user_local
+
+    - logical_name: crd_hosrecords
+      display_name: HosRecords
+      description: Driver Hours of Service records used for compliance checks before route assignment.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: HOS Record Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: true
+          max_length: 50
+        - name: crd_hours_driven_today
+          display_name: hours_driven_today
+          type: decimal
+          precision: 5
+          scale: 2
+          required: true
+        - name: crd_hours_driven_this_week
+          display_name: hours_driven_this_week
+          type: decimal
+          precision: 6
+          scale: 2
+          required: true
+        - name: crd_daily_limit_hours
+          display_name: daily_limit_hours
+          type: decimal
+          precision: 4
+          scale: 1
+          required: true
+        - name: crd_weekly_limit_hours
+          display_name: weekly_limit_hours
+          type: decimal
+          precision: 5
+          scale: 1
+          required: true
+        - name: crd_last_updated
+          display_name: last_updated
+          type: datetime
+          behavior: user_local
+
+connectors:
+  - name: MappingApiHttp
+    type: http
+    description: HTTP connector for route optimization and real-time traffic data.
+    configuration:
+      base_url_env_var: MappingApiUrl
+      authentication: api_key
+      api_key_env_var: MappingApiKey
+      api_key_header: subscription-key
+  - name: TrafficApiHttp
+    type: http
+    description: HTTP connector for live traffic conditions and incident data.
+    configuration:
+      base_url_env_var: TrafficApiUrl
+      authentication: api_key
+      api_key_env_var: TrafficApiKey
+      api_key_header: subscription-key
+  - name: TelematicsApiHttp
+    type: http
+    description: HTTP connector for vehicle GPS position and telematics context.
+    configuration:
+      base_url_env_var: TelematicsApiUrl
+      authentication: api_key
+      api_key_env_var: TelematicsApiKey
+      api_key_header: x-api-key
+  - name: HosApiHttp
+    type: http
+    description: HTTP connector for driver Hours of Service records.
+    configuration:
+      base_url_env_var: HosApiUrl
+      authentication: api_key
+      api_key_env_var: HosApiKey
+      api_key_header: x-api-key
+  - name: Dataverse
+    type: first_party
+    description: Dataverse connector for routes, stops, driver assignments, and HOS records.
+  - name: FuelTrackingHttp
+    type: http
+    description: >
+      HTTP connector for calling Fuel Tracking Power Automate flows
+      (GetFuelPrices) during fuel-route correlation.
+    configuration:
+      base_url_env_var: FuelTrackingFlowBaseUrl
+      authentication: managed_identity
+
+flows:
+  - name: OptimizeRoute
+    trigger: instant_from_agent
+    description: Calls mapping API to compute optimized stop sequence respecting time windows, then persists result to Routes table.
+    inputs:
+      - routeId
+      - stops
+    outputs:
+      - optimizedSequence
+      - totalTravelTime
+      - timeWindowsRespected
+      - timeSavingsMinutes
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: http_post
+        connector: MappingApiHttp
+        path: /optimize
+      - action: parse_json
+      - action: update_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+      - action: respond_to_agent
+
+  - name: CalculateRealTimeEta
+    trigger: instant_from_agent
+    description: Retrieves vehicle GPS position from telematics API, applies live traffic, and returns ETA for the next or specified stop.
+    inputs:
+      - vehicleId
+      - destinationStopId
+    outputs:
+      - currentPosition
+      - destinationName
+      - etaTimestamp
+      - distanceRemainingMiles
+      - trafficConditionSummary
+    steps:
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/position
+      - action: http_get
+        connector: TrafficApiHttp
+        path: /flow/segment
+      - action: compute_eta
+      - action: respond_to_agent
+
+  - name: EvaluateReroutingNeed
+    trigger: recurrence_5_minutes
+    description: Compares projected ETA against planned schedule using live traffic; fires rerouting notification if delay exceeds threshold.
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: Routes
+        filter: crd_status eq 'in_progress'
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/position
+      - action: http_get
+        connector: TrafficApiHttp
+        path: /flow/segment
+      - action: evaluate_delay
+      - action: condition
+        if: delay_minutes >= RerouteDelayThresholdMinutes
+        then:
+          - action: http_post
+            connector: MappingApiHttp
+            path: /route/alternative
+          - action: send_email
+            to_env_var: DispatchAlertEmail
+          - action: update_row
+            connector: Dataverse
+            table: Routes
+
+  - name: CheckDriverHosCompliance
+    trigger: instant_from_agent
+    description: Reads driver HOS record and validates whether the driver can accept an additional route without exceeding limits.
+    inputs:
+      - driverId
+      - estimatedRouteHours
+    outputs:
+      - hosCompliant
+      - hoursRemaining
+    steps:
+      - action: http_get
+        connector: HosApiHttp
+        path: /drivers/hos
+      - action: evaluate_hos_compliance
+      - action: upsert_dataverse
+        connector: Dataverse
+        table: HosRecords
+        key: crd_driver_id
+      - action: respond_to_agent
+
+  - name: AssignDriverToRoute
+    trigger: instant_from_agent
+    description: Finds an eligible driver for a route by checking HOS availability and required certifications, then creates a DriverAssignment record.
+    inputs:
+      - routeId
+      - requiredCertification
+    outputs:
+      - assignmentSuccess
+      - assignedDriverId
+      - certificationsVerified
+      - estimatedDeparture
+      - assignmentBlockedReason
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: HosRecords
+        filter: crd_hours_remaining gt estimatedRouteHours and crd_driver_id ne null
+      - action: filter_by_certification
+        certification: requiredCertification
+      - action: select_best_match
+      - action: create_row
+        connector: Dataverse
+        table: DriverAssignments
+      - action: respond_to_agent
+
+  - name: CheckVehicleMaintenanceStatus
+    trigger: instant_from_agent
+    description: >
+      Reads VehicleMaster.maintenance_status for the vehicle assigned to the
+      given route. Returns whether the vehicle is on a maintenance hold and the
+      hold reason. Used by the Driver Assignment topic before accepting new
+      route assignments.
+    inputs:
+      - routeId
+    outputs:
+      - vehicleOnMaintenanceHold
+      - maintenanceHoldReason
+      - maintenanceStatus
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+        filter: crd_route_id eq routeId
+      - action: get_row
+        connector: Dataverse
+        table: VehicleMaster
+        key: crd_vehicle_id
+      - action: evaluate_maintenance_status
+      - action: respond_to_agent
+
+  - name: GetVehicleTankLevel
+    trigger: instant_from_agent
+    description: >
+      Reads current tank level percentage from VehicleMaster for a given
+      vehicle. Used by the Fuel Route Correlation topic to decide whether fuel
+      stop insertion is needed.
+    inputs:
+      - vehicleId
+    outputs:
+      - tankLevelPct
+      - tankCapacityGallons
+      - fuelType
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: VehicleMaster
+        key: crd_vehicle_id
+        filter: crd_vehicle_id eq vehicleId
+      - action: respond_to_agent
+
+  - name: GetFuelPricesForRoute
+    trigger: instant_from_agent
+    description: >
+      Calls Fuel Tracking's GetFuelPrices flow with the active route corridor
+      to return price-ranked fuel station recommendations. Filters results to
+      stations that can be inserted without violating existing stop time windows.
+    inputs:
+      - routeId
+      - vehicleId
+      - tankLevelPct
+    outputs:
+      - fuelStopRecommendations
+      - estimatedFuelCostSaving
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: http_post
+        connector: FuelTrackingHttp
+        path: /flows/GetFuelPrices/trigger
+        body:
+          routeId: "{routeId}"
+          vehicleId: "{vehicleId}"
+      - action: filter_by_time_window_safety
+      - action: respond_to_agent
+
+  - name: InsertFuelStopsIntoRoute
+    trigger: instant_from_agent
+    description: >
+      Inserts recommended fuel stops as RouteStop records at logically
+      appropriate positions in the optimized stop sequence and recalculates
+      total travel time. Persists updated sequence to the Routes table.
+    inputs:
+      - routeId
+      - fuelStopRecommendations
+    outputs:
+      - insertedFuelStopCount
+      - fuelStopSummaryTable
+      - timeWindowImpactSummary
+      - updatedTotalTravelTime
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: RouteStops
+        filter: crd_route_id eq routeId
+      - action: insert_fuel_stops_in_sequence
+      - action: create_rows
+        connector: Dataverse
+        table: RouteStops
+      - action: update_row
+        connector: Dataverse
+        table: Routes
+        key: crd_route_id
+      - action: respond_to_agent
+
+  - name: FindActiveRoutesForVehicle
+    trigger: instant_from_agent
+    description: >
+      Returns all Routes records with status planned or in_progress for the
+      given vehicle. Called by the escalation handler when a breakdown is
+      reported from Fleet Coordinator.
+    inputs:
+      - vehicleId
+    outputs:
+      - affectedRouteCount
+      - affectedRoutes
+      - affectedRouteIds
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: Routes
+        filter: crd_vehicle_id eq vehicleId and crd_status in ('planned','in_progress')
+      - action: respond_to_agent
+
+  - name: RerouteAffectedDeliveries
+    trigger: instant_from_agent
+    description: >
+      For each route in affectedRoutes, finds an alternative available vehicle
+      from VehicleMaster (operational status) or reassigns drivers, then
+      triggers re-optimization and sends Teams notifications to dispatchers.
+      Supports the automated escalation chain initiated by Fleet Coordinator.
+    inputs:
+      - vehicleId
+      - affectedRoutes
+    outputs:
+      - reroutingStatusTable
+      - newEtaSummary
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: VehicleMaster
+        filter: crd_maintenance_status eq 'operational' and crd_active eq true
+      - action: match_replacement_vehicles
+      - action: update_rows
+        connector: Dataverse
+        table: Routes
+      - action: http_post
+        connector: MappingApiHttp
+        path: /route/alternative
+      - action: send_teams_notification
+        to_env_var: DispatchAlertEmail
+      - action: respond_to_agent
+
+  - name: HandleFleetIncidentEscalation
+    trigger: http_post
+    description: >
+      HTTP-triggered entry point called by Fleet Coordinator's
+      TriggerCrossAgentEscalation and NotifyVehicleUnavailable flows. Resolves
+      the vehicle, finds affected routes, initiates re-routing, and returns a
+      summary. This flow is exposed as an HTTP endpoint so Fleet Coordinator
+      can call it without a direct Dataverse dependency.
+    inputs:
+      - vehicle_id
+      - incident_type
+      - hold_reason
+    outputs:
+      - affected_route_count
+      - rerouting_initiated
+      - summary
+    steps:
+      - action: call_flow
+        flow: FindActiveRoutesForVehicle
+        input:
+          vehicleId: "{vehicle_id}"
+      - action: condition
+        if: affectedRouteCount > 0
+        then:
+          - action: call_flow
+            flow: RerouteAffectedDeliveries
+            input:
+              vehicleId: "{vehicle_id}"
+              affectedRoutes: "{affectedRoutes}"
+      - action: http_response
+        status: 200
+        body:
+          affected_route_count: "{affectedRouteCount}"
+          rerouting_initiated: true
+          summary: "{reroutingStatusTable}"
+
+channels:
+  - name: teams
+    display_name: Microsoft Teams
+    enabled: true
+    authentication: entra_id_sso
+  - name: mobile_web
+    display_name: Mobile Web Chat
+    enabled: true
+    authentication: oauth_or_anonymous_by_policy

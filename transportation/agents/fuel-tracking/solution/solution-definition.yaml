@@ -1,0 +1,539 @@
+solution:
+  name: FuelTrackingSolution
+  display_name: Fuel Tracking Solution
+  version: 1.0.0.0
+  publisher: transportation-platform
+  managed: true
+  dependencies:
+    - solution_name: TransportationSharedDataverse
+      minimum_version: "1.0.0.0"
+
+environment_variables:
+  - schema_name: FuelCardApiUrl
+    display_name: Fuel Card API URL
+    type: string
+    required: true
+    default_value: https://api.fuelcardprovider.com/v1
+  - schema_name: FuelCardApiKey
+    display_name: Fuel Card API Key
+    type: secret
+    required: true
+  - schema_name: TelematicsApiUrl
+    display_name: Telematics API URL
+    type: string
+    required: true
+    default_value: https://api.telematicsvendor.com/v2
+  - schema_name: TelematicsApiKey
+    display_name: Telematics API Key
+    type: secret
+    required: true
+  - schema_name: FuelPriceApiKey
+    display_name: Fuel Price API Key
+    type: secret
+    required: true
+  - schema_name: FinanceAlertEmail
+    display_name: Finance Alert Email
+    type: string
+    required: true
+    default_value: fleet-finance-alerts@contoso.com
+  - schema_name: AnomalyThresholdGallons
+    display_name: Anomaly Threshold Gallons
+    type: number
+    required: true
+    default_value: 5
+
+dataverse:
+  tables:
+    - logical_name: crd_fueltransactions
+      display_name: FuelTransactions
+      description: Fuel transaction records ingested from fuel card providers and enriched with telematics context.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Transaction Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_transaction_id
+          display_name: transaction_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_card_number
+          display_name: card_number
+          type: text
+          required: true
+          max_length: 30
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          required: true
+          max_length: 50
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          required: false
+          max_length: 50
+        - name: crd_merchant_name
+          display_name: merchant_name
+          type: text
+          required: false
+          max_length: 200
+        - name: crd_location_lat
+          display_name: location_lat
+          type: decimal
+          precision: 9
+          scale: 6
+          required: false
+        - name: crd_location_lon
+          display_name: location_lon
+          type: decimal
+          precision: 9
+          scale: 6
+          required: false
+        - name: crd_gallons
+          display_name: gallons
+          type: decimal
+          precision: 10
+          scale: 3
+          required: true
+        - name: crd_price_per_gallon
+          display_name: price_per_gallon
+          type: currency
+          precision: 4
+          required: true
+        - name: crd_total_cost
+          display_name: total_cost
+          type: currency
+          precision: 2
+          required: true
+        - name: crd_odometer
+          display_name: odometer
+          type: whole_number
+          required: false
+        - name: crd_timestamp
+          display_name: timestamp
+          type: datetime
+          required: true
+          behavior: user_local
+        - name: crd_anomaly_flag
+          display_name: anomaly_flag
+          type: boolean
+          required: true
+          default_value: false
+      indexes:
+        - name: idx_fueltransactions_vehicle_time
+          columns:
+            - crd_vehicle_id
+            - crd_timestamp
+        - name: idx_fueltransactions_card_time
+          columns:
+            - crd_card_number
+            - crd_timestamp
+
+    - logical_name: crd_anomalyrules
+      display_name: AnomalyRules
+      description: Rule definitions and thresholds used by anomaly detection flows.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Rule Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_rule_code
+          display_name: rule_code
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_rule_type
+          display_name: rule_type
+          type: choice
+          options:
+            - tank_capacity_overfill
+            - multiple_fills_short_period
+            - off_route_fueling
+            - after_hours_fueling
+            - split_transactions
+            - price_above_market
+            - phantom_fill
+        - name: crd_threshold_value
+          display_name: threshold_value
+          type: decimal
+          precision: 10
+          scale: 3
+          required: true
+        - name: crd_threshold_unit
+          display_name: threshold_unit
+          type: text
+          max_length: 50
+        - name: crd_enabled
+          display_name: enabled
+          type: boolean
+          default_value: true
+        - name: crd_severity
+          display_name: severity
+          type: choice
+          options:
+            - low
+            - medium
+            - high
+            - critical
+        - name: crd_description
+          display_name: description
+          type: multiline_text
+          max_length: 4000
+
+    - logical_name: crd_vehiclefuelprofiles
+      display_name: VehicleFuelProfiles
+      description: Per-vehicle fuel efficiency and cost metrics.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Profile Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          required: true
+          max_length: 50
+        - name: crd_vehicle_class
+          display_name: vehicle_class
+          type: text
+          max_length: 50
+        - name: crd_avg_mpg
+          display_name: avg_mpg
+          type: decimal
+          precision: 8
+          scale: 3
+        - name: crd_fill_frequency_per_week
+          display_name: fill_frequency_per_week
+          type: decimal
+          precision: 8
+          scale: 2
+        - name: crd_cost_per_mile
+          display_name: cost_per_mile
+          type: currency
+          precision: 4
+        - name: crd_trend_vs_fleet_avg
+          display_name: trend_vs_fleet_avg
+          type: text
+          max_length: 100
+        - name: crd_last_calculated_on
+          display_name: last_calculated_on
+          type: datetime
+
+    - logical_name: crd_fuelanomalies
+      display_name: FuelAnomalies
+      description: Detected anomaly events with evidence and investigation status.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Anomaly Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_anomaly_id
+          display_name: anomaly_id
+          type: text
+          required: true
+          max_length: 100
+          is_alternate_key: true
+        - name: crd_transaction_id
+          display_name: transaction_id
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_rule_code
+          display_name: rule_code
+          type: text
+          required: true
+          max_length: 100
+        - name: crd_confidence_score
+          display_name: confidence_score
+          type: decimal
+          precision: 4
+          scale: 3
+        - name: crd_evidence_json
+          display_name: evidence_json
+          type: multiline_text
+          max_length: 4000
+        - name: crd_status
+          display_name: status
+          type: choice
+          options:
+            - open
+            - under_review
+            - confirmed
+            - dismissed
+        - name: crd_detected_on
+          display_name: detected_on
+          type: datetime
+
+    - logical_name: crd_fuelcards
+      display_name: FuelCards
+      description: Fuel card metadata and operational status.
+      ownership: organization
+      primary_column:
+        name: crd_name
+        display_name: Card Name
+        type: text
+        max_length: 200
+      columns:
+        - name: crd_card_number
+          display_name: card_number
+          type: text
+          required: true
+          max_length: 30
+          is_alternate_key: true
+        - name: crd_card_last4
+          display_name: card_last4
+          type: text
+          required: true
+          max_length: 4
+        - name: crd_vehicle_id
+          display_name: vehicle_id
+          type: text
+          max_length: 50
+        - name: crd_driver_id
+          display_name: driver_id
+          type: text
+          max_length: 50
+        - name: crd_status
+          display_name: status
+          type: choice
+          options:
+            - active
+            - suspended
+            - closed
+        - name: crd_daily_limit
+          display_name: daily_limit
+          type: currency
+          precision: 2
+        - name: crd_last_updated
+          display_name: last_updated
+          type: datetime
+
+connectors:
+  - name: FuelCardApiHttp
+    type: http
+    description: HTTP connector for fuel card provider transactions and card state management.
+    configuration:
+      base_url_env_var: FuelCardApiUrl
+      authentication: api_key
+      api_key_env_var: FuelCardApiKey
+      api_key_header: x-api-key
+  - name: TelematicsApiHttp
+    type: http
+    description: HTTP connector for telematics route, location, and sensor context.
+    configuration:
+      base_url_env_var: TelematicsApiUrl
+      authentication: api_key
+      api_key_env_var: TelematicsApiKey
+      api_key_header: x-api-key
+  - name: FuelPriceApiHttp
+    type: http
+    description: HTTP connector for live fuel price lookups by geo region.
+    configuration:
+      base_url: https://api.fuelpriceservice.com/v1
+      authentication: api_key
+      api_key_env_var: FuelPriceApiKey
+      api_key_header: x-api-key
+  - name: Dataverse
+    type: first_party
+    description: Dataverse connector for transactional storage, anomaly records, and profiles.
+
+flows:
+  - name: IngestFuelTransactions
+    trigger: recurrence_5_minutes
+    description: Pulls new transactions from fuel card provider and upserts FuelTransactions records.
+    steps:
+      - action: http_get
+        connector: FuelCardApiHttp
+        path: /transactions
+      - action: parse_json
+      - action: upsert_dataverse
+        connector: Dataverse
+        table: FuelTransactions
+        key: crd_transaction_id
+
+  - name: DetectAnomalies
+    trigger: on_fueltransactions_create_or_update
+    description: Evaluates transactions against AnomalyRules and writes FuelAnomalies records.
+    steps:
+      - action: list_rows
+        connector: Dataverse
+        table: AnomalyRules
+        filter: crd_enabled eq true
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/context
+      - action: evaluate_rules
+      - action: create_rows
+        connector: Dataverse
+        table: FuelAnomalies
+      - action: send_email
+        to_env_var: FinanceAlertEmail
+        condition: high_or_critical
+
+  - name: GetFuelPrices
+    trigger: instant_from_agent
+    description: Returns nearby fuel stations with route-aware ranking.
+    inputs:
+      - location
+      - routeId
+    outputs:
+      - recommendations
+    steps:
+      - action: http_get
+        connector: FuelPriceApiHttp
+        path: /prices/nearby
+      - action: transform_rank
+      - action: respond_to_agent
+
+  - name: SuspendFuelCard
+    trigger: instant_from_agent
+    description: Suspends a fuel card through provider API and updates Dataverse FuelCards table.
+    inputs:
+      - cardLast4
+      - action
+    outputs:
+      - status
+      - providerReference
+    steps:
+      - action: http_post
+        connector: FuelCardApiHttp
+        path: /cards/suspend
+      - action: update_row
+        connector: Dataverse
+        table: FuelCards
+      - action: respond_to_agent
+
+  - name: GetVehicleFuelProfile
+    trigger: instant_from_agent
+    description: Computes and returns vehicle profile metrics for agent responses.
+    inputs:
+      - vehicleId
+    outputs:
+      - avgMpg
+      - fillFrequency
+      - costPerMile
+      - trendVsFleetAvg
+    steps:
+      - action: query_dataverse
+        connector: Dataverse
+        table: FuelTransactions
+      - action: compute_profile_metrics
+      - action: upsert_dataverse
+        connector: Dataverse
+        table: VehicleFuelProfiles
+      - action: respond_to_agent
+
+  - name: GetVehicleTankLevel
+    trigger: instant_from_agent
+    description: >
+      Reads current tank level percentage and capacity from VehicleMaster,
+      enriched with the latest telematics sensor reading. Called by Route
+      Optimizer during fuel-route correlation to determine whether fuel stop
+      insertion is needed.
+    inputs:
+      - vehicleId
+    outputs:
+      - tankLevelPct
+      - tankCapacityGallons
+      - fuelType
+      - estimatedRangeMiles
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: VehicleMaster
+        key: crd_vehicle_id
+        filter: crd_vehicle_id eq vehicleId
+      - action: http_get
+        connector: TelematicsApiHttp
+        path: /vehicle/fuel-level
+        params:
+          vehicleId: "{vehicleId}"
+      - action: merge_telematics_with_master
+      - action: respond_to_agent
+
+  - name: GetFuelCardForVehicle
+    trigger: instant_from_agent
+    description: >
+      Returns the active fuel card record associated with the given vehicle.
+      Used by the Fuel Card Breakdown Check topic to identify which card may
+      need suspension after a breakdown.
+    inputs:
+      - vehicleId
+    outputs:
+      - cardLast4
+      - cardStatus
+      - cardNumber
+    steps:
+      - action: get_row
+        connector: Dataverse
+        table: FuelCards
+        filter: crd_vehicle_id eq vehicleId and crd_status eq 'active'
+      - action: respond_to_agent
+
+  - name: CheckFuelCardOnBreakdown
+    trigger: http_post
+    description: >
+      HTTP-triggered entry point called by Fleet Coordinator's
+      TriggerCrossAgentEscalation flow when a breakdown incident is reported.
+      Looks up the vehicle's fuel card, presents a suspension decision to the
+      dispatcher, and executes suspension if confirmed. Returns card action
+      status to the calling flow.
+    inputs:
+      - vehicle_id
+      - incident_id
+    outputs:
+      - card_action_taken
+      - card_last4
+      - provider_reference
+    steps:
+      - action: call_flow
+        flow: GetFuelCardForVehicle
+        input:
+          vehicleId: "{vehicle_id}"
+      - action: condition
+        if: cardStatus = 'active'
+        then:
+          - action: send_adaptive_card_with_override
+            channel: teams
+            title: "Fuel Card Check — Broken Down Vehicle"
+            body: "Vehicle {vehicle_id} is stranded (Incident {incident_id}). Suspend fuel card ending {cardLast4}?"
+            buttons:
+              - label: Suspend Card
+                value: suspend
+              - label: Leave Active
+                value: skip
+          - action: condition
+            if: dispatcher_response = suspend
+            then:
+              - action: call_flow
+                flow: SuspendFuelCard
+                input:
+                  cardLast4: "{cardLast4}"
+                  action: suspend
+      - action: http_response
+        status: 200
+        body:
+          card_action_taken: "{card_action_taken}"
+          card_last4: "{cardLast4}"
+          provider_reference: "{providerReference}"
+
+channels:
+  - name: teams
+    display_name: Microsoft Teams
+    enabled: true
+    authentication: entra_id_sso
+  - name: mobile_web
+    display_name: Mobile Web Chat
+    enabled: true
+    authentication: oauth_or_anonymous_by_policy
+
