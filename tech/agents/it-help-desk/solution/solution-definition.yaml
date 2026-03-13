@@ -5,7 +5,7 @@
 solution:
   name: TechItHelpDesk
   display_name: "Tech — IT Help Desk"
-  version: "1.0.0"
+  version: "1.0.1"
   publisher: Copilot Agent Development
   description: >
     Showcase solution for the IT Help Desk agent in the Tech vertical.

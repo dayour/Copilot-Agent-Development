@@ -6,7 +6,7 @@
 solution:
   name: TransportationFleetCoordinator
   display_name: "Transportation — Fleet Coordinator"
-  version: "1.0.0"
+  version: "1.0.1"
   publisher: Copilot Agent Development
   description: >
     Showcase solution for the Fleet Coordinator agent in the Transportation vertical.

@@ -1,7 +1,7 @@
 solution:
   name: RouteOptimizationSchedulerSolution
   display_name: Route Optimization Scheduler Solution
-  version: 1.0.0.0
+  version: "1.0.1"
   publisher: transportation-platform
   managed: true
   dependencies:

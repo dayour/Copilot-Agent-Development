@@ -5,6 +5,12 @@ All notable changes to the Fleet Coordinator agent will be documented in this fi
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-03-13
+
+### Fixed
+
+- docs: remove emoji content and polish Pages entry points
+
 ## [1.0.0] - 2026-03-02
 
 ### Added
