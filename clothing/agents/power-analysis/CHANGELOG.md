@@ -5,6 +5,12 @@ All notable changes to the Power Analysis agent will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [2.2.1] - 2026-03-14
+
+### Fixed
+
+- Change README title to 'Dataverse Deep Reasoning'
+
 ## [2.2.0] - 2026-03-03
 
 ### Added
