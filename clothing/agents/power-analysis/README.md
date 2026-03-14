@@ -1,4 +1,4 @@
-# Power Analysis Agent — Clothing Retail Deep Reasoning
+# Dataverse Deep Reasoning
 
 The Power Analysis agent is a Copilot Studio analytical reasoning assistant for a global clothing retailer with 200+ stores and a multi-brand portfolio.  
 This solution is designed for explanation and decision support, not only metric retrieval. It decomposes broad performance questions into sequenced analytical steps across sales, inventory, staffing, and external factors.
